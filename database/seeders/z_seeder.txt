@@ -1,0 +1,17 @@
+php artisan migrate:fresh
+php artisan db:seed
+
+
+php artisan db:seed --class=CreateUsersSeeder  
+php artisan db:seed --class=EmployeeTableSeeder
+php artisan db:seed --class=TeachersTableSeeder
+php artisan db:seed --class=CurriculumsTableSeeder 
+php artisan db:seed --class=MajorTableSeeder  
+php artisan db:seed --class=SubjectsSeeder
+php artisan db:seed --class=SemestersTableSeeder
+php artisan db:seed --class=ClassTypeTableSeeder
+php artisan db:seed --class=CurriculumsSubjectsSeeder
+php artisan db:seed --class=StudentsTableSeeder
+php artisan db:seed --class=CoursesSeeder
+php artisan db:seed --class=CourseTasSeeder
+php artisan db:seed --class=RequestsSeeder
