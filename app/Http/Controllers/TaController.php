@@ -40,7 +40,6 @@ class TaController extends Controller
         return view('layouts.ta.request', compact('subjects'));
     }
 
-
     public function showTARequests()
     {
         $student = auth()->user()->student;
@@ -52,7 +51,7 @@ class TaController extends Controller
             ->latest()  // เรียงลำดับตาม created_at ล่าสุด
             ->get();
     
-        return view('layout.ta.statusRequest', compact('requests'));
+        return view('layouts.ta.statusRequest', compact('requests'));
     }
 
 
@@ -86,7 +85,7 @@ class TaController extends Controller
     public function showRequestForm()
     {
         $user = Auth::user();
-        return view('ta.request', compact('user'));
+        return view('layouts.ta.request', compact('user'));
     }
 
     public function apply(Request $request)
@@ -122,31 +121,6 @@ class TaController extends Controller
         if ($currentCourseCount + count($subjectIds) > 3) {
             return redirect()->back()->with('error', 'คุณไม่สามารถสมัครเป็นผู้ช่วยสอนได้เกิน 3 วิชา');
         }
-
-        // // ค้นหา course ที่มี subject_id ตรงกันในตาราง courses
-
-        // $course = Courses::where('subject_id', $subjectId)->first();
-
-        // if ($course) {
-        //     // ตรวจสอบว่าผู้ใช้ได้สมัครเป็น TA สำหรับวิชานี้หรือยัง
-        //     $existingTA = CourseTas::where('student_id', $student->id)
-        //         ->where('course_id', $course->id)
-        //         ->first();
-
-        //     if ($existingTA) {
-        //         return redirect()->back()->with('error', 'คุณได้สมัครเป็นผู้ช่วยสอนในวิชานี้แล้ว');
-        //     }
-
-        //     // บันทึกข้อมูลลงใน course_ta
-        //     CourseTas::create([
-        //         'student_id' => $student->id,
-        //         'course_id' => $course->id,
-        //     ]);
-
-        //     return redirect()->route('layout.ta.request')->with('success', 'สมัครเป็นผู้ช่วยสอนสำเร็จ');
-        // } else {
-        //     return redirect()->route('layout.ta.request')->with('error', 'ไม่พบรายวิชานี้ในระบบ');
-        // }
 
         foreach ($subjectIds as $subjectId) {
             // Find the course with the matching subject_id
