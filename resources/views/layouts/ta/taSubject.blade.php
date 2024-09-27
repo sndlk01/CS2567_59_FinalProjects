@@ -41,10 +41,10 @@
                                                 {{ $courseTa->course->teachers->lname }}</td>
                                             <td>{{ $courseTa->course->curriculums->name_th }}</td>
                                             <td>{{ $courseTa->course->major->name_th ?? 'ไม่มีข้อมูล' }}</td>
-                                            <td><a href="/attendances/{{ $courseTa->id }}">ลงเวลา</a></td>
+                                            {{-- <td><a href=" {{ url('/attendances/' . $courseTa->id) }}">รายละเอียดวิชา</a></td> --}}
+                                            <td><a href="{{ route('layout.ta.attendances', ['id' => $courseTa->id]) }}">รายละเอียดวิชา</a></td>
                                         </tr>
                                     @endforeach
-
                                 </tbody>
                             </table>
                         </div>

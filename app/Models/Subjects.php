@@ -15,6 +15,7 @@ class Subjects extends Model
      * @var string
      */
     protected $table = 'subjects';
+    protected $primaryKey = 'subject_id';
     protected $keyType = 'string'; // กำหนดให้ primary key เป็น string
     public $incrementing = false;  // ปิดการใช้งาน auto-increment
 

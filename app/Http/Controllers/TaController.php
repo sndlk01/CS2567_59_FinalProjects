@@ -208,4 +208,32 @@ class TaController extends Controller
 
         return view('layouts.ta.taSubject', compact('courseTas'));
     }
+
+    public function showSubjectDetail($id)
+    {
+        // Retrieve the course with the specified CourseTa ID
+        // $courseTas = CourseTas::with(['course.subjects'])->find($id);
+
+        $user = Auth::user();
+        $student = Students::where('user_id', $user->id)->first();
+
+        // ดึงข้อมูลจาก course_tas พร้อมกับข้อมูลจากตารางที่เกี่ยวข้อง
+        $courseTas = CourseTas::with([
+            'course.subjects',         // ดึงข้อมูล subject_id และ name_en
+            'course.semesters',        // ดึงข้อมูลปีการศึกษา และเทอม
+            'course.teachers',         // ดึงข้อมูลอาจารย์
+            'course.curriculums',      // ดึงข้อมูลหลักสูตร
+            'course.major'            // ดึงข้อมูลสาขา
+        ])->where('student_id', $student->id)->get();
+
+        // วนลูปผ่านข้อมูล courseTas เพื่อประมวลผล major name_th
+        foreach ($courseTas as $courseTa) {
+            if (isset($courseTa->course->major->name_th)) {
+                // ใช้ Str::after() เพื่อดึงเฉพาะคำว่า "ภาคปกติ"
+                $courseTa->course->major->name_th = trim(Str::after($courseTa->course->major->name_th, ' '));
+            }
+        }
+
+        return view('layouts.ta.attendances', compact('courseTas', 'student'));
+    }
 }

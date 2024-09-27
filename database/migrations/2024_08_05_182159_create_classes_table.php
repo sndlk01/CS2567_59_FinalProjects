@@ -14,20 +14,18 @@ return new class extends Migration
         Schema::create('classes', function (Blueprint $table) {
             $table->id(); // 'id' คอลัมน์หลักที่เป็น AUTO_INCREMENT
             $table->integer('section_num')->unsigned(); // ลบ AUTO_INCREMENT
-            $table->string('title', 45);
-            $table->unsignedBigInteger('class_type_id');
-            $table->integer('open_num');
-            $table->integer('enrolled_num');
-            $table->integer('available_num'); 
-            $table->unsignedBigInteger('teachers_id');
-            $table->unsignedBigInteger('courses_id'); 
-            $table->unsignedBigInteger('semesters_id'); 
+            $table->string('title', 45); // section
+            $table->integer('open_num'); // เปิดรับกี่คน
+            $table->integer('enrolled_num'); // สมัครกี่คน
+            $table->integer('available_num');  //เหลือกี่คน
+            $table->unsignedBigInteger('teacher_id'); // อาจารย์ประจำวิชา
+            $table->unsignedBigInteger('course_id'); 
+            $table->unsignedBigInteger('semester_id'); 
             $table->unsignedBigInteger('major_id');
 
-            $table->foreign('class_type_id')->references('id')->on('class_type');
-            $table->foreign('teachers_id')->references('id')->on('teachers');
-            $table->foreign('courses_id')->references('id')->on('courses');
-            $table->foreign('semesters_id')->references('id')->on('semesters');
+            $table->foreign('teacher_id')->references('id')->on('teachers');
+            $table->foreign('course_id')->references('id')->on('courses');
+            $table->foreign('semester_id')->references('id')->on('semesters');
             $table->foreign('major_id')->references('id')->on('major');
 
             $table->timestamps();

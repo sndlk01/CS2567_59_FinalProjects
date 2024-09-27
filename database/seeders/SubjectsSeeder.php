@@ -161,6 +161,16 @@ class SubjectsSeeder extends Seeder
                     'cur_id' => 1,
                     'status' => 'A'
                 ],
+                [
+                    'subject_id' => 'SC313002',
+                    'name_th' => 'หลักการออกแบบพัฒนาซอฟต์แวร์',
+                    'name_en' => 'Principles of Software Design and Development',
+                    'credits' => 3,
+                    'weight' => '2-2-5',
+                    'detail' => 'การมองถึงการพัฒนาระบบเชิงวัตถุ แนวคิดเชิงวัตถุ ลักษณะประจา พฤติกรรมและระเบียบวิธี การห่อหุ้มและการซ่อนสารสนเทศ คลาส ภาวะรูปร่างหลายแบบ ความสัมพันธ์และความเกี่ยวข้องเชิงวัตถุ วงจรชีวิตการพัฒนาระบบเชิงวัตถุ ระเบียบวิธีการเชิงวัตถุ ภาษาการทาแบบจาลองให้เป็นหนึ่งเดียว การวิเคราะห์เชิงวัตถุ การออกแบบเชิงวัตถุ การออกแบบลวดลาย',
+                    'cur_id' => 1,
+                    'status' => 'A'
+                ],
                 // IT
                 [
                     'subject_id' => 'SC361002',
@@ -193,7 +203,7 @@ class SubjectsSeeder extends Seeder
                     'status' => 'A'
                 ],
                 [
-                    'subject_id' => '362003',
+                    'subject_id' => 'SC362003',
                     'name_th' => 'เครือข่ายคอมพิวเตอร์ขั้นแนะนำ',
                     'name_en' => 'Introduction to Computer Networking',
                     'credits' => 3,

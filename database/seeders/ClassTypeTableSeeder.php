@@ -17,10 +17,12 @@ class ClassTypeTableSeeder extends Seeder
     {
         $class_type = [
             [
+                'class_type_id' => 'L',
                 'title' => 'LAB',
             ],
             [
-                'title' => 'LECTURE',
+                'class_type_id' => 'C',
+                'title' => 'LEC',
             ]
         ];
 

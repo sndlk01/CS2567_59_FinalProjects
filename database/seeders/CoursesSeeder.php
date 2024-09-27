@@ -22,7 +22,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' => 'CP352001', 
-                'owner_teacher_id' => 23,
+                'owner_teacher_id' => 24,
                 'semesters_id' => 25671,
                 'major_id' => 1,
                 'cur_id' => 1, 
@@ -31,7 +31,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' =>  'CP352002', 
-                'owner_teacher_id' => 11, 
+                'owner_teacher_id' => 12, 
                 'semesters_id' => 25671,
                 'major_id' => 1, 
                 'cur_id' => 1, 
@@ -40,7 +40,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' => 'CP351203', 
-                'owner_teacher_id' => 29,
+                'owner_teacher_id' => 30,
                 'semesters_id' => 25671,
                 'major_id' => 1,
                 'cur_id' => 1, 
@@ -49,7 +49,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' =>  'CP353001', 
-                'owner_teacher_id' => 14, 
+                'owner_teacher_id' => 15, 
                 'semesters_id' => 25671,
                 'major_id' => 1, 
                 'cur_id' => 1, 
@@ -58,7 +58,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' => 'CP351001', 
-                'owner_teacher_id' => 15,
+                'owner_teacher_id' => 16,
                 'semesters_id' => 25671,
                 'major_id' => 1,
                 'cur_id' => 1, 
@@ -76,7 +76,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' => 'CP353108', 
-                'owner_teacher_id' => 36,
+                'owner_teacher_id' => 37,
                 'semesters_id' => 25671,
                 'major_id' => 1,
                 'cur_id' => 1, 
@@ -85,7 +85,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' =>  'CP353003', 
-                'owner_teacher_id' => 25, 
+                'owner_teacher_id' => 26, 
                 'semesters_id' => 25671,
                 'major_id' => 1, 
                 'cur_id' => 1, 
@@ -94,7 +94,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' => 'CP353102', 
-                'owner_teacher_id' => 35,
+                'owner_teacher_id' => 36,
                 'semesters_id' => 25671,
                 'major_id' => 1,
                 'cur_id' => 1, 
@@ -112,7 +112,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' => 'CP352201', 
-                'owner_teacher_id' => 20,
+                'owner_teacher_id' => 21,
                 'semesters_id' => 25671,
                 'major_id' => 1,
                 'cur_id' => 1, 
@@ -139,7 +139,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' =>  'CP353002', 
-                'owner_teacher_id' => 1, 
+                'owner_teacher_id' => 10, 
                 'semesters_id' => 25671,
                 'major_id' => 1, 
                 'cur_id' => 1, 
@@ -147,7 +147,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' =>  'SC313002', 
-                'owner_teacher_id' => 1, 
+                'owner_teacher_id' => 10, 
                 'semesters_id' => 25671,
                 'major_id' => 1, 
                 'cur_id' => 1, 
@@ -183,7 +183,7 @@ class CoursesSeeder extends Seeder
             // Introduction to Computer Networking
             [
                 'status' => 'A',
-                'subject_id' =>  '362003', 
+                'subject_id' =>  'SC362003', 
                 'owner_teacher_id' => 9, 
                 'semesters_id' => 25671,
                 'major_id' => 1, 
@@ -202,7 +202,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' =>  'SC362005', 
-                'owner_teacher_id' => 25, 
+                'owner_teacher_id' => 25,
                 'semesters_id' => 25671,
                 'major_id' => 1, 
                 'cur_id' => 2, 
@@ -211,7 +211,7 @@ class CoursesSeeder extends Seeder
             [
                 'status' => 'A',
                 'subject_id' =>  'SC363101', 
-                'owner_teacher_id' => 14, 
+                'owner_teacher_id' => 14,
                 'semesters_id' => 25671,
                 'major_id' => 1, 
                 'cur_id' => 2, 

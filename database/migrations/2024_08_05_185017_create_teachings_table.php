@@ -16,12 +16,12 @@ return new class extends Migration
             $table->dateTime('start_time');
             $table->dateTime('end_time');
             $table->integer('duration');
-            $table->unsignedBigInteger('class_type_id');
             $table->char('status', 1);
+            $table->char('class_type');
             $table->unsignedBigInteger('classes_id'); 
             $table->unsignedBigInteger('teachers_id'); 
 
-            $table->foreign('class_type_id')->references('id')->on('class_type')->onDelete('cascade');
+            $table->foreign('class_type')->references('class_type_id')->on('class_type')->onDelete('cascade');
             $table->foreign('classes_id')->references('id')->on('classes')->onDelete('cascade');
             $table->foreign('teachers_id')->references('id')->on('teachers')->onDelete('cascade');
 

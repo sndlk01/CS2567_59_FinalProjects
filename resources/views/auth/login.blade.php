@@ -30,10 +30,11 @@
                                         <div class="form-floating mb-2">
                                             <br>
                                             <div class="col-mb-3">
-                                                <input id="email" type="email"
-                                                    class="form-control @error('email') is-invalid @enderror" name="email"
-                                                    placeholder="Email" value="{{ old('email') }}" required
-                                                    autocomplete="email" autofocus>
+                                                <input id="email_or_student_id" type="text"
+                                                    class="form-control @error('email_or_student_id') is-invalid @enderror"
+                                                    name="email_or_student_id" placeholder="Email or Student ID"
+                                                    value="{{ old('email_or_student_id') }}" required autocomplete="email"
+                                                    autofocus>
 
                                                 @error('email')
                                                     <span class="invalid-feedback" role="alert">

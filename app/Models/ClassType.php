@@ -15,6 +15,10 @@ class ClassType extends Model
      * @var array
      */
     protected $table = 'class_type';
+
+    protected $keyType = 'char';
+
+    public $incrementing = false;  // ปิดการใช้งาน auto-increment
     protected $fillable = [
         'title',
     ];

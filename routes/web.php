@@ -53,6 +53,7 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::get('/tasubject', [TaController::class, 'taSubject'])->name('layout.ta.taSubject');
     Route::get('/taSubject', [TaController::class, 'showCourseTas'])->name('ta.showCourseTas');
     Route::get('/attendances', [TaController::class, 'attendances'])->name('layout.ta.attendances');
+    Route::get('/attendances/{id}', [TaController::class, 'showSubjectDetail'])->name('layout.ta.attendances');
 });
 
 //Admin Routes List
