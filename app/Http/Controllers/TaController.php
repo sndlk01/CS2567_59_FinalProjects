@@ -52,7 +52,7 @@ class TaController extends Controller
             ->latest()  // เรียงลำดับตาม created_at ล่าสุด
             ->get();
     
-        return view('layout.ta.statusRequest', compact('requests'));
+        return view('layouts.ta.statusRequest', compact('requests'));
     }
 
 
