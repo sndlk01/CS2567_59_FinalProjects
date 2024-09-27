@@ -41,10 +41,9 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
 
     Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/home', [TaController::class, 'showAnnounces'])->name('home');
-    // Route::get('/request', [TaController::class, 'apply'])->name('layout.ta.request');
     Route::get('/request', [TaController::class, 'request'])->name('layout.ta.request');
     Route::post('/request', [TaController::class, 'apply'])->name('ta.apply');
-    Route::get('/statusrequest', [TaController::class, 'showTARequests'])->name('layout.ta.statusRequest');
+    Route::get('/statusrequest', [TaController::class, 'showTARequests'])->name('layouts.ta.statusRequest');
 
     // Route::get('/disbursements', [TaController::class, 'disbursements'])->name('layout.ta.disbursements');
     Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layout.ta.disbursements');
@@ -75,8 +74,9 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
 //Teacher Routes List
 Route::middleware(['auth', 'user-access:teacher'])->group(function () {
 
+    Route::get('/teacherreq', [HomeController::class, 'teacherHome'])->name('teacher.home');
     Route::get('/teacherreq', [TeacherController::class, 'showTARequests'])->name('teacher.home');
-    Route::post('/update-ta-request', [TeacherController::class, 'updateTARequestStatus'])->name('teacher.home');
+    Route::post('/teacherreq', [TeacherController::class, 'updateTARequestStatus'])->name('teacher.home');
     Route::get('/subject', [TeacherController::class, 'subjectTeacher'])->name('layout.teacher.subject');
     Route::get('/subject/subjectDetail', [TeacherController::class, 'subjectDetail'])->name('subjectDetail');
     Route::get('/subject/subjectDetail/taDetail', [TeacherController::class, 'taDetail'])->name('taDetail');
