@@ -40,20 +40,22 @@ class TaController extends Controller
         return view('layouts.ta.request', compact('subjects'));
     }
 
-    // /**
-    //  * Show the application dashboard.
-    //  *
-    //  * @return \Illuminate\Contracts\Support\Renderable
-    //  */
-    // public function statusRequest()
-    // {
-    //     return view('layouts.ta.statusRequest');
-    // }
-    /**
-     * Show the application dashboard.
-     *
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
+
+    public function showTARequests()
+    {
+        $student = auth()->user()->student;
+        
+        $requests = Requests::with(['courseTas.course.subjects', 'courseTas.student'])
+            ->whereHas('courseTas', function($query) use ($student) {
+                $query->where('student_id', $student->student_id);
+            })
+            ->latest()  // เรียงลำดับตาม created_at ล่าสุด
+            ->get();
+    
+        return view('layout.ta.statusRequest', compact('requests'));
+    }
+
+
     public function taSubject()
     {
         return view('layouts.ta.taSubject');
