@@ -12,17 +12,15 @@
                         <h4>รายละเอียดวิชา</h4>
                         <div class="card mb-4">
                             <div class="card-body">
-                                @foreach ($courseTas as $index => $courseTa)
-                                    <p><strong>ชื่อวิชา:</strong> {{ $courseTa->course->subjects->subject_id }}
-                                        {{ $courseTa->course->subjects->name_en }}</p>
-                                    <p><strong>ปีการศึกษา:</strong> {{ $courseTa->course->semesters->id }}</p>
-                                    <p><strong>อาจารย์ประจำวิชา:</strong> {{ $courseTa->course->teachers->position }}
-                                        {{ $courseTa->course->teachers->degree }} {{ $courseTa->course->teachers->fname }}
-                                        {{ $courseTa->course->teachers->lname }}</p>
-                                    <p><strong>โครงการ:</strong> {{ $courseTa->course->major->name_th }}</p>
-                                    <p><strong>ชื่อผู้ช่วยสอน:</strong> {{ $student->fname }} {{ $student->lname }}</p>
-                                    <p><strong>หน่วยกิต:</strong> {{ $courseTa->course->subjects->credits }}</p>
-                                @endforeach
+                                <p><strong>ชื่อวิชา:</strong> {{ $courseTa->course->subjects->subject_id }}
+                                    {{ $courseTa->course->subjects->name_en }}</p>
+                                <p><strong>ปีการศึกษา:</strong> {{ $courseTa->course->semesters->id }}</p>
+                                <p><strong>อาจารย์ประจำวิชา:</strong> {{ $courseTa->course->teachers->position }}
+                                    {{ $courseTa->course->teachers->degree }} {{ $courseTa->course->teachers->fname }}
+                                    {{ $courseTa->course->teachers->lname }}</p>
+                                <p><strong>โครงการ:</strong> {{ $courseTa->course->major->name_th }}</p>
+                                <p><strong>ชื่อผู้ช่วยสอน:</strong> {{ $student->fname }} {{ $student->lname }}</p>
+                                <p><strong>หน่วยกิต:</strong> {{ $courseTa->course->subjects->credits }}</p>
                             </div>
                         </div>
 
@@ -35,15 +33,6 @@
                                     <a href="#" class="btn btn-success">ดาวน์โหลดเอกสาร</a>
                                 </div>
                                 <div class="dropdown">
-                                    <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton"
-                                        data-bs-toggle="dropdown" aria-expanded="false">เลือกเดือน
-                                    </button>
-                                    <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                                        <li><a class="dropdown-item" href="#">มิถุนายน</a></li>
-                                        <li><a class="dropdown-item" href="#">กรกฎาคม</a></li>
-                                        <li><a class="dropdown-item" href="#">สิงหาคม</a></li>
-                                        <li><a class="dropdown-item" href="#">กันยายน</a></li>
-                                    </ul>
                                     <select name="month" class="form-select" aria-label="Default select example">
                                         <option value="volvo">มิถุนายน</option>
                                         <option value="saab">กรกฎาคม</option>
