@@ -40,19 +40,18 @@ class TaController extends Controller
         return view('layouts.ta.request', compact('subjects'));
     }
 
-
     public function showTARequests()
     {
         $user = Auth::user();
         $student = auth()->user()->student;
-        
+
         $requests = Requests::with(['courseTas.course.subjects', 'courseTas.student'])
-            ->whereHas('courseTas', function($query) use ($student) {
+            ->whereHas('courseTas', function ($query) use ($student) {
                 $query->where('student_id', $student->student_id);
             })
             ->latest()
             ->get();
-        
+    
         return view('layouts.ta.statusRequest', compact('requests'));
     }
     public function taSubject()
@@ -85,7 +84,7 @@ class TaController extends Controller
     public function showRequestForm()
     {
         $user = Auth::user();
-        return view('ta.request', compact('user'));
+        return view('layouts.ta.request', compact('user'));
     }
 
     public function apply(Request $request)
@@ -121,31 +120,6 @@ class TaController extends Controller
         if ($currentCourseCount + count($subjectIds) > 3) {
             return redirect()->back()->with('error', 'คุณไม่สามารถสมัครเป็นผู้ช่วยสอนได้เกิน 3 วิชา');
         }
-
-        // // ค้นหา course ที่มี subject_id ตรงกันในตาราง courses
-
-        // $course = Courses::where('subject_id', $subjectId)->first();
-
-        // if ($course) {
-        //     // ตรวจสอบว่าผู้ใช้ได้สมัครเป็น TA สำหรับวิชานี้หรือยัง
-        //     $existingTA = CourseTas::where('student_id', $student->id)
-        //         ->where('course_id', $course->id)
-        //         ->first();
-
-        //     if ($existingTA) {
-        //         return redirect()->back()->with('error', 'คุณได้สมัครเป็นผู้ช่วยสอนในวิชานี้แล้ว');
-        //     }
-
-        //     // บันทึกข้อมูลลงใน course_ta
-        //     CourseTas::create([
-        //         'student_id' => $student->id,
-        //         'course_id' => $course->id,
-        //     ]);
-
-        //     return redirect()->route('layout.ta.request')->with('success', 'สมัครเป็นผู้ช่วยสอนสำเร็จ');
-        // } else {
-        //     return redirect()->route('layout.ta.request')->with('error', 'ไม่พบรายวิชานี้ในระบบ');
-        // }
 
         foreach ($subjectIds as $subjectId) {
             // Find the course with the matching subject_id
@@ -218,23 +192,39 @@ class TaController extends Controller
         $user = Auth::user();
         $student = Students::where('user_id', $user->id)->first();
 
-        // ดึงข้อมูลจาก course_tas พร้อมกับข้อมูลจากตารางที่เกี่ยวข้อง
-        $courseTas = CourseTas::with([
+        // // ดึงข้อมูลจาก course_tas พร้อมกับข้อมูลจากตารางที่เกี่ยวข้อง
+        // $courseTas = CourseTas::with([
+        //     'course.subjects',         // ดึงข้อมูล subject_id และ name_en
+        //     'course.semesters',        // ดึงข้อมูลปีการศึกษา และเทอม
+        //     'course.teachers',         // ดึงข้อมูลอาจารย์
+        //     'course.curriculums',      // ดึงข้อมูลหลักสูตร
+        //     'course.major'            // ดึงข้อมูลสาขา
+        // ])->where('student_id', $student->id)->get();
+
+        // ดึงข้อมูลเฉพาะที่มี course_ta id ตรงกับ $id ที่ส่งมา
+        $courseTa = CourseTas::with([
             'course.subjects',         // ดึงข้อมูล subject_id และ name_en
             'course.semesters',        // ดึงข้อมูลปีการศึกษา และเทอม
             'course.teachers',         // ดึงข้อมูลอาจารย์
             'course.curriculums',      // ดึงข้อมูลหลักสูตร
             'course.major'            // ดึงข้อมูลสาขา
-        ])->where('student_id', $student->id)->get();
+        ])->where('id', $id)  // กรองด้วย id ของ course_ta
+            ->where('student_id', $student->id)  // กรองด้วย student_id ด้วยเพื่อความปลอดภัย
+            ->first(); // ใช้ first() แทน get() เพื่อดึงข้อมูลเฉพาะ 1 รายการ
+
+        // ตรวจสอบว่าข้อมูลถูกต้องหรือไม่
+        if (!$courseTa) {
+            abort(404, 'ไม่พบข้อมูล CourseTa ที่ระบุ');
+        }
 
         // วนลูปผ่านข้อมูล courseTas เพื่อประมวลผล major name_th
-        foreach ($courseTas as $courseTa) {
-            if (isset($courseTa->course->major->name_th)) {
+        foreach ($courseTa as $courseta) {
+            if (isset($courseta->course->major->name_th)) {
                 // ใช้ Str::after() เพื่อดึงเฉพาะคำว่า "ภาคปกติ"
-                $courseTa->course->major->name_th = trim(Str::after($courseTa->course->major->name_th, ' '));
+                $courseta->course->major->name_th = trim(Str::after($courseta->course->major->name_th, ' '));
             }
         }
 
-        return view('layouts.ta.attendances', compact('courseTas', 'student'));
+        return view('layouts.ta.attendances', compact('courseTa', 'student'));
     }
 }
