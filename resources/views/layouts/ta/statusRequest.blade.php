@@ -70,17 +70,17 @@
                                             </td>
                                             <td>{{ $request->comment ?? 'ไม่มีความคิดเห็น' }}</td>
                                         </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="8" class="text-center">ไม่พบข้อมูลคำร้องการสมัคร</td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="text-center">ไม่พบข้อมูลคำร้องการสมัคร</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    @endsection
+    </div>
+@endsection
