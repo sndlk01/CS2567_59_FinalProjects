@@ -43,17 +43,24 @@ class TaController extends Controller
     public function showTARequests()
     {
         $user = Auth::user();
-        $student = auth()->user()->student;
+        $student = $user->student;
+
+        if (!$student) {
+            return redirect()->back()->with('error', 'ไม่พบข้อมูลนักศึกษาสำหรับผู้ใช้นี้');
+        }
 
         $requests = Requests::with(['courseTas.course.subjects', 'courseTas.student'])
             ->whereHas('courseTas', function ($query) use ($student) {
-                $query->where('student_id', $student->student_id);
+                $query->where('student_id', $student->id);
             })
             ->latest()
             ->get();
-    
+
+        // \Log::info('Number of requests found: ' . $requests->count());
+
         return view('layouts.ta.statusRequest', compact('requests'));
     }
+
     public function taSubject()
     {
         return view('layouts.ta.taSubject');

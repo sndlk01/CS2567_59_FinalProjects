@@ -24,8 +24,8 @@ class CourseTas extends Model
     return $this->belongsTo(Courses::class, 'course_id', 'id');
 }
 
-    public function requests()
-    {
-        return $this->hasMany(Requests::class);
-    }
+public function requests()
+{
+    return $this->hasOne(Requests::class, 'course_tas_id', 'id');
+}
 }
