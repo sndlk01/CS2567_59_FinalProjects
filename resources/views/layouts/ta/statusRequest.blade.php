@@ -36,26 +36,20 @@
                                             <td>{{ $request->created_at ? $request->created_at->format('d-m-Y') : 'N/A' }}
                                             </td>
                                             <td>
-                                                @switch(strtolower($request->status))
-                                                    @case('w')
-                                                        <span class="badge bg-warning">รอดำเนินการ</span>
-                                                    @break
-
-                                                    @case('r')
-                                                        <span class="badge bg-danger">ไม่อนุมัติ</span>
-                                                    @break
-
-                                                    @case('a')
-                                                        <span class="badge bg-success">อนุมัติ</span>
-                                                    @break
-
-                                                    @case('p')
-                                                        <span class="badge bg-info">กำลังพิจารณา</span>
-                                                    @break
-
-                                                    @default
-                                                        <span class="badge bg-secondary">ไม่ระบุ ({{ $request->status }})</span>
-                                                @endswitch
+                                                @php
+                                                    $status = strtolower($request->status);
+                                                @endphp
+                                                @if ($status === 'w')
+                                                    <span class="badge bg-warning">รอดำเนินการ</span>
+                                                @elseif ($status === 'r')
+                                                    <span class="badge bg-danger">ไม่อนุมัติ</span>
+                                                @elseif ($status === 'a')
+                                                    <span class="badge bg-success">อนุมัติ</span>
+                                                @elseif ($status === 'p')
+                                                    <span class="badge bg-info">กำลังพิจารณา</span>
+                                                @else
+                                                    <span class="badge bg-secondary">ไม่ระบุ ({{ $request->status }})</span>
+                                                @endif
                                             </td>
                                             <td>
                                                 @if ($request->approved_at)
@@ -70,17 +64,17 @@
                                             </td>
                                             <td>{{ $request->comment ?? 'ไม่มีความคิดเห็น' }}</td>
                                         </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="8" class="text-center">ไม่พบข้อมูลคำร้องการสมัคร</td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="text-center">ไม่พบข้อมูลคำร้องการสมัคร</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    @endsection
+    </div>
+@endsection

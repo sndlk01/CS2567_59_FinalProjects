@@ -12,12 +12,12 @@ class Requests extends Model
     protected $fillable = [
         'student_id',
         'course_id',
-        // 'approved_at',
+        'approved_at',
         'comment',
         'status',
-        'approved_at' => 'datetime',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+        // 'approved_at' => 'datetime',
+        // 'created_at' => 'datetime',
+        // 'updated_at' => 'datetime',
     ];
 
     public function courseTas()
