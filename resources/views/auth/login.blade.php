@@ -85,9 +85,6 @@
                                             <h5 style="border-top: 1px solid #e6e5e5; margin-top: 1rem; padding: 0.5rem;">Or
                                             </h5>
 
-                                            {{-- <button class="btn btn-white btn-lg" type="submit"
-                                                style="font-size: 16px; border-radius: 1.5rem; background-color:#0676be; color:#ffffff;">
-                                                <i class="bi bi-google me-2"></i>Log in with google</button> --}}
                                             <a href="{{ route('google-auth') }}" class="btn btn-white btn-lg"
                                                 style="font-size: 16px; border-radius: 1.5rem; background-color:#0676be; color:#ffffff;"><i
                                                     class="bi bi-google me-2"></i>Log in with google</a>

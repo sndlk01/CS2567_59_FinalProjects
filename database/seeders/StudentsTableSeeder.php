@@ -30,7 +30,6 @@ class StudentsTableSeeder extends Seeder
                 'phone' => '0823456789',
                 'email' => 'chakit.p@kkumail.com',
                 // 'user_id' => $users-> , //+2
-                'type_ta' => false,
             ],
             // [
             //     'student_id' => '643021342-5',
@@ -61,7 +60,7 @@ class StudentsTableSeeder extends Seeder
                     'card_id' => $student['card_id'],
                     'phone' => $student['phone'],
                     'email' => $student['email'],
-                    'type_ta' => $student['type_ta'],
+                    // 'type_ta' => $student['type_ta'],
                     'user_id' => $user->id,
                 ]);
             }

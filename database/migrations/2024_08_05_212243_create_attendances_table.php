@@ -16,7 +16,7 @@ return new class extends Migration
             $table->char('status');
             $table->dateTime('approve_at', precision: 0);
             $table->string('note');
-            $table->unsignedBigInteger('user_id'); 
+            $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('teaching_id');
             $table->unsignedBigInteger('student_id');
 

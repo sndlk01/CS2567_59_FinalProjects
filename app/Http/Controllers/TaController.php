@@ -152,10 +152,8 @@ class TaController extends Controller
                 return redirect()->back()->with('error', 'ไม่พบรายวิชา ' . $subjectId . ' ในระบบ');
             }
         }
-
         return redirect()->route('layout.ta.request')->with('success', 'สมัครเป็นผู้ช่วยสอนสำเร็จ');
     }
-
     public function showCourseTas()
     {
         $user = Auth::user();
@@ -181,26 +179,13 @@ class TaController extends Controller
                 $courseTa->course->curriculums->name_th = trim(Str::before($courseTa->course->curriculums->name_th, ' '));
             }
         }
-
         return view('layouts.ta.taSubject', compact('courseTas'));
     }
 
     public function showSubjectDetail($id)
     {
-        // Retrieve the course with the specified CourseTa ID
-        // $courseTas = CourseTas::with(['course.subjects'])->find($id);
-
         $user = Auth::user();
         $student = Students::where('user_id', $user->id)->first();
-
-        // // ดึงข้อมูลจาก course_tas พร้อมกับข้อมูลจากตารางที่เกี่ยวข้อง
-        // $courseTas = CourseTas::with([
-        //     'course.subjects',         // ดึงข้อมูล subject_id และ name_en
-        //     'course.semesters',        // ดึงข้อมูลปีการศึกษา และเทอม
-        //     'course.teachers',         // ดึงข้อมูลอาจารย์
-        //     'course.curriculums',      // ดึงข้อมูลหลักสูตร
-        //     'course.major'            // ดึงข้อมูลสาขา
-        // ])->where('student_id', $student->id)->get();
 
         // ดึงข้อมูลเฉพาะที่มี course_ta id ตรงกับ $id ที่ส่งมา
         $courseTa = CourseTas::with([
@@ -225,7 +210,6 @@ class TaController extends Controller
                 $courseta->course->major->name_th = trim(Str::after($courseta->course->major->name_th, ' '));
             }
         }
-
         return view('layouts.ta.attendances', compact('courseTa', 'student'));
     }
 }

@@ -20,7 +20,6 @@ return new class extends Migration
             $table->string('card_id', 13);
             $table->string('phone', 11);
             $table->string('email', 1024);
-            $table->boolean('type_ta');
             $table->unsignedBigInteger('user_id');
             $table->timestamps();
 
