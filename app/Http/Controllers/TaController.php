@@ -147,7 +147,7 @@ class TaController extends Controller
                 }
 
                 // บันทึกข้อมูลลงใน course_tas
-                $courseTA = CourseTas::create([
+                CourseTas::create([
                     'student_id' => $student->id,
                     'course_id' => $course->id,
                 ]);
