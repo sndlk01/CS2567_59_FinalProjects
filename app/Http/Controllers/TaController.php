@@ -104,7 +104,6 @@ class TaController extends Controller
         $request->validate([
             'subject_id' => 'required|array|min:1|max:3', // ตรวจสอบว่าเลือกอย่างน้อย 1 วิชา และเลือกไม่เกิน 3 วิชา
             'subject_id*' => 'exists|exists:subjects,subject_id', // ตรวจสอบว่าแต่ละวิชาที่เลือกมีอยู่ในฐานข้อมูล
-            'sections' => 'required|array', // ตรวจสอบว่ามีการเลือก section สำหรับแต่ละวิชา
         ]);
 
         // Create or update the student record
@@ -123,8 +122,6 @@ class TaController extends Controller
 
         // รับ subject_id ที่เลือกจากฟอร์ม
         $subjectIds = $request->input('subject_id');
-        $sections = $request->input('sections'); // ตัวอย่างข้อมูลที่ส่งมาจากฟอร์ม: ['course_1' => [1, 2], 'course_2' => [1]]
-        dd($sections); // ตรวจสอบค่า sections ที่ได้รับมา
 
         // ตรวจสอบว่านักศึกษานี้ได้สมัครเป็นผู้ช่วยสอนครบ 3 วิชาหรือยัง
         $currentCourseCount = CourseTas::where('student_id', $student->id)->count();
