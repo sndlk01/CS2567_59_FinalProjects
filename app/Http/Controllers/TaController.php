@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Classes;
 use App\Models\Courses;
+use App\Models\CourseTaClasses;
 use Illuminate\Http\Request;
 use App\Models\Subjects;
 use App\Models\Students;
@@ -177,8 +179,10 @@ class TaController extends Controller
                 return redirect()->back()->with('error', 'ไม่พบรายวิชา ' . $subjectId . ' ในระบบ');
             }
         }
+
         return redirect()->route('layout.ta.request')->with('success', 'สมัครเป็นผู้ช่วยสอนสำเร็จ');
     }
+
 
 
     public function showCourseTas()
