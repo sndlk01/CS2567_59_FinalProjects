@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Classes;
 use App\Models\Courses;
-use App\Models\CourseTaClasses;
 use Illuminate\Http\Request;
 use App\Models\Subjects;
 use App\Models\Students;
