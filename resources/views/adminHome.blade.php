@@ -34,11 +34,11 @@
                                     <td>{{ $request->created_at ? $request->created_at->format('d-m-Y') : 'N/A' }}
                                     </td>
                                     <td>
-                                        @if ($request->status === 'W')
+                                        @if ($request->status === 'w')
                                             <span class="badge bg-warning">รอดำเนินการ</span>
-                                        @elseif($request->status === 'N')
+                                        @elseif($request->status === 'n')
                                             <span class="badge bg-danger">ไม่อนุมัติ</span>
-                                        @elseif($request->status === 'A')
+                                        @elseif($request->status === 'a')
                                             <span class="badge bg-success">อนุมัติ</span>
                                         @else
                                             <span class="badge bg-secondary">ไม่ระบุ</span>
