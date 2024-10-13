@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\SectionController;
 use App\Http\Controllers\TaController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\RequestsController;
@@ -43,6 +44,8 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::get('/home', [TaController::class, 'showAnnounces'])->name('home');
     Route::get('/request', [TaController::class, 'request'])->name('layout.ta.request');
     Route::post('/request', [TaController::class, 'apply'])->name('ta.apply');
+    // Route สำหรับตรวจสอบว่า Section มีอยู่ในฐานข้อมูลหรือไม่
+    // Route::get('/validate-section', [SectionController::class, 'validateSection']);
     Route::get('/statusrequest', [TaController::class, 'showTARequests'])->name('layouts.ta.statusRequest');
 
     // Route::get('/disbursements', [TaController::class, 'disbursements'])->name('layout.ta.disbursements');

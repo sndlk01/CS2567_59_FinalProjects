@@ -57,17 +57,21 @@
                             </div>
 
                             {{-- ส่วนสำหรับการค้นหารายวิชา --}}
-                            <div class="mb-3">
+                            {{-- <div class="mb-3">
                                 <input type="text" id="subjectSearch" class="form-control" placeholder="ค้นหารายวิชา...">
-                            </div>
+                            </div> --}}
 
                             {{-- ส่วนของการเลือกวิชา --}}
                             <div class="mb-3">
                                 <label class="form-label">เลือกรายวิชาที่ต้องการสมัคร</label>
+                                {{-- ส่วนสำหรับการค้นหารายวิชา --}}
+                                <input type="text" id="subjectSearch" class="form-control mb-3"
+                                    placeholder="ค้นหารายวิชา...">
+
                                 <!-- เพิ่ม CSS class เพื่อทำให้เลื่อน scroll ได้ -->
                                 <div class="subject-checkbox-container"
                                     style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-                                    {{-- <input type="text" id="subjectSearch" class="form-control" placeholder="ค้นหารายวิชา..."> --}}
+
                                     @foreach ($subjects as $subject)
                                         <div class="form-check subject-item">
                                             <input class="form-check-input subject-checkbox" type="checkbox"
@@ -84,25 +88,34 @@
                             <div class="mb-3">
                                 <small class="text-danger">*** นักศึกษาสามารถเป็นผู้ช่วยสอนได้ไม่เกิน 3 รายวิชา</small>
                             </div>
+
+                            {{-- สำหรับเลือก section ที่สอน --}}
+                            {{-- <div class="mb-3">
+                                <input type="text" class="form-control" placeholder="เลือกเซคชันที่สอน...">
+                            </div> --}}
+                            <div id="sectionsContainer" class="mb-4">
+                                <!-- Sections ของแต่ละวิชาที่เลือกจะถูกแสดงใน div นี้ -->
+                            </div>
+
                             <button type="submit" class="btn btn-success">ยืนยันการสมัคร</button>
 
                             {{-- Flash Message --}}
                             @if (session('success'))
                                 <div class="alert alert-success alert-dismissible fade show" role="alert">
                                     {{ session('success') }}
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert"
-                                        aria-label="Close">close</button>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"><i
+                                            class="bi bi-x"></i></button>
                                 </div>
                             @elseif (session('error'))
                                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
                                     {{ session('error') }}
-                                    <button type="button" class="btn-close" data-bs-dismiss="alert"
-                                        aria-label="Close"></button>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"><i
+                                            class="bi bi-x"></i></button>
                                 </div>
                             @endif
                         </form>
 
-                        {{-- java Script --}}
+                        {{-- javaScript สำหรับการเลือกรายวิชาผู้ช่วยสอน --}}
                         <script>
                             // ตรวจจับการเปลี่ยนแปลงการเลือก checkbox
                             const checkboxes = document.querySelectorAll('.subject-checkbox');
@@ -148,6 +161,7 @@
                                 });
                             });
                         </script>
+                        {{-- javascript สำหรับการเลือก section --}}
                     </div>
                 </div>
             </div>

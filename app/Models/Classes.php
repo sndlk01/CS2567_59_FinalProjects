@@ -35,10 +35,10 @@ class Classes extends Model
         return $this->belongsToMany(Teachers::class);
     }
 
-    
-    public function courses()
+   // ความสัมพันธ์กับ Course
+    public function course()
     {
-        return $this->hasOne(Courses::class);
+        return $this->belongsTo(Courses::class, 'course_id');
     }
 
     
@@ -61,5 +61,10 @@ class Classes extends Model
     public function extra_teaching()
     {
         return $this->hasMany(ExtraTeaching::class);
+    }
+
+    public function courseTaClasses()
+    {
+        return $this->hasMany(CourseTaClasses::class, 'class_id', 'id');
     }
 }

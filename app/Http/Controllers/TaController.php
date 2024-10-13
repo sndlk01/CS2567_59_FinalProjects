@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Classes;
 use App\Models\Courses;
+use App\Models\CourseTaClasses;
 use Illuminate\Http\Request;
 use App\Models\Subjects;
 use App\Models\Students;
@@ -102,6 +104,7 @@ class TaController extends Controller
         $request->validate([
             'subject_id' => 'required|array|min:1|max:3', // ตรวจสอบว่าเลือกอย่างน้อย 1 วิชา และเลือกไม่เกิน 3 วิชา
             'subject_id*' => 'exists|exists:subjects,subject_id', // ตรวจสอบว่าแต่ละวิชาที่เลือกมีอยู่ในฐานข้อมูล
+            'sections' => 'required|array', // ตรวจสอบว่ามีการเลือก section สำหรับแต่ละวิชา
         ]);
 
         // Create or update the student record
@@ -115,12 +118,13 @@ class TaController extends Controller
                 'email' => $user->email,
                 'card_id' => $user->card_id,
                 'phone' => $user->phone,
-                'type_ta' => 0,
             ]
         );
 
         // รับ subject_id ที่เลือกจากฟอร์ม
         $subjectIds = $request->input('subject_id');
+        $sections = $request->input('sections'); // ตัวอย่างข้อมูลที่ส่งมาจากฟอร์ม: ['course_1' => [1, 2], 'course_2' => [1]]
+        dd($sections); // ตรวจสอบค่า sections ที่ได้รับมา
 
         // ตรวจสอบว่านักศึกษานี้ได้สมัครเป็นผู้ช่วยสอนครบ 3 วิชาหรือยัง
         $currentCourseCount = CourseTas::where('student_id', $student->id)->count();
@@ -142,24 +146,25 @@ class TaController extends Controller
                     return redirect()->back()->with('error', 'คุณได้สมัครเป็นผู้ช่วยสอนในวิชา ' . $subjectId . ' แล้ว');
                 }
 
-                // บันทึกข้อมูลลงใน course_ta
-                CourseTas::create([
+                // บันทึกข้อมูลลงใน course_tas
+                $courseTA = CourseTas::create([
                     'student_id' => $student->id,
                     'course_id' => $course->id,
                 ]);
-
                 // Save to requests table
                 Requests::create([
                     'student_id' => $student->id,
                     'course_id' => $course->id,
                     'status' => 'W', // Assuming 'P' means pending
                 ]);
+
             } else {
                 return redirect()->back()->with('error', 'ไม่พบรายวิชา ' . $subjectId . ' ในระบบ');
             }
         }
         return redirect()->route('layout.ta.request')->with('success', 'สมัครเป็นผู้ช่วยสอนสำเร็จ');
     }
+
     public function showCourseTas()
     {
         $user = Auth::user();

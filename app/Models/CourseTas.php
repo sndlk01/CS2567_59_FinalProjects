@@ -20,12 +20,18 @@ class CourseTas extends Model
     }
 
     public function course()
-{
-    return $this->belongsTo(Courses::class, 'course_id', 'id');
-}
+    {
+        return $this->belongsTo(Courses::class, 'course_id', 'id');
+    }
 
-public function requests()
-{
-    return $this->hasOne(Requests::class, 'course_tas_id', 'id');
-}
+    public function requests()
+    {
+        return $this->hasOne(Requests::class, 'course_tas_id', 'id');
+    }
+
+    // ความสัมพันธ์กับ CourseTaClasses
+    public function courseTaClasses()
+    {
+        return $this->hasMany(CourseTaClasses::class, 'course_ta_id', 'id');
+    }
 }
