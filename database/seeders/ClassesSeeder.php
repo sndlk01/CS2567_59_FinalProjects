@@ -25,7 +25,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 24,
                 'course_id' => 1,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -36,7 +36,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 3,
                 'teacher_id' => 24,
                 'course_id' => 1,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -47,7 +47,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 6,
                 'teacher_id' => 24,
                 'course_id' => 16,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
             [
@@ -58,7 +58,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 9,
                 'teacher_id' => 24,
                 'course_id' => 16,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
             // CP352002 User Experience Design
@@ -70,7 +70,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 12,
                 'course_id' => 2,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -81,7 +81,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 8,
                 'teacher_id' => 12,
                 'course_id' => 2,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -92,7 +92,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 12,
                 'course_id' => 17,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
             [
@@ -103,7 +103,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 10,
                 'teacher_id' => 12,
                 'course_id' => 17,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
             // CP351203 Web Programming and Application
@@ -115,7 +115,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 30,
                 'course_id' => 3,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -126,7 +126,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 30,
                 'course_id' => 18,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -139,7 +139,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 15,
                 'course_id' => 4,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -150,7 +150,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 15,
                 'course_id' => 4,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -161,7 +161,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 10,
                 'teacher_id' => 15,
                 'course_id' => 19,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
             [
@@ -172,7 +172,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 15,
                 'course_id' => 19,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -185,7 +185,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 16,
                 'course_id' => 5,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -196,7 +196,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 16,
                 'course_id' => 5,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -207,7 +207,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 16,
                 'course_id' => 20,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
             [
@@ -218,7 +218,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 16,
                 'course_id' => 20,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -231,7 +231,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 11,
                 'teacher_id' => 4,
                 'course_id' => 6,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -242,7 +242,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 32,
                 'teacher_id' => 4,
                 'course_id' => 21,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -255,7 +255,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 37,
                 'course_id' => 7,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -266,7 +266,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 6,
                 'teacher_id' => 37,
                 'course_id' => 22,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -279,7 +279,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 26,
                 'course_id' => 8,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -290,7 +290,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 26,
                 'course_id' => 8,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -301,7 +301,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 4,
                 'teacher_id' => 26,
                 'course_id' => 23,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -314,7 +314,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 36,
                 'course_id' => 9,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -325,7 +325,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 4,
                 'teacher_id' => 36,
                 'course_id' => 24,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -338,7 +338,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 19,
                 'teacher_id' => 8,
                 'course_id' => 10,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -349,7 +349,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 3,
                 'teacher_id' => 8,
                 'course_id' => 25,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -362,7 +362,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 28,
                 'teacher_id' => 21,
                 'course_id' => 11,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -373,7 +373,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 19,
                 'teacher_id' => 21,
                 'course_id' => 26,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -386,7 +386,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 3,
                 'course_id' => 12,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -397,7 +397,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 3,
                 'course_id' => 12,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -408,7 +408,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 3,
                 'course_id' => 27,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
             [
@@ -419,7 +419,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 3,
                 'course_id' => 27,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -432,7 +432,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 6,
                 'teacher_id' => 3,
                 'course_id' => 13,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -443,7 +443,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 9,
                 'teacher_id' => 3,
                 'course_id' => 28,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -456,7 +456,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 10,
                 'course_id' => 14,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -467,7 +467,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 4,
                 'teacher_id' => 10,
                 'course_id' => 14,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -478,7 +478,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 10,
                 'course_id' => 29,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
             [
@@ -489,7 +489,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 9,
                 'teacher_id' => 10,
                 'course_id' => 29,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
 
@@ -502,7 +502,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 10,
                 'course_id' => 15,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 1,
             ],
             [
@@ -513,7 +513,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 4,
                 'teacher_id' => 10,
                 'course_id' => 30,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 2,
             ],
             // IT
@@ -526,7 +526,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 30,
                 'course_id' => 31,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -537,7 +537,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 30,
                 'course_id' => 31,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -548,7 +548,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 30,
                 'course_id' => 49,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
 
@@ -561,7 +561,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 30,
                 'course_id' => 32,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -572,7 +572,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 5,
                 'teacher_id' => 30,
                 'course_id' => 32,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -583,7 +583,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 16,
                 'teacher_id' => 30,
                 'course_id' => 50,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             [
@@ -594,7 +594,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 30,
                 'course_id' => 50,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
 
@@ -607,7 +607,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 30,
                 'teacher_id' => 30,
                 'course_id' => 33,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -618,7 +618,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 16,
                 'teacher_id' => 30,
                 'course_id' => 51,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
 
@@ -631,7 +631,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 9,
                 'course_id' => 34,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -642,7 +642,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 6,
                 'teacher_id' => 9,
                 'course_id' => 34,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -653,7 +653,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 9,
                 'course_id' => 52,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             [
@@ -664,7 +664,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 9,
                 'course_id' => 52,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
 
@@ -677,7 +677,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 4,
                 'teacher_id' => 9,
                 'course_id' => 35,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -688,7 +688,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 5,
                 'teacher_id' => 9,
                 'course_id' => 53,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
 
@@ -701,7 +701,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 3,
                 'teacher_id' => 25,
                 'course_id' => 36,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -712,7 +712,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 25,
                 'course_id' => 36,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -723,7 +723,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 8,
                 'teacher_id' => 25,
                 'course_id' => 54,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             [
@@ -734,7 +734,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 10,
                 'teacher_id' => 25,
                 'course_id' => 54,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             // SC363101 Software Testing and Quality Assurance
@@ -746,7 +746,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 4,
                 'teacher_id' => 14,
                 'course_id' => 37,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -757,7 +757,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 10,
                 'teacher_id' => 14,
                 'course_id' => 55,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
 
@@ -770,7 +770,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 7,
                 'teacher_id' => 23,
                 'course_id' => 38,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -781,7 +781,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 10,
                 'teacher_id' => 23,
                 'course_id' => 56,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             // SC363102 Business Intelligence System
@@ -793,7 +793,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 7,
                 'teacher_id' => 23,
                 'course_id' => 39,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -804,7 +804,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 8,
                 'teacher_id' => 23,
                 'course_id' => 57,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             // SC362102 Software Engineering
@@ -816,7 +816,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 31,
                 'course_id' => 40,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -827,7 +827,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 9,
                 'teacher_id' => 31,
                 'course_id' => 58,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             // SC363001 Systems Analysis and Design
@@ -839,7 +839,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 5,
                 'teacher_id' => 31,
                 'course_id' => 41,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -850,7 +850,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 31,
                 'course_id' => 59,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             // SC361001 Inspiration in IT Career
@@ -862,7 +862,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 4,
                 'teacher_id' => 14,
                 'course_id' => 42,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
 
@@ -875,7 +875,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 15,
                 'course_id' => 43,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -886,7 +886,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 4,
                 'teacher_id' => 15,
                 'course_id' => 43,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -897,7 +897,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 15,
                 'course_id' => 61,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             [
@@ -908,7 +908,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 26,
                 'teacher_id' => 15,
                 'course_id' => 61,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
 
@@ -921,7 +921,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 7,
                 'teacher_id' => 11,
                 'course_id' => 44,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -932,7 +932,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 3,
                 'teacher_id' => 11,
                 'course_id' => 62,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             // SC320001 Introduction To Information And Communication Technology
@@ -944,7 +944,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 35,
                 'teacher_id' => 32,
                 'course_id' => 45,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             // SC362201 Web Design Technologies
@@ -956,7 +956,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 4,
                 'teacher_id' => 21,
                 'course_id' => 46,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -967,7 +967,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 7,
                 'teacher_id' => 21,
                 'course_id' => 64,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             // SC362301 Digital Logic and Embedded Systems
@@ -979,7 +979,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 6,
                 'teacher_id' => 22,
                 'course_id' => 47,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -990,7 +990,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 6,
                 'teacher_id' => 22,
                 'course_id' => 65,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             // SC363003 Information Technology Profession
@@ -1002,7 +1002,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 25,
                 'teacher_id' => 22,
                 'course_id' => 48,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 3,
             ],
             [
@@ -1013,7 +1013,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 12,
                 'teacher_id' => 22,
                 'course_id' => 66,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 4,
             ],
             // GIS
@@ -1026,7 +1026,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 10,
                 'teacher_id' => 12,
                 'course_id' => 67,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 5,
             ],
             [
@@ -1037,7 +1037,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 14,
                 'teacher_id' => 12,
                 'course_id' => 73,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 6,
             ],
             // CP371031 Basics of Information Technology
@@ -1049,7 +1049,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 2,
                 'course_id' => 68,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 5,
             ],
             [
@@ -1060,7 +1060,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 5,
                 'teacher_id' => 2,
                 'course_id' => 68,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 5,
             ],
             [
@@ -1071,7 +1071,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 3,
                 'teacher_id' => 2,
                 'course_id' => 74,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 6,
             ],
 
@@ -1084,7 +1084,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 4,
                 'teacher_id' => 6,
                 'course_id' => 69,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 5,
             ],
             [
@@ -1095,7 +1095,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 8,
                 'teacher_id' => 6,
                 'course_id' => 75,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 6,
             ],
             // CP372011 Fundamentals of Remote Sensing
@@ -1107,7 +1107,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 20,
                 'course_id' => 70,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 5,
             ],
             [
@@ -1118,7 +1118,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 8,
                 'teacher_id' => 20,
                 'course_id' => 76,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 6,
             ],
             // CP373232 Spatial Database Management
@@ -1130,7 +1130,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 3,
                 'teacher_id' => 2,
                 'course_id' => 71,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 5,
             ],
             [
@@ -1141,7 +1141,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 4,
                 'teacher_id' => 2,
                 'course_id' => 77,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 6,
             ],
             // CP373112 Unmanned Aerial Vehicle Mapping
@@ -1153,7 +1153,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 7,
                 'teacher_id' => 6,
                 'course_id' => 72,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 5,
             ],
             [
@@ -1164,7 +1164,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 5,
                 'teacher_id' => 6,
                 'course_id' => 78,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 6,
             ],
             // AI
@@ -1177,7 +1177,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 29,
                 'course_id' => 79,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 7,
             ],
             [
@@ -1188,7 +1188,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 29,
                 'course_id' => 79,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 7,
             ],
             [
@@ -1199,7 +1199,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 29,
                 'course_id' => 86,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 8,
             ],
             // CP411701 Artificial Intelligence Inspiration
@@ -1211,7 +1211,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 26,
                 'course_id' => 80,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 7,
             ],
             [
@@ -1222,7 +1222,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 26,
                 'course_id' => 87,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 8,
             ],
             // CP412703 Artificial Intelligence Workshop I
@@ -1234,7 +1234,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 7,
                 'teacher_id' => 26,
                 'course_id' => 81,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 7,
             ],
             [
@@ -1245,7 +1245,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 26,
                 'course_id' => 88,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 8,
             ],
             // CP412002 Machine Learning
@@ -1257,7 +1257,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 8,
                 'teacher_id' => 36,
                 'course_id' => 82,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 7,
             ],
             [
@@ -1268,7 +1268,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 36,
                 'course_id' => 89,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 8,
             ],
             // CP412003 Data Science
@@ -1280,7 +1280,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 7,
                 'teacher_id' => 37,
                 'course_id' => 83,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 7,
             ],
             [
@@ -1291,7 +1291,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 37,
                 'course_id' => 90,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 8,
             ],
             // CP412004 Neural Network and Deep Learning
@@ -1303,7 +1303,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 37,
                 'course_id' => 84,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 7,
             ],
             [
@@ -1314,7 +1314,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 7,
                 'teacher_id' => 37,
                 'course_id' => 91,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 8,
             ],
             // CP411107 Data Structures and Algorithms
@@ -1326,7 +1326,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 7,
                 'teacher_id' => 22,
                 'course_id' => 85,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 7,
             ],
             [
@@ -1337,7 +1337,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 22,
                 'course_id' => 92,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 8,
             ],
             // CY
@@ -1350,7 +1350,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 9,
                 'teacher_id' => 9,
                 'course_id' => 93,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 9,
             ],
             [
@@ -1361,7 +1361,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 9,
                 'course_id' => 101,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 10,
             ],
             // CP421025 Software Design and Analysis
@@ -1373,7 +1373,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 14,
                 'teacher_id' => 31,
                 'course_id' => 94,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 9,
             ],
             // CP422022 Database Architecture Analysis and Design
@@ -1385,7 +1385,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 10,
                 'teacher_id' => 29,
                 'course_id' => 95,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 9,
             ],
             [
@@ -1396,7 +1396,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 29,
                 'course_id' => 103,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 10,
             ],
             // CP422001 Cybersecurity Law and Ethic
@@ -1408,7 +1408,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 5,
                 'course_id' => 96,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 9,
             ],
             [
@@ -1419,7 +1419,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 5,
                 'course_id' => 104,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 10,
             ],
             // CP422052 Introduction to Operating System
@@ -1431,7 +1431,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 10,
                 'teacher_id' => 5,
                 'course_id' => 97,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 9,
             ],
             [
@@ -1442,7 +1442,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 5,
                 'course_id' => 105,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 10,
             ],
             // CP421011 Inspiration in Cybersecurity Career
@@ -1454,7 +1454,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 32,
                 'course_id' => 98,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 9,
             ],
             [
@@ -1465,7 +1465,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 32,
                 'course_id' => 106,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 10,
             ],
             // CP422021 Web and Mobile Application Architecture
@@ -1477,7 +1477,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 1,
                 'teacher_id' => 32,
                 'course_id' => 99,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 9,
             ],
             [
@@ -1488,7 +1488,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 9,
                 'teacher_id' => 32,
                 'course_id' => 107,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 10,
             ],
             // CP421021 Structured Programming
@@ -1500,7 +1500,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 35,
                 'course_id' => 100,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 9,
             ],
             [
@@ -1511,7 +1511,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 0,
                 'teacher_id' => 35,
                 'course_id' => 100,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 9,
             ],
             [
@@ -1522,7 +1522,7 @@ class ClassesSeeder extends Seeder
                 'available_num' => 2,
                 'teacher_id' => 35,
                 'course_id' => 108,
-                'semester_id' => 3,
+                'semester_id' => 25671,
                 'major_id' => 10,
             ],
 
