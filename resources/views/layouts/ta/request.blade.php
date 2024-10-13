@@ -56,11 +56,6 @@
                                 <p id="selectedSubjects" class="border rounded p-2">ยังไม่ได้เลือกวิชา</p>
                             </div>
 
-                            {{-- ส่วนสำหรับการค้นหารายวิชา --}}
-                            {{-- <div class="mb-3">
-                                <input type="text" id="subjectSearch" class="form-control" placeholder="ค้นหารายวิชา...">
-                            </div> --}}
-
                             {{-- ส่วนของการเลือกวิชา --}}
                             <div class="mb-3">
                                 <label class="form-label">เลือกรายวิชาที่ต้องการสมัคร</label>
@@ -93,8 +88,10 @@
                             {{-- <div class="mb-3">
                                 <input type="text" class="form-control" placeholder="เลือกเซคชันที่สอน...">
                             </div> --}}
+
                             <div id="sectionsContainer" class="mb-4">
-                                <!-- Sections ของแต่ละวิชาที่เลือกจะถูกแสดงใน div นี้ -->
+                                <label for="section_num">กรอกเลขเซคชัน:</label>
+                                <input type="number" name="section_num" class="form-control" placeholder="กรอกเลขเซคชัน" required>
                             </div>
 
                             <button type="submit" class="btn btn-success">ยืนยันการสมัคร</button>
