@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 use App\Models\Announce;
+use App\Models\Courses;
+use App\Models\course_tas;
+
+
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
@@ -35,7 +39,25 @@ class AdminController extends Controller
      */
     public function taUsers()
     {
-        return view('layouts.admin.taUsers');
+
+        $coursesWithTAs = Courses::whereHas('course_tas', function($query) {
+            $query->whereNotNull('approved_at');
+        })
+        ->with(['subjects', 'teachers', 'course_tas' => function($query) {
+            $query->whereNotNull('approved_at');
+        }])
+        ->get();
+
+    return view('layouts.admin.taUsers', compact('coursesWithTAs'));
+
+    }
+    
+    public function showTADetails($courseId)
+    {
+        $course = Courses::with(['subjects', 'teachers', 'course_tas.student'])
+            ->findOrFail($courseId);
+
+        return view('admin.course_ta_details', compact('course'));
     }
 
     /**
@@ -139,4 +161,5 @@ class AdminController extends Controller
             ->route('announces.index')
             ->with('success','announce deleted successfully');
     }
+
 }

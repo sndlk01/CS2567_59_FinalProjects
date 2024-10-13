@@ -7,16 +7,26 @@
     <div class="row">
         <div class="col-12">
             <div class="card mb-4">
-                <!-- <div class="card-header">{{ __('Admin') }}</div> -->
                 <div class="card-body">
                     <div class="container">
                         <h4 class="mb-4">อัปโหลดเอกสารการเบิกจ่ายผู้ช่วยสอน</h4>
 
+                        @if(session('success'))
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                {{ session('success') }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        @endif
+
+                        @if(session('error'))
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                {{ session('error') }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        @endif
+                        
                         <form action="{{ route('layout.ta.disbursements') }}" method="post" enctype="multipart/form-data">
-
                             @csrf
-                            {{-- <h5 class="mb-3">แบบฟอร์มกรอกรายละเอียดผู้ช่วยสอน</h5> --}}
-
                             <div class="mb-3">
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="applicant_type" id="newApplicant"
@@ -53,9 +63,14 @@
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label for="fileUpload" class="form-label ">อัปโหลดตารางเรียน แบบแจ้งข้อมูลหนี้บุลคลากร
+                                <label for="fileUpload" class="form-label">อัปโหลดตารางเรียน แบบแจ้งข้อมูลหนี้บุลคลากร
                                     สำเนาบัตรประชาชน สำเนาบัญชีธนาคาร </label>
-                                <input class="form-control" type="file" id="fileUpload" name="uploadfile">
+                                <input class="form-control @error('uploadfile') is-invalid @enderror" type="file" id="fileUpload" name="uploadfile">
+                                @error('uploadfile')
+                                    <div class="invalid-feedback">
+                                        {{ $message }}
+                                    </div>
+                                @enderror
                             </div>
 
                             <button type="submit" class="btn btn-success">ยืนยันการสมัคร</button>

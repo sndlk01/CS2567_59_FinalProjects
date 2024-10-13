@@ -115,7 +115,6 @@ class TaController extends Controller
                 'email' => $user->email,
                 'card_id' => $user->card_id,
                 'phone' => $user->phone,
-                'type_ta' => 0,
             ]
         );
 

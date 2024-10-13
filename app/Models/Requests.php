@@ -15,9 +15,6 @@ class Requests extends Model
         'approved_at',
         'comment',
         'status',
-        // 'approved_at' => 'datetime',
-        // 'created_at' => 'datetime',
-        // 'updated_at' => 'datetime',
     ];
 
     public function courseTas()
