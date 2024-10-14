@@ -84,10 +84,15 @@
                                 <small class="text-danger">*** นักศึกษาสามารถเป็นผู้ช่วยสอนได้ไม่เกิน 3 รายวิชา</small>
                             </div>
 
-                            <div id="sectionsContainer" class="mb-4">
+                            {{-- <div id="sectionsContainer" class="mb-4">
                                 <label for="section_num">กรอกเลขเซคชัน:</label>
                                 <input type="number" name="section_num" class="form-control" placeholder="กรอกเลขเซคชัน"
                                     required>
+                            </div> --}}
+
+                            <!-- แสดง sections ที่เลือก -->
+                            <div id="sectionsContainer" class="mb-4">
+                                <!-- Sections ของแต่ละวิชาที่เลือกจะถูกแสดงใน div นี้ -->
                             </div>
 
                             <button type="submit" class="btn btn-success">ยืนยันการสมัคร</button>
@@ -147,6 +152,56 @@
                                         item.style.display = ''; // แสดงรายการที่ค้นพบ
                                     } else {
                                         item.style.display = 'none'; // ซ่อนรายการที่ไม่ตรงกับการค้นหา
+                                    }
+                                });
+                            });
+                        </script>
+                        <script>
+                            $(document).ready(function() {
+                                // เมื่อมีการเปลี่ยนสถานะการเลือกวิชา
+                                $('.subject-checkbox').on('change', function() {
+                                    var subjectId = $(this).val(); // subject_id ของวิชาที่เลือก
+                                    var isChecked = $(this).is(':checked'); // เช็คว่า checkbox ถูกติ๊กหรือไม่
+
+                                    // ถ้า checkbox ถูกติ๊กให้ดึง sections จาก server
+                                    if (isChecked) {
+                                        $.ajax({
+                                            url: '{{ url('/ta/get-sections') }}/' +
+                                            subjectId, // ส่ง subject_id ไปยัง route
+                                            method: 'GET',
+                                            success: function(response) {
+                                                // แสดง sections ที่ได้รับจาก server
+                                                var sectionsHTML = '<div class="mb-3" id="sections-for-subject-' +
+                                                    subjectId + '">';
+                                                sectionsHTML += '<label>Sections สำหรับวิชา ' + subjectId +
+                                                    ':</label>';
+
+                                                // Loop แสดง sections เป็น checkbox
+                                                $.each(response, function(index, section) {
+                                                    sectionsHTML += '<div class="form-check">';
+                                                    sectionsHTML +=
+                                                        '<input class="form-check-input" type="checkbox" name="section_num[' +
+                                                        subjectId + '][]" value="' + section.section_num +
+                                                        '" id="section-' + subjectId + '-' + section
+                                                        .section_num + '">';
+                                                    sectionsHTML +=
+                                                        '<label class="form-check-label" for="section-' +
+                                                        subjectId + '-' + section.section_num +
+                                                        '">Section ' + section.section_num + '</label>';
+                                                    sectionsHTML += '</div>';
+                                                });
+                                                sectionsHTML += '</div>';
+
+                                                // เพิ่ม sections ที่เลือกไปใน container
+                                                $('#sectionsContainer').append(sectionsHTML);
+                                            },
+                                            error: function(xhr, status, error) {
+                                                console.log('Error: ' + error);
+                                            }
+                                        });
+                                    } else {
+                                        // ถ้า checkbox ถูกติ๊กออกให้ลบ sections ของวิชานั้น
+                                        $('#sections-for-subject-' + subjectId).remove();
                                     }
                                 });
                             });

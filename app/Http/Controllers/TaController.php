@@ -105,6 +105,7 @@ class TaController extends Controller
             'subject_id*' => 'exists:subjects,subject_id',
             'section_num' => 'required|numeric', // ตรวจสอบว่าใส่เลข section
         ]);
+        
         // Create or update the student record
         $student = Students::updateOrCreate(
             ['user_id' => $user->id],
