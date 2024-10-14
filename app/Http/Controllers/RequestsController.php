@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\Requests;
+// use Log;
 
 
 class RequestsController extends Controller
@@ -29,7 +31,7 @@ class RequestsController extends Controller
         ->latest();
     
         // Debug: Log the SQL query
-        \Log::info('SQL Query:', [
+        Log::info('SQL Query:', [
             'sql' => $query->toSql(),
             'bindings' => $query->getBindings()
         ]);
@@ -38,7 +40,7 @@ class RequestsController extends Controller
         $requests = $query->get();
     
         // Debug: Log the result
-        \Log::info('Requests:', [
+        Log::info('Requests:', [
             'count' => $requests->count(),
             'data' => $requests->toArray()
         ]);

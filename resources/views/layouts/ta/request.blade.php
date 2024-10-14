@@ -84,16 +84,16 @@
                                 <small class="text-danger">*** นักศึกษาสามารถเป็นผู้ช่วยสอนได้ไม่เกิน 3 รายวิชา</small>
                             </div>
 
-                            {{-- <div id="sectionsContainer" class="mb-4">
+                            <div id="sectionsContainer" class="mb-4">
                                 <label for="section_num">กรอกเลขเซคชัน:</label>
                                 <input type="number" name="section_num" class="form-control" placeholder="กรอกเลขเซคชัน"
                                     required>
-                            </div> --}}
+                            </div>
 
-                            <!-- แสดง sections ที่เลือก -->
+                            {{-- <!-- แสดง sections ที่เลือก -->
                             <div id="sectionsContainer" class="mb-4">
                                 <!-- Sections ของแต่ละวิชาที่เลือกจะถูกแสดงใน div นี้ -->
-                            </div>
+                            </div> --}}
 
                             <button type="submit" class="btn btn-success">ยืนยันการสมัคร</button>
 
