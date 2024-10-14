@@ -12,16 +12,16 @@ return new class extends Migration {
     {
         Schema::create('requests', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('student_id');
-            $table->unsignedBigInteger('course_id');
-            $table->string('status', 1);  //approve , wait ,  not approve
+            $table->unsignedBigInteger('course_ta_class_id');
+            $table->string('status', 1);  // approve, wait, not approve
             $table->string('comment', 255)->nullable();
             $table->dateTime('approved_at')->nullable();
-            
-            $table->foreign('student_id')->references('student_id')->on('course_tas')->onDelete('cascade');
-            $table->foreign('course_id')->references('course_id')->on('course_tas')->onDelete('cascade');
-
             $table->timestamps();
+
+            $table->foreign('course_ta_class_id')
+                ->references('id')
+                ->on('course_ta_classes')
+                ->onDelete('cascade');
         });
     }
 
@@ -33,3 +33,4 @@ return new class extends Migration {
         Schema::dropIfExists('requests');
     }
 };
+

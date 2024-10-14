@@ -10,16 +10,15 @@ class Requests extends Model
     use HasFactory;
     protected $table = 'requests';
     protected $fillable = [
-        'student_id',
-        'course_id',
+        'course_ta_class_id',
         'approved_at',
         'comment',
         'status',
     ];
 
-    public function courseTas()
-{
-    return $this->belongsTo(CourseTas::class, 'course_id', 'course_id');
-}
-    
+    public function courseTaClass()
+    {
+        return $this->belongsTo(CourseTaClasses::class);
+    }
+
 }

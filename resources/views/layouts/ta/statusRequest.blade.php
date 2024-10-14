@@ -18,6 +18,7 @@
                                         <th>รหัสนักศึกษา</th>
                                         <th>ชื่อ-นามสกุล</th>
                                         <th>รายวิชาที่สมัคร</th>
+                                        <th>เซคชัน</th>
                                         <th>วันที่สมัคร</th>
                                         <th>สถานะการสมัคร</th>
                                         <th>วันที่อนุมัติ</th>
@@ -28,13 +29,13 @@
                                     @forelse ($requests as $index => $request)
                                         <tr>
                                             <td>{{ $index + 1 }}</td>
-                                            <td>{{ $request->courseTas->student->student_id }}</td>
-                                            <td>{{ $request->courseTas->student->fname }}
-                                                {{ $request->courseTas->student->lname }}</td>
-                                            <td>{{ $request->courseTas->course->subjects->subject_id }}
-                                                {{ $request->courseTas->course->subjects->name_en }}</td>
-                                            <td>{{ $request->created_at ? $request->created_at->format('d-m-Y') : 'N/A' }}
-                                            </td>
+                                            <td>{{ $request->courseTaClass->courseTa->student->student_id }}</td>
+                                            <td>{{ $request->courseTaClass->courseTa->student->fname }}
+                                                {{ $request->courseTaClass->courseTa->student->lname }}</td>
+                                            <td>{{ $request->courseTaClass->class->course->subjects->subject_id }}
+                                                {{ $request->courseTaClass->class->course->subjects->name_en }}</td>
+                                            <td>{{ $request->courseTaClass->class->section_num }}</td>
+                                            <td>{{ $request->created_at ? $request->created_at->format('d-m-Y') : 'N/A' }}</td>
                                             <td>
                                                 @php
                                                     $status = strtolower($request->status);
@@ -66,7 +67,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="8" class="text-center">ไม่พบข้อมูลคำร้องการสมัคร</td>
+                                            <td colspan="9" class="text-center">ไม่พบข้อมูลคำร้องการสมัคร</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
