@@ -134,7 +134,7 @@ class TaController extends Controller
                     // ตรวจสอบว่า course_id ของ class และ course_ta ตรงกันหรือไม่
                     if ($class->course_id === $courseTA->course_id) {
                         // สร้าง course_ta_classes
-                        CourseTaClasses::create([
+                        $courseTaClass = CourseTaClasses::create([
                             'class_id' => $class->id,
                             'course_ta_id' => $courseTA->id,
                         ]);
@@ -146,10 +146,12 @@ class TaController extends Controller
                 }
                 // Save to requests table
                 Requests::create([
-                    'student_id' => $student->id,
-                    'course_id' => $course->id,
+                    'course_ta_class_id' => $courseTaClass->id,
                     'status' => 'W', // Pending status
+                    'comment' => null,
+                    'approved_at' => null,
                 ]);
+
             } else {
                 return redirect()->back()->with('error', 'ไม่พบรายวิชา ' . $subjectId . ' ในระบบ');
             }

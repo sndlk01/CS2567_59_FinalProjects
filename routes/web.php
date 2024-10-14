@@ -47,7 +47,7 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     // Route สำหรับตรวจสอบว่า Section มีอยู่ในฐานข้อมูลหรือไม่
     // Route::get('/validate-section', [SectionController::class, 'validateSection']);
     Route::get('/ta/get-sections/{course_id}', [TaController::class, 'getSections'])->name('ta.getSections');
-    Route::get('/statusrequest', [TaController::class, 'showTARequests'])->name('layouts.ta.statusRequest');
+    Route::get('/statusrequest', [RequestsController::class, 'showTARequests'])->name('layouts.ta.statusRequest');
 
     // Route::get('/disbursements', [TaController::class, 'disbursements'])->name('layout.ta.disbursements');
     Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layout.ta.disbursements');
