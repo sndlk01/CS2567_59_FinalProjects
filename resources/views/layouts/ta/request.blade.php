@@ -86,8 +86,11 @@
 
                             <div id="sectionsContainer" class="mb-4">
                                 <label for="section_num">กรอกเลขเซคชัน:</label>
-                                <input type="number" name="section_num" class="form-control" placeholder="กรอกเลขเซคชัน"
-                                    required>
+                                {{-- <input type="number" name="section_num" class="form-control" placeholder="กรอกเลขเซคชัน"
+                                    required> --}}
+                                <div id="sectionInputs">
+                                    {{-- Placeholder for dynamically generated section inputs --}}
+                                </div>
                             </div>
 
                             {{-- <!-- แสดง sections ที่เลือก -->
@@ -156,56 +159,39 @@
                                 });
                             });
                         </script>
-                        <script>
-                            $(document).ready(function() {
-                                // เมื่อมีการเปลี่ยนสถานะการเลือกวิชา
-                                $('.subject-checkbox').on('change', function() {
-                                    var subjectId = $(this).val(); // subject_id ของวิชาที่เลือก
-                                    var isChecked = $(this).is(':checked'); // เช็คว่า checkbox ถูกติ๊กหรือไม่
-
-                                    // ถ้า checkbox ถูกติ๊กให้ดึง sections จาก server
-                                    if (isChecked) {
-                                        $.ajax({
-                                            url: '{{ url('/ta/get-sections') }}/' +
-                                            subjectId, // ส่ง subject_id ไปยัง route
-                                            method: 'GET',
-                                            success: function(response) {
-                                                // แสดง sections ที่ได้รับจาก server
-                                                var sectionsHTML = '<div class="mb-3" id="sections-for-subject-' +
-                                                    subjectId + '">';
-                                                sectionsHTML += '<label>Sections สำหรับวิชา ' + subjectId +
-                                                    ':</label>';
-
-                                                // Loop แสดง sections เป็น checkbox
-                                                $.each(response, function(index, section) {
-                                                    sectionsHTML += '<div class="form-check">';
-                                                    sectionsHTML +=
-                                                        '<input class="form-check-input" type="checkbox" name="section_num[' +
-                                                        subjectId + '][]" value="' + section.section_num +
-                                                        '" id="section-' + subjectId + '-' + section
-                                                        .section_num + '">';
-                                                    sectionsHTML +=
-                                                        '<label class="form-check-label" for="section-' +
-                                                        subjectId + '-' + section.section_num +
-                                                        '">Section ' + section.section_num + '</label>';
-                                                    sectionsHTML += '</div>';
-                                                });
-                                                sectionsHTML += '</div>';
-
-                                                // เพิ่ม sections ที่เลือกไปใน container
-                                                $('#sectionsContainer').append(sectionsHTML);
-                                            },
-                                            error: function(xhr, status, error) {
-                                                console.log('Error: ' + error);
-                                            }
+                        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+                        <script type="text/javascript">
+                            // เมื่อผู้ใช้เลือกวิชา
+                            $('.subject-checkbox').change(function() {
+                                var selectedSubjects = [];
+                                $('#sectionsContainer').html(''); // ล้างส่วนเลือก section
+                                $('.subject-checkbox:checked').each(function() {
+                                    var subjectId = $(this).val();
+                                    // แทนที่ด้วยการเรียกใช้ route ที่เหมาะสม
+                                    $.get('/ta/get-sections/' + subjectId, function(response) {
+                                        var sectionsHTML = '';
+                                        sectionsHTML += '<label>กรุณาเลือก Section สำหรับวิชา ' + subjectId +
+                                        '</label>';
+                                        sectionsHTML += '<div class="mb-3">';
+                                        // สร้าง input checkbox หลายตัวเพื่อเลือกหลาย Section
+                                        $.each(response, function(index, section) {
+                                            sectionsHTML += '<div class="form-check">';
+                                            sectionsHTML +=
+                                                '<input class="form-check-input" type="checkbox" name="section_num[' +
+                                                subjectId + '][]" value="' + section.section_num + '">';
+                                            sectionsHTML += '<label class="form-check-label">Section ' + section
+                                                .section_num + '</label>';
+                                            sectionsHTML += '</div>';
                                         });
-                                    } else {
-                                        // ถ้า checkbox ถูกติ๊กออกให้ลบ sections ของวิชานั้น
-                                        $('#sections-for-subject-' + subjectId).remove();
-                                    }
+                                        sectionsHTML += '</div>';
+                                        $('#sectionsContainer').append(sectionsHTML); // เพิ่มเข้าในฟอร์ม
+                                    }).fail(function() {
+                                        alert('เกิดข้อผิดพลาดในการดึงข้อมูล section');
+                                    });
                                 });
                             });
                         </script>
+
                     </div>
                 </div>
             </div>
