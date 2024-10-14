@@ -42,27 +42,7 @@ class TaController extends Controller
         return view('layouts.ta.request', compact('subjects'));
     }
 
-    public function showTARequests()
-    {
-        $user = Auth::user();
-        $student = $user->student;
-
-        if (!$student) {
-            return redirect()->back()->with('error', 'ไม่พบข้อมูลนักศึกษาสำหรับผู้ใช้นี้');
-        }
-
-        $requests = Requests::with(['courseTas.course.subjects', 'courseTas.student'])
-            ->whereHas('courseTas', function ($query) use ($student) {
-                $query->where('student_id', $student->id);
-            })
-            ->latest()
-            ->get();
-
-        // \Log::info('Number of requests found: ' . $requests->count());
-
-        return view('layouts.ta.statusRequest', compact('requests'));
-    }
-
+    
     public function taSubject()
     {
         return view('layouts.ta.taSubject');
@@ -99,14 +79,14 @@ class TaController extends Controller
     public function apply(Request $request)
     {
         $user = Auth::user();
-
+    
         // Validate the incoming request data
         $request->validate([
             'subject_id' => 'required|array|min:1|max:3',
             'subject_id*' => 'exists:subjects,subject_id',
-            'section_num' => 'required|numeric', // ตรวจสอบว่าใส่เลข section
+            'section_num' => 'required|numeric',
         ]);
-
+    
         // Create or update the student record
         $student = Students::updateOrCreate(
             ['user_id' => $user->id],
@@ -120,47 +100,55 @@ class TaController extends Controller
                 'phone' => $user->phone,
             ]
         );
-
+    
         $subjectIds = $request->input('subject_id');
         $sectionNum = $request->input('section_num');
-
+    
         $currentCourseCount = CourseTas::where('student_id', $student->id)->count();
         if ($currentCourseCount + count($subjectIds) > 3) {
             return redirect()->back()->with('error', 'คุณไม่สามารถสมัครเป็นผู้ช่วยสอนได้เกิน 3 วิชา');
         }
-
+    
         foreach ($subjectIds as $subjectId) {
             // Find the course with the matching subject_id
             $course = Courses::where('subject_id', $subjectId)->first();
-
+    
             if ($course) {
                 // Check if the user has already applied for this course
                 $existingTA = CourseTas::where('student_id', $student->id)
                     ->where('course_id', $course->id)
                     ->first();
-
+    
                 if ($existingTA) {
                     return redirect()->back()->with('error', 'คุณได้สมัครเป็นผู้ช่วยสอนในวิชา ' . $subjectId . ' แล้ว');
                 }
-
+    
                 // สร้าง course_ta
                 $courseTA = CourseTas::create([
                     'student_id' => $student->id,
                     'course_id' => $course->id,
                 ]);
-
+    
                 // ตรวจสอบว่า section_num มีใน classes หรือไม่
                 $class = Classes::where('section_num', $sectionNum)
                     ->where('course_id', $course->id)
                     ->first();
-
+    
                 if ($class) {
                     // ตรวจสอบว่า course_id ของ class และ course_ta ตรงกันหรือไม่
                     if ($class->course_id === $courseTA->course_id) {
                         // สร้าง course_ta_classes
-                        CourseTaClasses::create([
+                        $courseTaClass = CourseTaClasses::create([
                             'class_id' => $class->id,
                             'course_ta_id' => $courseTA->id,
+                        ]);
+    
+                        // Save to requests table
+                        Requests::create([
+                            'course_ta_class_id' => $courseTaClass->id,
+                            'status' => 'W', // Pending status
+                            'comment' => null,
+                            'approved_at' => null,
                         ]);
                     } else {
                         return redirect()->back()->with('error', 'Course ID ไม่ตรงกันระหว่าง classes และ course_ta');
@@ -168,21 +156,13 @@ class TaController extends Controller
                 } else {
                     return redirect()->back()->with('error', 'ไม่พบเซคชัน ' . $sectionNum . ' สำหรับวิชา ' . $subjectId);
                 }
-
-                // Save to requests table
-                Requests::create([
-                    'student_id' => $student->id,
-                    'course_id' => $course->id,
-                    'status' => 'W', // Pending status
-                ]);
             } else {
                 return redirect()->back()->with('error', 'ไม่พบรายวิชา ' . $subjectId . ' ในระบบ');
             }
         }
-
+    
         return redirect()->route('layout.ta.request')->with('success', 'สมัครเป็นผู้ช่วยสอนสำเร็จ');
     }
-
 
 
     public function showCourseTas()
