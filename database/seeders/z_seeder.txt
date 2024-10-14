@@ -13,5 +13,5 @@ php artisan db:seed --class=ClassTypeTableSeeder
 php artisan db:seed --class=CurriculumsSubjectsSeeder
 php artisan db:seed --class=StudentsTableSeeder
 php artisan db:seed --class=CoursesSeeder
-php artisan db:seed --class=CourseTasSeeder
+php artisan db:seed --class=ClassesSeeder
 php artisan db:seed --class=RequestsSeeder

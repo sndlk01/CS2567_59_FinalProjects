@@ -99,14 +99,12 @@ class TaController extends Controller
     public function apply(Request $request)
     {
         $user = Auth::user();
-
         // Validate the incoming request data
         $request->validate([
             'subject_id' => 'required|array|min:1|max:3',
             'subject_id*' => 'exists:subjects,subject_id',
             'section_num' => 'required|numeric', // ตรวจสอบว่าใส่เลข section
         ]);
-
         // Create or update the student record
         $student = Students::updateOrCreate(
             ['user_id' => $user->id],
@@ -142,13 +140,11 @@ class TaController extends Controller
                 if ($existingTA) {
                     return redirect()->back()->with('error', 'คุณได้สมัครเป็นผู้ช่วยสอนในวิชา ' . $subjectId . ' แล้ว');
                 }
-
                 // สร้าง course_ta
                 $courseTA = CourseTas::create([
                     'student_id' => $student->id,
                     'course_id' => $course->id,
                 ]);
-
                 // ตรวจสอบว่า section_num มีใน classes หรือไม่
                 $class = Classes::where('section_num', $sectionNum)
                     ->where('course_id', $course->id)
@@ -168,7 +164,6 @@ class TaController extends Controller
                 } else {
                     return redirect()->back()->with('error', 'ไม่พบเซคชัน ' . $sectionNum . ' สำหรับวิชา ' . $subjectId);
                 }
-
                 // Save to requests table
                 Requests::create([
                     'student_id' => $student->id,
@@ -179,11 +174,17 @@ class TaController extends Controller
                 return redirect()->back()->with('error', 'ไม่พบรายวิชา ' . $subjectId . ' ในระบบ');
             }
         }
-
         return redirect()->route('layout.ta.request')->with('success', 'สมัครเป็นผู้ช่วยสอนสำเร็จ');
     }
 
+    public function getSections($course_id)
+    {
+        // ดึง sections ทั้งหมดของ course_id นั้น
+        $sections = Classes::where('course_id', $course_id)->get(['id', 'section_num']);
 
+        // ส่งข้อมูลกลับในรูปแบบ JSON
+        return response()->json($sections);
+    }
 
     public function showCourseTas()
     {

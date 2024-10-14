@@ -84,14 +84,10 @@
                                 <small class="text-danger">*** นักศึกษาสามารถเป็นผู้ช่วยสอนได้ไม่เกิน 3 รายวิชา</small>
                             </div>
 
-                            {{-- สำหรับเลือก section ที่สอน --}}
-                            {{-- <div class="mb-3">
-                                <input type="text" class="form-control" placeholder="เลือกเซคชันที่สอน...">
-                            </div> --}}
-
                             <div id="sectionsContainer" class="mb-4">
                                 <label for="section_num">กรอกเลขเซคชัน:</label>
-                                <input type="number" name="section_num" class="form-control" placeholder="กรอกเลขเซคชัน" required>
+                                <input type="number" name="section_num" class="form-control" placeholder="กรอกเลขเซคชัน"
+                                    required>
                             </div>
 
                             <button type="submit" class="btn btn-success">ยืนยันการสมัคร</button>
@@ -111,7 +107,6 @@
                                 </div>
                             @endif
                         </form>
-
                         {{-- javaScript สำหรับการเลือกรายวิชาผู้ช่วยสอน --}}
                         <script>
                             // ตรวจจับการเปลี่ยนแปลงการเลือก checkbox
@@ -142,12 +137,10 @@
                                     document.getElementById('selectedSubjects').textContent = 'ยังไม่ได้เลือกวิชา';
                                 }
                             }
-
                             // ฟังก์ชันสำหรับการค้นหารายวิชา
                             document.getElementById('subjectSearch').addEventListener('input', function() {
                                 const searchText = this.value.toLowerCase();
                                 const subjectItems = document.querySelectorAll('.subject-item');
-
                                 subjectItems.forEach(item => {
                                     const subjectText = item.textContent.toLowerCase();
                                     if (subjectText.includes(searchText)) {
@@ -158,7 +151,6 @@
                                 });
                             });
                         </script>
-                        {{-- javascript สำหรับการเลือก section --}}
                     </div>
                 </div>
             </div>
