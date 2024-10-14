@@ -39,7 +39,20 @@ class TaController extends Controller
     public function request()
     {
         $subjects = Subjects::all();
-        return view('layouts.ta.request', compact('subjects'));
+        $subjectsWithSections = [];
+
+        foreach ($subjects as $subject) {
+            $course = Courses::where('subject_id', $subject->subject_id)->first();
+            if ($course) {
+                $sections = Classes::where('course_id', $course->id)->pluck('section_num')->toArray();
+                $subjectsWithSections[] = [
+                    'subject' => $subject,
+                    'sections' => $sections
+                ];
+            }
+        }
+
+        return view('layouts.ta.request', compact('subjectsWithSections'));
     }
 
 
@@ -79,13 +92,13 @@ class TaController extends Controller
     public function apply(Request $request)
     {
         $user = Auth::user();
+
         // Validate the incoming request data
         $request->validate([
-            'subject_id' => 'required|array|min:1|max:3',
-            'subject_id.*' => 'exists:subjects,subject_id',
-            'section_num' => 'required|array', // section_num ต้องเป็น array
-            'section_num.*' => 'array', // แต่ละ subject_id จะมีหลาย section
-            'section_num.*.*' => 'numeric|exists:classes,section_num', // ตรวจสอบว่าเลข section มีใน classes
+            'applications' => 'required|array|min:1|max:3',
+            'applications.*.subject_id' => 'required|exists:subjects,subject_id',
+            'applications.*.sections' => 'required|array|min:1',
+            'applications.*.sections.*' => 'required|numeric',
         ]);
 
         // Create or update the student record
@@ -102,15 +115,17 @@ class TaController extends Controller
             ]
         );
 
-        $subjectIds = $request->input('subject_id');
-        $sectionNums = $request->input('section_num'); // จะเป็น array ของ section
+        $applications = $request->input('applications');
 
         $currentCourseCount = CourseTas::where('student_id', $student->id)->count();
-        if ($currentCourseCount + count($subjectIds) > 3) {
+        if ($currentCourseCount + count($applications) > 3) {
             return redirect()->back()->with('error', 'คุณไม่สามารถสมัครเป็นผู้ช่วยสอนได้เกิน 3 วิชา');
         }
 
-        foreach ($subjectIds as $subjectId) {
+        foreach ($applications as $application) {
+            $subjectId = $application['subject_id'];
+            $sectionNums = $application['sections'];
+
             // Find the course with the matching subject_id
             $course = Courses::where('subject_id', $subjectId)->first();
 
@@ -130,38 +145,35 @@ class TaController extends Controller
                     'course_id' => $course->id,
                 ]);
 
-                // ตรวจสอบและบันทึกหลาย sections
-                foreach ($sectionNums[$subjectId] as $sectionNum) {
+                foreach ($sectionNums as $sectionNum) {
+                    // ตรวจสอบว่า section_num มีใน classes หรือไม่
                     $class = Classes::where('section_num', $sectionNum)
                         ->where('course_id', $course->id)
                         ->first();
 
                     if ($class) {
-                        // ตรวจสอบว่า course_id ของ class และ course_ta ตรงกันหรือไม่
-                        if ($class->course_id === $courseTA->course_id) {
-                            // สร้าง course_ta_classes
-                            CourseTaClasses::create([
-                                'class_id' => $class->id,
-                                'course_ta_id' => $courseTA->id,
-                            ]);
-                        } else {
-                            return redirect()->back()->with('error', 'Course ID ไม่ตรงกันระหว่าง classes และ course_ta');
-                        }
+                        // สร้าง course_ta_classes
+                        $courseTaClass = CourseTaClasses::create([
+                            'class_id' => $class->id,
+                            'course_ta_id' => $courseTA->id,
+                        ]);
+
+                        // Save to requests table
+                        Requests::create([
+                            'course_ta_class_id' => $courseTaClass->id,
+                            'status' => 'W', // Pending status
+                            'comment' => null,
+                            'approved_at' => null,
+                        ]);
                     } else {
                         return redirect()->back()->with('error', 'ไม่พบเซคชัน ' . $sectionNum . ' สำหรับวิชา ' . $subjectId);
                     }
                 }
-
-                // Save to requests table
-                Requests::create([
-                    'student_id' => $student->id,
-                    'course_id' => $course->id,
-                    'status' => 'W', // Pending status
-                ]);
             } else {
                 return redirect()->back()->with('error', 'ไม่พบรายวิชา ' . $subjectId . ' ในระบบ');
             }
         }
+
         return redirect()->route('layout.ta.request')->with('success', 'สมัครเป็นผู้ช่วยสอนสำเร็จ');
     }
     public function getSections($course_id)

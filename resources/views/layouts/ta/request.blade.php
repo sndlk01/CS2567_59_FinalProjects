@@ -58,23 +58,35 @@
 
                             {{-- ส่วนของการเลือกวิชา --}}
                             <div class="mb-3">
-                                <label class="form-label">เลือกรายวิชาที่ต้องการสมัคร</label>
-                                {{-- ส่วนสำหรับการค้นหารายวิชา --}}
+                                <label class="form-label">เลือกรายวิชาและเซคชันที่ต้องการสมัคร</label>
+                                <div class="subject-container" style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+                                     {{-- ส่วนสำหรับการค้นหารายวิชา --}}
                                 <input type="text" id="subjectSearch" class="form-control mb-3"
-                                    placeholder="ค้นหารายวิชา...">
-
-                                <!-- เพิ่ม CSS class เพื่อทำให้เลื่อน scroll ได้ -->
-                                <div class="subject-checkbox-container"
-                                    style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-
-                                    @foreach ($subjects as $subject)
-                                        <div class="form-check subject-item">
-                                            <input class="form-check-input subject-checkbox" type="checkbox"
-                                                name="subject_id[]" value="{{ $subject->subject_id }}"
-                                                id="subject{{ $subject->subject_id }}">
-                                            <label class="form-check-label" for="subject{{ $subject->subject_id }}">
-                                                {{ $subject->subject_id }} {{ $subject->name_en }}
-                                            </label>
+                                placeholder="ค้นหารายวิชา...">
+                                    @foreach ($subjectsWithSections as $index => $item)
+                                        <div class="subject-item mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input subject-checkbox" type="checkbox" 
+                                                    name="applications[{{ $index }}][subject_id]" 
+                                                    value="{{ $item['subject']->subject_id }}" 
+                                                    id="subject{{ $item['subject']->subject_id }}">
+                                                <label class="form-check-label" for="subject{{ $item['subject']->subject_id }}">
+                                                    {{ $item['subject']->subject_id }} {{ $item['subject']->name_en }}
+                                                </label>
+                                            </div>
+                                            <div class="sections-container ml-4 mt-2" style="display: none;">
+                                                @foreach ($item['sections'] as $section)
+                                                    <div class="form-check">
+                                                        <input class="form-check-input section-checkbox" type="checkbox" 
+                                                            name="applications[{{ $index }}][sections][]" 
+                                                            value="{{ $section }}" 
+                                                            id="section-{{ $item['subject']->subject_id }}-{{ $section }}">
+                                                        <label class="form-check-label" for="section-{{ $item['subject']->subject_id }}-{{ $section }}">
+                                                            Section {{ $section }}
+                                                        </label>
+                                                    </div>
+                                                @endforeach
+                                            </div>
                                         </div>
                                     @endforeach
                                 </div>
@@ -84,18 +96,10 @@
                                 <small class="text-danger">*** นักศึกษาสามารถเป็นผู้ช่วยสอนได้ไม่เกิน 3 รายวิชา</small>
                             </div>
 
-                            <div id="sectionsContainer" class="mb-4">
+                            {{-- <div id="sectionsContainer" class="mb-4">
                                 <label for="section_num">กรอกเลขเซคชัน:</label>
-                                {{-- <input type="number" name="section_num" class="form-control" placeholder="กรอกเลขเซคชัน"
-                                    required> --}}
-                                <div id="sectionInputs">
-                                    {{-- Placeholder for dynamically generated section inputs --}}
-                                </div>
-                            </div>
-
-                            {{-- <!-- แสดง sections ที่เลือก -->
-                            <div id="sectionsContainer" class="mb-4">
-                                <!-- Sections ของแต่ละวิชาที่เลือกจะถูกแสดงใน div นี้ -->
+                                <input type="number" name="section_num" class="form-control" placeholder="กรอกเลขเซคชัน"
+                                    required>
                             </div> --}}
 
                             <button type="submit" class="btn btn-success">ยืนยันการสมัคร</button>
@@ -159,34 +163,22 @@
                                 });
                             });
                         </script>
-                        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-                        <script type="text/javascript">
-                            // เมื่อผู้ใช้เลือกวิชา
-                            $('.subject-checkbox').change(function() {
-                                var selectedSubjects = [];
-                                $('#sectionsContainer').html(''); // ล้างส่วนเลือก section
-                                $('.subject-checkbox:checked').each(function() {
-                                    var subjectId = $(this).val();
-                                    // แทนที่ด้วยการเรียกใช้ route ที่เหมาะสม
-                                    $.get('/ta/get-sections/' + subjectId, function(response) {
-                                        var sectionsHTML = '';
-                                        sectionsHTML += '<label>กรุณาเลือก Section สำหรับวิชา ' + subjectId +
-                                        '</label>';
-                                        sectionsHTML += '<div class="mb-3">';
-                                        // สร้าง input checkbox หลายตัวเพื่อเลือกหลาย Section
-                                        $.each(response, function(index, section) {
-                                            sectionsHTML += '<div class="form-check">';
-                                            sectionsHTML +=
-                                                '<input class="form-check-input" type="checkbox" name="section_num[' +
-                                                subjectId + '][]" value="' + section.section_num + '">';
-                                            sectionsHTML += '<label class="form-check-label">Section ' + section
-                                                .section_num + '</label>';
-                                            sectionsHTML += '</div>';
-                                        });
-                                        sectionsHTML += '</div>';
-                                        $('#sectionsContainer').append(sectionsHTML); // เพิ่มเข้าในฟอร์ม
-                                    }).fail(function() {
-                                        alert('เกิดข้อผิดพลาดในการดึงข้อมูล section');
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const subjectCheckboxes = document.querySelectorAll('.subject-checkbox');
+                                const maxSubjects = 3;
+
+                                subjectCheckboxes.forEach(checkbox => {
+                                    checkbox.addEventListener('change', function() {
+                                        const sectionsContainer = this.closest('.subject-item').querySelector('.sections-container');
+                                        sectionsContainer.style.display = this.checked ? 'block' : 'none';
+
+                                        const checkedSubjects = document.querySelectorAll('.subject-checkbox:checked');
+                                        if (checkedSubjects.length > maxSubjects) {
+                                            this.checked = false;
+                                            sectionsContainer.style.display = 'none';
+                                            alert('คุณสามารถเลือกได้ไม่เกิน 3 วิชา');
+                                        }
                                     });
                                 });
                             });
