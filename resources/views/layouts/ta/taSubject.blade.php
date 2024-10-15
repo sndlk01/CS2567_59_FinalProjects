@@ -23,26 +23,31 @@
                                         <td>ปีการศึกษา</td>
                                         <td>อาจารย์ประจำวิชา</td>
                                         <td>สาขา</td>
-                                        <td>โครงการ</td>
+                                        <td>section</td>
                                         <td></td>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($courseTas as $index => $courseTa)
+                                    @foreach ($courseTaClasses as $index => $courseTaClass)
                                         <tr>
                                             <td>{{ $index + 1 }}</td>
-                                            <td>{{ $courseTa->course->subjects->subject_id }}</td>
-                                            <td>{{ $courseTa->course->subjects->name_en }}</td>
-                                            <td>{{ $courseTa->course->semesters->semesters }}/{{ $courseTa->course->semesters->year }}
+                                            <td>{{ $courseTaClass->courseTa->course->subjects->subject_id }}</td>
+                                            <td>{{ $courseTaClass->courseTa->course->subjects->name_en }}</td>
+                                            <td>{{ $courseTaClass->courseTa->course->semesters->semesters }}/{{ $courseTaClass->courseTa->course->semesters->year }}
                                             </td>
-                                            <td>{{ $courseTa->course->teachers->position }}
-                                                {{ $courseTa->course->teachers->degree }}
-                                                {{ $courseTa->course->teachers->fname }}
-                                                {{ $courseTa->course->teachers->lname }}</td>
-                                            <td>{{ $courseTa->course->curriculums->name_th }}</td>
-                                            <td>{{ $courseTa->course->major->name_th ?? 'ไม่มีข้อมูล' }}</td>
-                                            {{-- <td><a href=" {{ url('/attendances/' . $courseTa->id) }}">รายละเอียดวิชา</a></td> --}}
-                                            <td><a href="{{ route('layout.ta.attendances', ['id' => $courseTa->id]) }}">รายละเอียดวิชา</a></td>
+                                            <td>{{ $courseTaClass->courseTa->course->teachers->position }}
+                                                {{ $courseTaClass->courseTa->course->teachers->degree }}
+                                                {{ $courseTaClass->courseTa->course->teachers->fname }}
+                                                {{ $courseTaClass->courseTa->course->teachers->lname }}</td>
+                                            <td>{{ $courseTaClass->courseTa->course->curriculums->name_th }}</td>
+                                            <td>{{ $courseTaClass->class->section_num }}</td>
+                                            <td>
+                                                {{-- <a href="{{ route('layout.ta.attendances', ['id' => $courseTaClass->courseTa->id]) }}">รายละเอียดวิชา</a> --}}
+                                                <a
+                                                    href="{{ route('course_ta.show', ['id' => $courseTaClass->course_ta_id, 'classId' => $courseTaClass->class_id]) }}">
+                                                    รายละเอียดวิชา
+                                                </a>
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>

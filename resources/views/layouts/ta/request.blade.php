@@ -7,15 +7,12 @@
     <div class="row">
         <div class="col-12">
             <div class="card mb-4">
-                <!-- <div class="card-header">{{ __('Admin') }}</div> -->
                 <div class="card-body">
                     <div class="container">
-                        <h4 class="mb-4">ยื่นคำร้องสมัครผู้ช่วยสอน</h4>
-
-                        <form method="POST" action="{{ route('ta.apply') }}">
+                        <h4 class="mb-3">ยื่นคำร้องสมัครผู้ช่วยสอน</h4>
+                        <form method="POST" action="{{ route('ta.apply') }}" class="border-top pt-2">
                             @csrf
                             <h5 class="mb-3">แบบฟอร์มกรอกรายละเอียดผู้ช่วยสอน</h5>
-
                             <div class="row mb-3">
                                 <div class="col-md-1">
                                     <input type="text" class="form-control" placeholder="คำนำหน้า"
@@ -59,29 +56,32 @@
                             {{-- ส่วนของการเลือกวิชา --}}
                             <div class="mb-3">
                                 <label class="form-label">เลือกรายวิชาและเซคชันที่ต้องการสมัคร</label>
-                                <div class="subject-container" style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-                                     {{-- ส่วนสำหรับการค้นหารายวิชา --}}
-                                <input type="text" id="subjectSearch" class="form-control mb-3"
-                                placeholder="ค้นหารายวิชา...">
+                                <div class="subject-container"
+                                    style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
+                                    {{-- ส่วนสำหรับการค้นหารายวิชา --}}
+                                    <input type="text" id="subjectSearch" class="form-control mb-3"
+                                        placeholder="ค้นหารายวิชา...">
                                     @foreach ($subjectsWithSections as $index => $item)
                                         <div class="subject-item mb-3">
                                             <div class="form-check">
-                                                <input class="form-check-input subject-checkbox" type="checkbox" 
-                                                    name="applications[{{ $index }}][subject_id]" 
-                                                    value="{{ $item['subject']->subject_id }}" 
+                                                <input class="form-check-input subject-checkbox" type="checkbox"
+                                                    name="applications[{{ $index }}][subject_id]"
+                                                    value="{{ $item['subject']->subject_id }}"
                                                     id="subject{{ $item['subject']->subject_id }}">
-                                                <label class="form-check-label" for="subject{{ $item['subject']->subject_id }}">
+                                                <label class="form-check-label"
+                                                    for="subject{{ $item['subject']->subject_id }}">
                                                     {{ $item['subject']->subject_id }} {{ $item['subject']->name_en }}
                                                 </label>
                                             </div>
                                             <div class="sections-container ml-4 mt-2" style="display: none;">
                                                 @foreach ($item['sections'] as $section)
                                                     <div class="form-check">
-                                                        <input class="form-check-input section-checkbox" type="checkbox" 
-                                                            name="applications[{{ $index }}][sections][]" 
-                                                            value="{{ $section }}" 
+                                                        <input class="form-check-input section-checkbox" type="checkbox"
+                                                            name="applications[{{ $index }}][sections][]"
+                                                            value="{{ $section }}"
                                                             id="section-{{ $item['subject']->subject_id }}-{{ $section }}">
-                                                        <label class="form-check-label" for="section-{{ $item['subject']->subject_id }}-{{ $section }}">
+                                                        <label class="form-check-label"
+                                                            for="section-{{ $item['subject']->subject_id }}-{{ $section }}">
                                                             Section {{ $section }}
                                                         </label>
                                                     </div>
@@ -170,7 +170,8 @@
 
                                 subjectCheckboxes.forEach(checkbox => {
                                     checkbox.addEventListener('change', function() {
-                                        const sectionsContainer = this.closest('.subject-item').querySelector('.sections-container');
+                                        const sectionsContainer = this.closest('.subject-item').querySelector(
+                                            '.sections-container');
                                         sectionsContainer.style.display = this.checked ? 'block' : 'none';
 
                                         const checkedSubjects = document.querySelectorAll('.subject-checkbox:checked');

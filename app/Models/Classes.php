@@ -9,7 +9,8 @@ class Classes extends Model
 {
     use HasFactory;
 
-    
+    protected $table = 'classes';
+
     protected $fillable = [
         'section_num',
         'title',
@@ -23,39 +24,40 @@ class Classes extends Model
         'major_id',
     ];
 
-    
+
     public function class_type()
     {
         return $this->belongsTo(ClassType::class);
     }
 
-    
+
     public function teachers()
     {
-        return $this->belongsToMany(Teachers::class);
+        return $this->belongsTo(Teachers::class, 'teacher_id');
     }
 
-   // ความสัมพันธ์กับ Course
+    // ความสัมพันธ์กับ Course
     public function course()
     {
         return $this->belongsTo(Courses::class, 'course_id');
     }
 
-    
+
     public function semesters()
     {
-        return $this->hasOne(Semesters::class);
+        return $this->belongsTo(Semesters::class, 'semester_id');
     }
 
-    
+
     public function major()
     {
-        return $this->hasOne(Major::class);
+        return $this->belongsTo(Major::class, 'major_id');
     }
 
-    public function teaching()
+    // สร้างความสัมพันธ์กับ Teaching
+    public function teachings()
     {
-        return $this->belongsTo(Teaching::class);
+        return $this->hasMany(Teaching::class, 'class_id');
     }
 
     public function extra_teaching()

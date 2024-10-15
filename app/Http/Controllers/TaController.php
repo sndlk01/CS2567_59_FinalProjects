@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Classes;
 use App\Models\Courses;
 use App\Models\CourseTaClasses;
+use App\Models\Teaching;
 use Illuminate\Http\Request;
 use App\Models\Subjects;
 use App\Models\Students;
@@ -190,57 +191,68 @@ class TaController extends Controller
         $user = Auth::user();
         $student = Students::where('user_id', $user->id)->first();
 
-        // ดึงข้อมูลจาก course_tas พร้อมกับข้อมูลจากตารางที่เกี่ยวข้อง
-        $courseTas = CourseTas::with([
-            'course.subjects',         // ดึงข้อมูล subject_id และ name_en
-            'course.semesters',        // ดึงข้อมูลปีการศึกษา และเทอม
-            'course.teachers',         // ดึงข้อมูลอาจารย์
-            'course.curriculums',      // ดึงข้อมูลหลักสูตร
-            'course.major'            // ดึงข้อมูลสาขา
-        ])->where('student_id', $student->id)->get();
+        // ดึงข้อมูลจาก course_ta_classes ผ่าน course_tas แล้วไปดึงข้อมูล courses
+        $courseTaClasses = CourseTaClasses::with([
+            'courseTa.course.subjects',   // ดึงข้อมูลวิชา
+            'courseTa.course.semesters',  // ดึงข้อมูลปีการศึกษา และเทอม
+            'courseTa.course.teachers',   // ดึงข้อมูลอาจารย์
+            'courseTa.course.curriculums', // ดึงข้อมูลหลักสูตร
+            'class'                        // ดึงข้อมูล section_num จากตาราง classes
+        ])->whereHas('courseTa', function ($query) use ($student) {
+            $query->where('student_id', $student->id);
+        })->get();
 
-        // วนลูปผ่านข้อมูล courseTas เพื่อประมวลผล major name_th
-        foreach ($courseTas as $courseTa) {
-            if (isset($courseTa->course->major->name_th)) {
-                // ใช้ Str::after() เพื่อดึงเฉพาะคำว่า "ภาคปกติ"
-                $courseTa->course->major->name_th = trim(Str::after($courseTa->course->major->name_th, ' '));
-            }
-            if (isset($courseTa->course->curriculums->name_th)) {
+        // วนลูปผ่านข้อมูล courseTaClasses เพื่อประมวลผล major name_th
+        foreach ($courseTaClasses as $courseTaClass) {
+            // if (isset($courseTaClass->courseTa->course->major->name_th)) {
+            //     // ใช้ Str::after() เพื่อดึงเฉพาะคำว่า "ภาคปกติ"
+            //     $courseTaClass->courseTa->course->major->name_th = trim(Str::after($courseTaClass->courseTa->course->major->name_th, ' '));
+            // }
+            if (isset($courseTaClass->courseTa->course->curriculums->name_th)) {
                 // ใช้ Str::before() เพื่อดึงเฉพาะชื่อสาขา
-                $courseTa->course->curriculums->name_th = trim(Str::before($courseTa->course->curriculums->name_th, ' '));
+                $courseTaClass->courseTa->course->curriculums->name_th = trim(Str::before($courseTaClass->courseTa->course->curriculums->name_th, ' '));
             }
         }
-        return view('layouts.ta.taSubject', compact('courseTas'));
+
+        return view('layouts.ta.taSubject', compact('courseTaClasses'));
     }
 
-    public function showSubjectDetail($id)
+    public function showSubjectDetail($id, $classId)
     {
         $user = Auth::user();
         $student = Students::where('user_id', $user->id)->first();
 
-        // ดึงข้อมูลเฉพาะที่มี course_ta id ตรงกับ $id ที่ส่งมา
-        $courseTa = CourseTas::with([
-            'course.subjects',         // ดึงข้อมูล subject_id และ name_en
-            'course.semesters',        // ดึงข้อมูลปีการศึกษา และเทอม
-            'course.teachers',         // ดึงข้อมูลอาจารย์
-            'course.curriculums',      // ดึงข้อมูลหลักสูตร
-            'course.major'            // ดึงข้อมูลสาขา
-        ])->where('id', $id)  // กรองด้วย id ของ course_ta
-            ->where('student_id', $student->id)  // กรองด้วย student_id ด้วยเพื่อความปลอดภัย
-            ->first(); // ใช้ first() แทน get() เพื่อดึงข้อมูลเฉพาะ 1 รายการ
+        // ดึงข้อมูลเฉพาะที่มี course_ta id ตรงกับ $id ที่ส่งมา และกรองด้วย student_id
+        $courseTaClass = CourseTaClasses::with([
+            'class.course.subjects',    // ดึงข้อมูลวิชา
+            'class.course.curriculums', // ดึงข้อมูลหลักสูตร
+            'class.teachers',           // ดึงข้อมูลอาจารย์ที่สอน
+            'class.semesters'           // ดึงข้อมูลปีการศึกษาและเทอม
+        ])->whereHas('courseTa', function ($query) use ($student) {
+            // กรองด้วย student_id จากตาราง course_tas
+            $query->where('student_id', $student->id);
+        })->where('course_ta_id', $id)  // กรองด้วย course_ta_id ที่ส่งมา
+            ->where('class_id', $classId)  // กรองด้วย class_id
+            ->first(); // ใช้ first() เพื่อดึงข้อมูลเฉพาะ 1 รายการ 
 
         // ตรวจสอบว่าข้อมูลถูกต้องหรือไม่
-        if (!$courseTa) {
+        if (!$courseTaClass) {
             abort(404, 'ไม่พบข้อมูล CourseTa ที่ระบุ');
         }
 
-        // วนลูปผ่านข้อมูล courseTas เพื่อประมวลผล major name_th
-        foreach ($courseTa as $courseta) {
-            if (isset($courseta->course->major->name_th)) {
-                // ใช้ Str::after() เพื่อดึงเฉพาะคำว่า "ภาคปกติ"
-                $courseta->course->major->name_th = trim(Str::after($courseta->course->major->name_th, ' '));
-            }
-        }
-        return view('layouts.ta.attendances', compact('courseTa', 'student'));
+        return view('layouts.ta.attendances', compact('courseTaClass', 'student'));
+    }
+
+    public function showTeachingData($id)
+    {
+        // ดึงข้อมูลของ class จาก id ที่ส่งมา พร้อมกับข้อมูลการสอน (teaching) และอาจารย์ (teachers)
+        $teachings = Teaching::with([
+            'class',          // เชื่อมต่อกับตาราง classes
+            'teacher'         // เชื่อมต่อกับตาราง teachers
+        ])->where('class_id', $id)  // กรองด้วย class_id ที่ส่งมา
+            ->get();
+
+        // ส่งข้อมูลไปที่ view
+        return view('layouts.ta.teaching', compact('teachings'));
     }
 }

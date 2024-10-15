@@ -41,20 +41,21 @@ class Teachers extends Model
     {
         return $this->hasMany(Courses::class, 'owner_teacher_id');
     }
-    
+
     public function classes()
     {
-        return $this->belongsToMany(Classes::class);
+        return $this->hasMany(Classes::class, 'teacher_id');
     }
 
-    public function teaching()
+    // สร้างความสัมพันธ์กับ Teaching
+    public function teachings()
     {
-        return $this->belongsTo(Teaching::class);
+        return $this->hasMany(Teaching::class, 'teacher_id');
     }
 
-    public function course_teacher() 
+    public function course_teacher()
     {
-        return $this->belongsTO(CourseTeacher::class) ;   
+        return $this->belongsTO(CourseTeacher::class);
     }
 
     public function extra_teaching()
