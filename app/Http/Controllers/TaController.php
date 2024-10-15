@@ -191,6 +191,12 @@ class TaController extends Controller
         $user = Auth::user();
         $student = Students::where('user_id', $user->id)->first();
 
+        if (!$student) {
+            // ถ้าไม่มีข้อมูลนักศึกษา ให้ redirect ไปที่หน้าหลักหรือหน้าแจ้งเตือน
+            return redirect()->route('layout.ta.request')->with('error', 'ไม่พบข้อมูลนักศึกษา');
+        }
+    
+
         // ดึงข้อมูลจาก course_ta_classes ผ่าน course_tas แล้วไปดึงข้อมูล courses
         $courseTaClasses = CourseTaClasses::with([
             'courseTa.course.subjects',   // ดึงข้อมูลวิชา
@@ -201,6 +207,8 @@ class TaController extends Controller
         ])->whereHas('courseTa', function ($query) use ($student) {
             $query->where('student_id', $student->id);
         })->get();
+
+     
 
         // วนลูปผ่านข้อมูล courseTaClasses เพื่อประมวลผล major name_th
         foreach ($courseTaClasses as $courseTaClass) {
