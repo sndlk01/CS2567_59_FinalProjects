@@ -222,7 +222,7 @@ class TaController extends Controller
             }
         }
 
-        return view('layouts.ta.taSubject', compact('courseTaClasses'));
+        return view('layouts.ta.subjectList', compact('courseTaClasses'));
     }
 
     public function showSubjectDetail($id, $classId)
@@ -248,7 +248,7 @@ class TaController extends Controller
             abort(404, 'ไม่พบข้อมูล CourseTa ที่ระบุ');
         }
 
-        return view('layouts.ta.attendances', compact('courseTaClass', 'student'));
+        return view('layouts.ta.subjectDetail', compact('courseTaClass', 'student'));
     }
 
     public function showTeachingData($id)
