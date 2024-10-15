@@ -22,12 +22,10 @@ return new class extends Migration
             $table->unsignedBigInteger('course_id'); 
             $table->unsignedBigInteger('semester_id'); 
             $table->unsignedBigInteger('major_id');
-
             $table->foreign('teacher_id')->references('id')->on('teachers');
             $table->foreign('course_id')->references('id')->on('courses');
             $table->foreign('semester_id')->references('id')->on('semesters');
             $table->foreign('major_id')->references('id')->on('major');
-
             $table->timestamps();
         });
     }

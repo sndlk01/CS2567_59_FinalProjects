@@ -26,14 +26,16 @@ class Teaching extends Model
         return $this->belongsTo(ClassType::class);
     }
 
-    public function classes()
+    // สร้างความสัมพันธ์ไปยัง Classes
+    public function class()
     {
-        return $this->belongsTo(Classes::class);
+        return $this->belongsTo(Classes::class, 'class_id');
     }
-    
-    public function teachers()
+
+    // สร้างความสัมพันธ์ไปยัง Teachers
+    public function teacher()
     {
-        return $this->belongsTo(Teachers::class);
+        return $this->belongsTo(Teachers::class, 'teacher_id');
     }
 
     public function attendences()

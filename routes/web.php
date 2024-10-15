@@ -44,8 +44,6 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::get('/home', [TaController::class, 'showAnnounces'])->name('home');
     Route::get('/request', [TaController::class, 'request'])->name('layout.ta.request');
     Route::post('/request', [TaController::class, 'apply'])->name('ta.apply');
-    // Route สำหรับตรวจสอบว่า Section มีอยู่ในฐานข้อมูลหรือไม่
-    // Route::get('/validate-section', [SectionController::class, 'validateSection']);
     Route::get('/ta/get-sections/{course_id}', [TaController::class, 'getSections'])->name('ta.getSections');
     Route::get('/statusrequest', [RequestsController::class, 'showTARequests'])->name('layouts.ta.statusRequest');
 
@@ -57,7 +55,11 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::get('/tasubject', [TaController::class, 'taSubject'])->name('layout.ta.taSubject');
     Route::get('/taSubject', [TaController::class, 'showCourseTas'])->name('ta.showCourseTas');
     Route::get('/attendances', [TaController::class, 'attendances'])->name('layout.ta.attendances');
-    Route::get('/attendances/{id}', [TaController::class, 'showSubjectDetail'])->name('layout.ta.attendances');
+    // Route::get('/attendances/{id}', [TaController::class, 'showSubjectDetail'])->name('layout.ta.attendances');
+    // Route::get('/course_ta/{id}/class/{classId?}', [TaController::class, 'showSubjectDetail']);
+    Route::get('/course_ta/{id}/class/{classId?}', [TaController::class, 'showSubjectDetail'])->name('course_ta.show');
+    // Route สำหรับแสดงข้อมูลการสอน
+    Route::get('/teaching/{id}', [TaController::class, 'showTeachingData'])->name('layout.ta.teaching');
 });
 
 //Admin Routes List

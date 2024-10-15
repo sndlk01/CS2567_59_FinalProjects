@@ -33,7 +33,7 @@ class DatabaseSeeder extends Seeder
         $this->call(CurriculumsSubjectsSeeder::class);
         $this->call(CoursesSeeder::class);
         $this->call(ClassesSeeder::class);
-        // $this->call(RequestsSeeder::class);
+        $this->call(TeachingSeeder::class);
         // $this->call(StudentsTableSeeder::class);
     }
 }
