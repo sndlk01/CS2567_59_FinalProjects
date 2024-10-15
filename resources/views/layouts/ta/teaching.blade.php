@@ -39,8 +39,10 @@
                                     @endif
                                     <tr>
                                         <td></td>
-                                        <td>{{ $teaching->start_time }}</td> <!-- เวลาเริ่มเรียน (start_time) -->
-                                        <td>{{ $teaching->end_time }}</td> <!-- เวลาเลิกเรียน (end_time) -->
+                                        <td>{{ \Carbon\Carbon::parse($teaching->start_time)->format('d-m-Y H:i') }}</td>
+                                        <!-- เวลาเริ่มเรียน (start_time) -->
+                                        <td>{{ \Carbon\Carbon::parse($teaching->end_time)->format('d-m-Y H:i') }}</td>
+                                        <!-- เวลาเลิกเรียน (end_time) -->
                                         <td>{{ $teaching->duration }}</td> <!-- เวลาที่สอน (duration) -->
                                         <td>{{ $teaching->teacher->position }}{{ $teaching->teacher->degree }}
                                             {{ $teaching->teacher->fname }} {{ $teaching->teacher->lname }}
