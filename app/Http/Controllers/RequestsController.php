@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CourseTas;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -15,38 +16,34 @@ class RequestsController extends Controller
     {
         $user = Auth::user();
         $student = $user->student;
-    
+
         if (!$student) {
             return redirect()->back()->with('error', 'ไม่พบข้อมูลนักศึกษาสำหรับผู้ใช้นี้');
         }
-    
-        // Build the query
-        $query = Requests::with([
-            'courseTaClass.courseTa.student',
-            'courseTaClass.class.course.subjects'
+
+        $requests = CourseTas::with([
+            'student',
+            'course.subjects',
+            'courseTaClasses.requests' => function ($query) {
+                $query->latest();
+            }
         ])
-        ->whereHas('courseTaClass.courseTa', function ($query) use ($student) {
-            $query->where('student_id', $student->id);
-        })
-        ->latest();
-    
-        // Debug: Log the SQL query
-        Log::info('SQL Query:', [
-            'sql' => $query->toSql(),
-            'bindings' => $query->getBindings()
-        ]);
-    
-        // Execute the query
-        $requests = $query->get();
-    
-        // Debug: Log the result
-        Log::info('Requests:', [
-            'count' => $requests->count(),
-            'data' => $requests->toArray()
-        ]);
-    
+            ->where('student_id', $student->id)
+            ->get()
+            ->map(function ($courseTa) {
+                $latestRequest = $courseTa->courseTaClasses->flatMap->requests->sortByDesc('created_at')->first();
+
+                return [
+                    'student_id' => $courseTa->student->student_id,
+                    'full_name' => $courseTa->student->fname . ' ' . $courseTa->student->lname,
+                    'course' => $courseTa->course->subjects->subject_id . ' ' . $courseTa->course->subjects->name_en,
+                    'applied_at' => $courseTa->created_at,
+                    'status' => $latestRequest ? $latestRequest->status : null,
+                    'approved_at' => $latestRequest ? $latestRequest->approved_at : null,
+                    'comment' => $latestRequest ? $latestRequest->comment : null,
+                ];
+            });
+
         return view('layouts.ta.statusRequest', compact('requests'));
     }
-
-
 }

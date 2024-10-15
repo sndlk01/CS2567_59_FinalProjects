@@ -18,7 +18,7 @@ class Requests extends Model
 
     public function courseTaClass()
     {
-        return $this->belongsTo(CourseTaClasses::class);
+        return $this->belongsTo(CourseTaClasses::class, 'course_ta_class_id');
     }
 
 }

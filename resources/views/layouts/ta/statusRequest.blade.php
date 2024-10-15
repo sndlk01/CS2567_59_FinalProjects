@@ -18,7 +18,6 @@
                                         <th>รหัสนักศึกษา</th>
                                         <th>ชื่อ-นามสกุล</th>
                                         <th>รายวิชาที่สมัคร</th>
-                                        <th>เซคชัน</th>
                                         <th>วันที่สมัคร</th>
                                         <th>สถานะการสมัคร</th>
                                         <th>วันที่อนุมัติ</th>
@@ -29,16 +28,13 @@
                                     @forelse ($requests as $index => $request)
                                         <tr>
                                             <td>{{ $index + 1 }}</td>
-                                            <td>{{ $request->courseTaClass->courseTa->student->student_id }}</td>
-                                            <td>{{ $request->courseTaClass->courseTa->student->fname }}
-                                                {{ $request->courseTaClass->courseTa->student->lname }}</td>
-                                            <td>{{ $request->courseTaClass->class->course->subjects->subject_id }}
-                                                {{ $request->courseTaClass->class->course->subjects->name_en }}</td>
-                                            <td>{{ $request->courseTaClass->class->section_num }}</td>
-                                            <td>{{ $request->created_at ? $request->created_at->format('d-m-Y') : 'N/A' }}</td>
+                                            <td>{{ $request['student_id'] }}</td>
+                                            <td>{{ $request['full_name'] }}</td>
+                                            <td>{{ $request['course'] }}</td>
+                                            <td>{{ $request['applied_at']->format('d-m-Y') }}</td>
                                             <td>
                                                 @php
-                                                    $status = strtolower($request->status);
+                                                    $status = strtolower($request['status']);
                                                 @endphp
                                                 @if ($status === 'w')
                                                     <span class="badge bg-warning">รอดำเนินการ</span>
@@ -49,25 +45,27 @@
                                                 @elseif ($status === 'p')
                                                     <span class="badge bg-info">กำลังพิจารณา</span>
                                                 @else
-                                                    <span class="badge bg-secondary">ไม่ระบุ ({{ $request->status }})</span>
+                                                    <span class="badge bg-secondary">ไม่ระบุ</span>
                                                 @endif
                                             </td>
                                             <td>
-                                                @if ($request->approved_at)
-                                                    @if (is_string($request->approved_at))
-                                                        {{ \Carbon\Carbon::parse($request->approved_at)->format('d-m-Y') }}
-                                                    @else
-                                                        {{ $request->approved_at->format('d-m-Y') }}
-                                                    @endif
+                                                @if ($request['approved_at'])
+                                                    @php
+                                                        $approvedAt = $request['approved_at'];
+                                                        if (is_string($approvedAt)) {
+                                                            $approvedAt = \Carbon\Carbon::parse($approvedAt);
+                                                        }
+                                                    @endphp
+                                                    {{ $approvedAt->format('d-m-Y') }}
                                                 @else
                                                     N/A
                                                 @endif
                                             </td>
-                                            <td>{{ $request->comment ?? 'ไม่มีความคิดเห็น' }}</td>
+                                            <td>{{ $request['comment'] ?? 'ไม่มีความคิดเห็น' }}</td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="9" class="text-center">ไม่พบข้อมูลคำร้องการสมัคร</td>
+                                            <td colspan="8" class="text-center">ไม่พบข้อมูลคำร้องการสมัคร</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

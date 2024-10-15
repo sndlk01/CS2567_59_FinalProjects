@@ -10,79 +10,68 @@
                 <div class="card-body">
                     <h4>คำร้องการสมัครผู้ช่วยสอน</h4>
                     <div class="container shadow-lg bg-body rounded p-5">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">ลำดับ</th>
-                                    <th scope="col">รหัสนักศึกษา</th>
-                                    <th scope="col">ชื่อ-นามสกุล</th>
-                                    <th scope="col">รายวิชาที่สมัคร</th>
-                                    <th scope="col">วันที่สมัคร</th>
-                                    <th scope="col">สถานะการสมัคร</th>
-                                    <th scope="col">วันที่อนุมัติ</th>
-                                    <th scope="col">ความคิดเห็น</th>
-                                    <th scope="col">การดำเนินการ</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($requests as $index => $request)
-                                    <tr>
-                                        <td>{{ $index + 1 }}</td>
-                                        <td>{{ $request->courseTas->student->student_id ?? 'N/A' }}</td>
-                                        <td>
-                                            @if ($request->courseTas && $request->courseTas->student)
-                                                {{ $request->courseTas->student->fname }}
-                                                {{ $request->courseTas->student->lname }}
-                                            @else
-                                                N/A
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if ($request->courseTas && $request->courseTas->course && $request->courseTas->course->subjects)
-                                                {{-- {{ $request->courseTas->course->subjects->subject_id }} --}}
-                                                {{ $request->courseTas->course->subjects->name_en }}
-                                            @else
-                                                N/A
-                                                <!-- เพิ่มบรรทัดนี้เพื่อ debug -->
-                                                {{-- ({{ var_dump($request->courseTas) }}) --}}
-                                            @endif
-                                        </td>
-                                        <td>{{ $request->created_at->format('d-m-Y') }}</td>
-                                        <td>
-                                            @if ($request->status == 'a')
-                                                <span class="badge bg-success">อนุมัติ</span>
-                                            @elseif($request->status == 'w')
-                                                <span class="badge bg-warning">รอดำเนินการ</span>
-                                            @elseif($request->status == 'r')
-                                                <span class="badge bg-danger">ไม่อนุมัติ</span>
-                                            @else
-                                                <span class="badge bg-secondary">เลือก</span>
-                                            @endif
-                                        </td>
-                                        <td>{{ $request->approved_at ? \Carbon\Carbon::parse($request->approved_at)->format('d-m-Y') : '-' }}
-                                        </td>
-                                        <td>{{ $request->comment ?? '-' }}</td>
-                                        <td>
-                                            <form action="{{ route('teacher.home') }}" method="POST">
-                                                @csrf
-                                                <input type="hidden" name="request_id" value="{{ $request->id }}">
-                                                <select name="status" class="form-select mb-2">
-                                                    <option value="a" {{ $request->status == 'a' ? 'selected' : '' }}>
-                                                        อนุมัติ</option>
-                                                    <option value="w" {{ $request->status == 'w' ? 'selected' : '' }}>
-                                                        รอดำเนินการ</option>
-                                                    <option value="r" {{ $request->status == 'r' ? 'selected' : '' }}>
-                                                        ไม่อนุมัติ</option>
-                                                </select>
-                                                <input type="text" name="comment" class="form-control mb-2"
-                                                    placeholder="ความคิดเห็น" value="{{ $request->comment }}">
-                                                <button type="submit" class="btn btn-primary">บันทึก</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                        @if($courseTas->isEmpty())
+                            <p>ไม่พบข้อมูลคำร้องการสมัคร</p>
+                        @else
+                            <form action="{{ route('teacher.home') }}" method="POST">
+                                @csrf
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>ลำดับ</th>
+                                            <th>รหัสนักศึกษา</th>
+                                            <th>ชื่อ-นามสกุล</th>
+                                            <th>รายวิชา</th>
+                                            <th>สถานะการสมัคร</th>
+                                            <th>วันที่อนุมัติ</th>
+                                            <th>การดำเนินการ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($courseTas as $index => $courseTa)
+                                            <tr>
+                                                <td>{{ $index + 1 }}</td>
+                                                <td>{{ $courseTa['student_id'] }}</td>
+                                                <td>{{ $courseTa['student_name'] }}</td>
+                                                <td>{{ $courseTa['course'] }}</td>
+                                                <td>
+                                                    @php
+                                                        $status = strtolower($courseTa['status'] ?? 'w');
+                                                    @endphp
+                                                    @if ($status === 'w')
+                                                        <span class="badge bg-warning">รอดำเนินการ</span>
+                                                    @elseif ($status === 'r')
+                                                        <span class="badge bg-danger">ไม่อนุมัติ</span>
+                                                    @elseif ($status === 'a')
+                                                        <span class="badge bg-success">อนุมัติ</span>
+                                                    @else
+                                                        <span class="badge bg-secondary">ไม่ระบุ</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if ($courseTa['approved_at'])
+                                                        {{ \Carbon\Carbon::parse($courseTa['approved_at'])->format('d-m-Y') }}
+                                                    @else
+                                                        N/A
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <input type="hidden" name="course_ta_ids[]" value="{{ $courseTa['course_ta_id'] }}">
+                                                    <select name="statuses[]" class="form-select mb-2">
+                                                        <option value="a" {{ $status === 'a' ? 'selected' : '' }}>อนุมัติ</option>
+                                                        <option value="w" {{ $status === 'w' ? 'selected' : '' }}>รอดำเนินการ</option>
+                                                        <option value="r" {{ $status === 'r' ? 'selected' : '' }}>ไม่อนุมัติ</option>
+                                                    </select>
+                                                    <input type="text" name="comments[]" class="form-control mb-2"
+                                                        placeholder="ความคิดเห็น" value="{{ $courseTa['comment'] }}">
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                                <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
+                            </form>
+                        @endif
                     </div>
                 </div>
             </div>

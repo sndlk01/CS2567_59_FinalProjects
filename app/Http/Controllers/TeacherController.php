@@ -1,11 +1,17 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Models\Courses;
 use App\Models\Subjects;
 use App\Models\Teachers;
 use App\Models\Students;
+use Illuminate\Http\Request;
+use App\Models\CourseTas;
 use App\Models\Requests;
+use App\Models\CourseTaClasses;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+
 
 class TeacherController extends Controller
 {
@@ -70,29 +76,54 @@ class TeacherController extends Controller
         $teacher = Teachers::where('user_id', $user->id)->first();
 
         if (!$teacher) {
+            Log::error('ไม่พบข้อมูลอาจารย์สำหรับ user_id: ' . $user->id);
             return redirect()->back()->with('error', 'ไม่พบข้อมูลอาจารย์');
         }
 
-        $requests = Requests::with([
-            'courseTas',
-            'courseTas.course',
-            'courseTas.course.subjects',
-            'courseTas.student'
-        ])->whereHas('courseTas.course', function ($query) use ($teacher) {
-            $query->where('owner_teacher_id', $teacher->id);
-        })->get();
-        // dd($requests->toArray());
+        $courseTas = CourseTas::with(['student', 'course.subjects', 'courseTaClasses.requests'])
+            ->whereHas('course', function ($query) use ($teacher) {
+                $query->where('owner_teacher_id', $teacher->id);
+            })
+            ->get()
+            ->map(function ($courseTa) {
+                $latestRequest = $courseTa->courseTaClasses->flatMap->requests->sortByDesc('created_at')->first();
+                return [
+                    'course_ta_id' => $courseTa->id,
+                    'course_id' => $courseTa->course_id,
+                    'course' => $courseTa->course->subjects->subject_id . ' ' . $courseTa->course->subjects->name_en,
+                    'student_id' => $courseTa->student->student_id,
+                    'student_name' => $courseTa->student->fname . ' ' . $courseTa->student->lname,
+                    'status' => $latestRequest ? $latestRequest->status : null,
+                    'approved_at' => $latestRequest ? $latestRequest->approved_at : null,
+                    'comment' => $latestRequest ? $latestRequest->comment : null,
+                ];
+            });
 
-        return view('teacherHome', compact('requests'));
+        Log::info('จำนวนคำขอ TA: ' . $courseTas->count());
+
+        return view('teacherHome', compact('courseTas'));
     }
 
-    public function updateTARequestStatus(\Illuminate\Http\Request $request)
+    public function updateTARequestStatus(Request $request)
     {
-        $taRequest = Requests::findOrFail($request->request_id);
-        $taRequest->status = $request->status;
-        $taRequest->comment = $request->comment;
-        $taRequest->approved_at = now();
-        $taRequest->save();
+        $courseTaIds = $request->input('course_ta_ids', []);
+        $statuses = $request->input('statuses', []);
+        $comments = $request->input('comments', []);
+
+        foreach ($courseTaIds as $index => $courseTaId) {
+            $courseTaClass = CourseTaClasses::where('course_ta_id', $courseTaId)->first();
+            
+            if ($courseTaClass) {
+                Requests::updateOrCreate(
+                    ['course_ta_class_id' => $courseTaClass->id],
+                    [
+                        'status' => $statuses[$index],
+                        'comment' => $comments[$index],
+                        'approved_at' => now(),
+                    ]
+                );
+            }
+        }
 
         return redirect()->back()->with('success', 'อัพเดทสถานะสำเร็จ');
     }
