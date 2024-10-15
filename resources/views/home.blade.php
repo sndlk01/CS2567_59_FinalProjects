@@ -9,7 +9,7 @@
         <div class="card mb-4">
             <div class="card-body">
                 <div class="card bg-primary text-white p-3">
-                    <h4 class="mb-0">ประกาศ</h4>
+                    <h4 class="mb-0" style="color: white">ประกาศ</h4>
                 </div>
                 @foreach ($announces as $announce)
                 <div class="card mt-3"> 
