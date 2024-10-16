@@ -272,12 +272,44 @@ class TaController extends Controller
         return view('layouts.ta.attendances', compact('teaching'));
     }
 
+    // public function submitAttendance(Request $request, $teaching_id)
+    // {
+    //     // Validate the request
+    //     $request->validate([
+    //         'status' => 'required', // Either 'เข้าปฏิบัติการสอน' or 'ลา'
+    //         'note' => 'nullable|string',
+    //     ]);
+
+    //     $user = Auth::user();
+    //     $student = Students::where('user_id', $user->id)->first();
+
+    //     // Insert into the attendances table
+    //     Attendances::create([
+    //         'status' => $request->status,
+    //         'approve_at' => null,  // Set as null initially
+    //         'approve_user_id' => null,  // Set as null initially
+    //         'note' => $request->note,
+    //         'user_id' => $user->id,
+    //         'teaching_id' => $teaching_id,
+    //         'student_id' => $student->id,
+    //     ]);
+
+    //     // Update the teaching status in the teaching table
+    //     $teaching = Teaching::findOrFail($teaching_id);
+    //     $teaching->status = $request->status === 'เข้าปฏิบัติการสอน' ? 'S' : 'L'; // 'S' for success, 'L' for leave
+    //     $teaching->save();
+
+    //     // Redirect back to the form or some confirmation page
+    //     return redirect()->route('layout.ta.teaching', ['id' => $teaching->class_id])
+    //         ->with('success', 'บันทึกข้อมูลสำเร็จ');
+    // }
+
     public function submitAttendance(Request $request, $teaching_id)
     {
         // Validate the request
         $request->validate([
             'status' => 'required', // Either 'เข้าปฏิบัติการสอน' or 'ลา'
-            'note' => 'nullable|string',
+            'note' => 'required|string',  // 'note' is now required
         ]);
 
         $user = Auth::user();
