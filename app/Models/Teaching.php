@@ -38,9 +38,9 @@ class Teaching extends Model
         return $this->belongsTo(Teachers::class, 'teacher_id');
     }
 
-    public function attendences()
+    public function attendance()
     {
-        return $this->hasMany(Attendances::class);
+        return $this->hasOne(Attendances::class, 'teaching_id');
     }
 
     public function extra_teaching()

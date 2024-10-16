@@ -8,6 +8,13 @@
         <div class="col-12">
             <div class="card mb-4">
                 <div class="card-body">
+                    @if (session('success'))
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            {{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"><i
+                                    class="bi bi-x"></i></button>
+                        </div>
+                    @endif
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
@@ -34,24 +41,33 @@
                                             </td>
                                         </tr>
                                         @php
-                                            $previousClassTitle = $teaching->class->title; // อัปเดตตัวแปร
+                                            $previousClassTitle = $teaching->class->title;
                                         @endphp
                                     @endif
                                     <tr>
                                         <td></td>
                                         <td>{{ \Carbon\Carbon::parse($teaching->start_time)->format('d-m-Y H:i') }}</td>
-                                        <!-- เวลาเริ่มเรียน (start_time) -->
                                         <td>{{ \Carbon\Carbon::parse($teaching->end_time)->format('d-m-Y H:i') }}</td>
-                                        <!-- เวลาเลิกเรียน (end_time) -->
-                                        <td>{{ $teaching->duration }}</td> <!-- เวลาที่สอน (duration) -->
+                                        <td>{{ $teaching->duration }}</td>
                                         <td>{{ $teaching->teacher->position }}{{ $teaching->teacher->degree }}
                                             {{ $teaching->teacher->fname }} {{ $teaching->teacher->lname }}
-                                        </td> <!-- อาจารย์ประจำวิชา -->
-                                        <td><span class="badge bg-danger">เข้าปฏิบัติการสอน</span></td>
-                                        <td></td>
-                                        <td><a href="#" class="btn btn-outline-primary"
+                                        </td>
+                                        <td>
+                                            @if ($teaching->status === 'S')
+                                                <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
+                                            @else
+                                                <span class="badge bg-danger">เข้าปฏิบัติการสอน</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ $teaching->attendance->note ?? '' }}</td>
+                                        <!-- เข้าถึง attendance ผ่าน relation -->
+                                        <td>
+                                            <a href="{{ route('attendances.form', $teaching->id) }}"
+                                                class="btn btn-outline-primary"
                                                 style="--bs-btn-padding-y: .25rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .75rem;">
-                                                ลงเวลา</a></td>
+                                                ลงเวลา
+                                            </a>
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>

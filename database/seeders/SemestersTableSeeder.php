@@ -34,13 +34,6 @@ class SemestersTableSeeder extends Seeder
                 'start_date' => '2024-06-17',
                 'end_date' => '2024-10-13',
             ],
-            // [
-            //     'id' => 25671,
-            //     'year' => 2567,
-            //     'semesters' => 1,
-            //     'start_date' => '2023-06-17',
-            //     'end_date' => '2023-10-30',
-            // ]
         ];
 
         foreach ($semesters as $key => $value) {

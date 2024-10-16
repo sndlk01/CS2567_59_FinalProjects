@@ -60,6 +60,10 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::get('/course_ta/{id}/class/{classId?}', [TaController::class, 'showSubjectDetail'])->name('course_ta.show');
     // Route สำหรับแสดงข้อมูลการสอน
     Route::get('/teaching/{id}', [TaController::class, 'showTeachingData'])->name('layout.ta.teaching');
+    // Route to display the attendance form for the selected teaching session
+    Route::get('/attendances/{teaching_id}', [TaController::class, 'showAttendanceForm'])->name('attendances.form');
+    // Route to handle attendance form submission
+    Route::post('/attendances/{teaching_id}', [TaController::class, 'submitAttendance'])->name('attendances.submit');
 });
 
 //Admin Routes List

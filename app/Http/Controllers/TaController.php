@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attendances;
 use App\Models\Classes;
 use App\Models\Courses;
 use App\Models\CourseTaClasses;
@@ -195,7 +196,7 @@ class TaController extends Controller
             // ถ้าไม่มีข้อมูลนักศึกษา ให้ redirect ไปที่หน้าหลักหรือหน้าแจ้งเตือน
             return redirect()->route('layout.ta.request')->with('error', 'ไม่พบข้อมูลนักศึกษา');
         }
-    
+
 
         // ดึงข้อมูลจาก course_ta_classes ผ่าน course_tas แล้วไปดึงข้อมูล courses
         $courseTaClasses = CourseTaClasses::with([
@@ -208,7 +209,7 @@ class TaController extends Controller
             $query->where('student_id', $student->id);
         })->get();
 
-     
+
 
         // วนลูปผ่านข้อมูล courseTaClasses เพื่อประมวลผล major name_th
         foreach ($courseTaClasses as $courseTaClass) {
@@ -262,5 +263,44 @@ class TaController extends Controller
 
         // ส่งข้อมูลไปที่ view
         return view('layouts.ta.teaching', compact('teachings'));
+    }
+
+    public function showAttendanceForm($teaching_id)
+    {
+        // Find the teaching session by ID
+        $teaching = Teaching::findOrFail($teaching_id);
+        return view('layouts.ta.attendances', compact('teaching'));
+    }
+
+    public function submitAttendance(Request $request, $teaching_id)
+    {
+        // Validate the request
+        $request->validate([
+            'status' => 'required', // Either 'เข้าปฏิบัติการสอน' or 'ลา'
+            'note' => 'nullable|string',
+        ]);
+
+        $user = Auth::user();
+        $student = Students::where('user_id', $user->id)->first();
+
+        // Insert into the attendances table
+        Attendances::create([
+            'status' => $request->status,
+            'approve_at' => null,  // Set as null initially
+            'approve_user_id' => null,  // Set as null initially
+            'note' => $request->note,
+            'user_id' => $user->id,
+            'teaching_id' => $teaching_id,
+            'student_id' => $student->id,
+        ]);
+
+        // Update the teaching status in the teaching table
+        $teaching = Teaching::findOrFail($teaching_id);
+        $teaching->status = $request->status === 'เข้าปฏิบัติการสอน' ? 'S' : 'L'; // 'S' for success, 'L' for leave
+        $teaching->save();
+
+        // Redirect back to the form or some confirmation page
+        return redirect()->route('layout.ta.teaching', ['id' => $teaching->class_id])
+            ->with('success', 'บันทึกข้อมูลสำเร็จ');
     }
 }

@@ -11,21 +11,11 @@
                     <div class="container mt-4">
                         <h4>รายละเอียดวิชา</h4>
                         <div class="card mb-4">
-                            {{-- <div class="card-body">
-                                <p><strong>ชื่อวิชา:</strong> {{ $courseTa->course->subjects->subject_id }}
-                                    {{ $courseTa->course->subjects->name_en }}</p>
-                                <p><strong>ปีการศึกษา:</strong> {{ $courseTa->course->semesters->id }}</p>
-                                <p><strong>อาจารย์ประจำวิชา:</strong>
-                                    {{ $courseTa->course->teachers->position }}{{ $courseTa->course->teachers->degree }}
-                                    {{ $courseTa->course->teachers->fname }} {{ $courseTa->course->teachers->lname }}</p>
-                                <p><strong>ชื่อผู้ช่วยสอน:</strong> {{ $student->fname }} {{ $student->lname }}</p>
-                                <p><strong>หน่วยกิต:</strong> {{ $courseTa->course->subjects->credits }}</p>
-                            </div> --}}
                             <div class="card-body">
                                 <p><strong>ชื่อวิชา:</strong> {{ $courseTaClass->class->course->subjects->subject_id }}
                                     {{ $courseTaClass->class->course->subjects->name_en }}</p>
                                 <p><strong>ปีการศึกษา:</strong>
-                                    {{ $courseTaClass->class->semesters->year }}/{{ $courseTaClass->class->semesters->semesters }}
+                                    {{ $courseTaClass->class->semesters->semesters }} / {{ $courseTaClass->class->semesters->year }}
                                 </p>
                                 <p><strong>อาจารย์ประจำวิชา:</strong>
                                     {{ $courseTaClass->class->teachers->position }}{{ $courseTaClass->class->teachers->degree }}
@@ -33,7 +23,7 @@
                                     {{ $courseTaClass->class->teachers->lname }}</p>
                                 <p><strong>ชื่อผู้ช่วยสอน:</strong> {{ $student->fname }} {{ $student->lname }}</p>
                                 <p><strong>หน่วยกิต:</strong> {{ $courseTaClass->class->course->subjects->credits }}</p>
-                                <p><strong>Section:</strong> {{ $courseTaClass->class->section_num }}</p>
+                                {{-- <p><strong>Section:</strong> {{ $courseTaClass->class->section_num }}</p> --}}
                             </div>
                         </div>
 

@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('attendances', function (Blueprint $table) {
             $table->id();
             $table->char('status');
-            $table->dateTime('approve_at', precision: 0);
-            $table->integer('approve_user_id');
+            $table->dateTime('approve_at', precision: 0)->nullable();
+            $table->integer('approve_user_id')->nullable();
             $table->string('note');
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('teaching_id');
