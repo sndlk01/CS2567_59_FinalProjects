@@ -20,8 +20,7 @@ class CreateUsersSeeder extends Seeder
         $users = [
             [
                 'prefix'=>null,
-                "fname"=> "Admin",
-                "lname"=> "Admin",
+                "name"=> "Admin",
                 'student_id'=>null,
                 'email'=> 'admin@admin.com',
                 'card_id'=>null,
@@ -31,8 +30,7 @@ class CreateUsersSeeder extends Seeder
             ],  
             [
                 'prefix'=>null,
-                'fname'=> 'Sirapat',
-                'lname'=>'Chiewchanwattana',
+                'name'=> 'Sirapat Chiewchanwattana',
                 'student_id'=>null,
                 'email'=> 'sunkra@kku.ac.th',
                 'card_id'=>null,
@@ -42,8 +40,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Sarun',
-                'lname'=>'Apichontrakul',
+                'name'=> 'Sarun Apichontrakul',
                 'student_id'=>null,
                 'email'=> 'sarunap@kku.ac.th',
                 'card_id'=>null,
@@ -53,8 +50,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Pusadee',
-                'lname'=>'Seresangtakul',
+                'name'=> 'Pusadee Seresangtakul',
                 'student_id'=>null,
                 'email'=> 'pusadee@kku.ac.th',
                 'card_id'=>null,
@@ -64,8 +60,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Chitsutha',
-                'lname'=>'Soomlek',
+                'name'=> 'Chitsutha Soomlek',
                 'student_id'=>null,
                 'email'=> 'chitsutha@kku.ac.th',
                 'card_id'=>null,
@@ -75,8 +70,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Satit',
-                'lname'=>'Kravenkit',
+                'name'=> 'Satit Kravenkit',
                 'student_id'=>null,
                 'email'=> 'satikr@kku.ac.th',
                 'card_id'=>null,
@@ -86,8 +80,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Nagon',
-                'lname'=>'Watanakij',
+                'name'=> 'Nagon Watanakij',
                 'student_id'=>null,
                 'email'=> 'nagon@kku.ac.th',
                 'card_id'=>null,
@@ -97,8 +90,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Chanon',
-                'lname'=>'Dechsupa',
+                'name'=> 'Chanon Dechsupa',
                 'student_id'=>null,
                 'email'=> 'chanode@kku.ac.th',
                 'card_id'=>null,
@@ -108,8 +100,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Sartra',
-                'lname'=>'Wongthanavasu',
+                'name'=> 'Sartra Wongthanavasu',
                 'student_id'=>null,
                 'email'=> 'wongsar@kku.ac.th',
                 'card_id'=>null,
@@ -119,8 +110,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Chakchai',
-                'lname'=>'So-In',
+                'name'=> 'Chakchai So-In',
                 'student_id'=>null,
                 'email'=> 'chakso@kku.ac.th',
                 'card_id'=>null,
@@ -130,8 +120,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Punyaphol',
-                'lname'=>'Horata',
+                'name'=> 'Punyaphol Horata',
                 'student_id'=>null,
                 'email'=> 'punhor1@kku.ac.th',
                 'card_id'=>null,
@@ -141,8 +130,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Ngamnij',
-                'lname'=>'Arch-int',
+                'name'=> 'Ngamnij Arch-int',
                 'student_id'=>null,
                 'email'=> 'ngamnij@kku.ac.th',
                 'card_id'=>null,
@@ -152,8 +140,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Urachart',
-                'lname'=>'Kokaew',
+                'name'=> 'Urachart Kokaew',
                 'student_id'=>null,
                 'email'=> 'urachart@kku.ac.th',
                 'card_id'=>null,
@@ -163,8 +150,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Chaiyapon',
-                'lname'=>'Keeratikasikorn',
+                'name'=> 'Chaiyapon Keeratikasikorn',
                 'student_id'=>null,
                 'email'=> 'chaiyapon@kku.ac.th',
                 'card_id'=>null,
@@ -174,8 +160,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Wararat',
-                'lname'=>'Songpan',
+                'name'=> 'Wararat Songpan',
                 'student_id'=>null,
                 'email'=> 'wararat@kku.ac.th',
                 'card_id'=>null,
@@ -185,8 +170,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Sunti',
-                'lname'=>'Tintanai',
+                'name'=> 'Sunti Tintanai',
                 'student_id'=>null,
                 'email'=> 'sunti@kku.ac.th',
                 'card_id'=>null,
@@ -196,8 +180,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Khamron',
-                'lname'=>'Sunat',
+                'name'=> 'Khamron Sunat',
                 'student_id'=>null,
                 'email'=> 'skhamron@kku.ac.th',
                 'card_id'=>null,
@@ -207,8 +190,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Pipat',
-                'lname'=>'Reungsang',
+                'name'=> 'Pipat Reungsang',
                 'student_id'=>null,
                 'email'=> 'reungsang@kku.ac.th',
                 'card_id'=>null,
@@ -218,8 +200,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Boonsup',
-                'lname'=>'Waikham',
+                'name'=> 'Boonsup Waikham',
                 'student_id'=>null,
                 'email'=> 'boonsup@kku.ac.th',
                 'card_id'=>null,
@@ -229,8 +210,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Wachirawut',
-                'lname'=>'Tamviset',
+                'name'=> 'Wachirawut Tamviset',
                 'student_id'=>null,
                 'email'=> 'twachi@kku.ac.th',
                 'card_id'=>null,
@@ -240,8 +220,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Urawan',
-                'lname'=>'Chanket',
+                'name'=> 'Urawan Chanket',
                 'student_id'=>null,
                 'email'=> 'curawa@kku.ac.th',
                 'card_id'=>null,
@@ -251,8 +230,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Sumonta',
-                'lname'=>'Kasemvilas',
+                'name'=> 'Sumonta Kasemvilas',
                 'student_id'=>null,
                 'email'=> 'sumkas@kku.ac.th',
                 'card_id'=>null,
@@ -262,8 +240,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Saiyan',
-                'lname'=>'Saiyod',
+                'name'=> 'Saiyan Saiyod',
                 'student_id'=>null,
                 'email'=> 'saiyan@kku.ac.th',
                 'card_id'=>null,
@@ -273,8 +250,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Paweena',
-                'lname'=>'Wanchai',
+                'name'=> 'Paweena Wanchai',
                 'student_id'=>null,
                 'email'=> 'wpaweena@kku.ac.th',
                 'card_id'=>null,
@@ -284,8 +260,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Silada',
-                'lname'=>'Intarasothonchun',
+                'name'=> 'Silada Intarasothonchun',
                 'student_id'=>null,
                 'email'=> 'silain@kku.ac.th',
                 'card_id'=>null,
@@ -295,8 +270,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Monlica',
-                'lname'=>'Wattana',
+                'name'=> 'Monlica Wattana',
                 'student_id'=>null,
                 'email'=> 'monlwa@kku.ac.th',
                 'card_id'=>null,
@@ -306,8 +280,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Praisan',
-                'lname'=>'Padungweang',
+                'name'=> 'Praisan Padungweang',
                 'student_id'=>null,
                 'email'=> 'praipa@kku.ac.th',
                 'card_id'=>null,
@@ -317,8 +290,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Sakpod',
-                'lname'=>'Tongleamnak',
+                'name'=> 'Sakpod Tongleamnak',
                 'student_id'=>null,
                 'email'=> 'sakpod@kku.ac.th',
                 'card_id'=>null,
@@ -328,8 +300,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Pobporn',
-                'lname'=>'Danvirutai',
+                'name'=> 'Pobporn Danvirutai',
                 'student_id'=>null,
                 'email'=> 'pobda@kku.ac.th',
                 'card_id'=>null,
@@ -339,8 +310,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Pongsathon',
-                'lname'=>'Janyoi',
+                'name'=> 'Pongsathon Janyoi',
                 'student_id'=>null,
                 'email'=> 'pongsathon@kku.ac.th',
                 'card_id'=>null,
@@ -350,8 +320,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Warunya',
-                'lname'=>'Wunnasri',
+                'name'=> 'Warunya Wunnasri',
                 'student_id'=>null,
                 'email'=> 'waruwu@kku.ac.th',
                 'card_id'=>null,
@@ -361,8 +330,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Jakkrit',
-                'lname'=>'Kaewyotha',
+                'name'=> 'Jakkrit Kaewyotha',
                 'student_id'=>null,
                 'email'=> 'jakkritk@kku.ac.th',
                 'card_id'=>null,
@@ -372,8 +340,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Phet',
-                'lname'=>'Aimtongkham',
+                'name'=> 'Phet Aimtongkham',
                 'student_id'=>null,
                 'email'=> 'phetim@kku.ac.th',
                 'card_id'=>null,
@@ -383,8 +350,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Arfat Ahmad',
-                'lname'=>'Khan',
+                'name'=> 'Arfat Ahmad Khan',
                 'student_id'=>null,
                 'email'=> 'arfatkhan@kku.ac.th',
                 'card_id'=>null,
@@ -394,8 +360,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Wasana',
-                'lname'=>'Putklang',
+                'name'=> 'Wasana Putklang',
                 'student_id'=>null,
                 'email'=> 'putklang_w@kku.ac.th',
                 'card_id'=>null,
@@ -405,8 +370,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Isoon',
-                'lname'=>'Kanjanasurat',
+                'name'=> 'Isoon Kanjanasurat',
                 'student_id'=>null,
                 'email'=> 'isoonkan@kku.ac.th',
                 'card_id'=>null,
@@ -416,8 +380,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Pakarat',
-                'lname'=>'Musikawan',
+                'name'=> 'Pakarat Musikawan',
                 'student_id'=>null,
                 'email'=> 'pakamu@kku.ac.th',
                 'card_id'=>null,
@@ -427,8 +390,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Yanika',
-                'lname'=>'Kongsorot',
+                'name'=> 'Yanika Kongsorot',
                 'student_id'=>null,
                 'email'=> 'yaniko@kku.ac.th',
                 'card_id'=>null,
@@ -438,8 +400,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>null,
-                'fname'=> 'Thanaphon',
-                'lname'=>'Tangchoopong',
+                'name'=> 'Thanaphon Tangchoopong',
                 'student_id'=>null,
                 'email'=> 'thanaphon@kku.ac.th',
                 'card_id'=>null,
@@ -449,8 +410,7 @@ class CreateUsersSeeder extends Seeder
             ],
             [
                 'prefix'=>'นาย',
-                'fname'=> 'ชาคริต',
-                'lname'=> 'ปรากฎ',
+                'name'=> 'ชาคริต ปรากฎ',
                 'student_id'=>'643021316-6',
                 'email'=> 'chakit.p@kkumail.com',
                 'card_id'=>'1199654564565',
@@ -463,9 +423,5 @@ class CreateUsersSeeder extends Seeder
         foreach ($users as $key => $value) {
             User::create($value);
         }
-
-        // foreach ($users as $user) {
-        //     DB::table('users')->insert($user);
-        // }
     }
 }

@@ -23,40 +23,37 @@ class GoogleAuthController extends Controller
             $google_user = Socialite::driver('google')->user();
 
             // ตรวจสอบว่าอีเมลเป็น @kkumail.com หรือไม่
-            $email = $google_user->getEmail();
-            if (!str_ends_with($email, '@kkumail.com')) {
-                return redirect()->route('login')->with(['error' => 'คุณสามารถเข้าสู่ระบบได้เฉพาะอีเมล @kkumail.com เท่านั้น']);
-            }
+            // $email = $google_user->getEmail();
+            // if (!str_ends_with($email, '@kkumail.com')) {
+            //     return redirect()->route('login')->with(['error' => 'คุณสามารถเข้าสู่ระบบได้เฉพาะอีเมล @kkumail.com เท่านั้น']);
+            // }
 
             // ค้นหาผู้ใช้จาก Google ID
             $user = User::where('google_id', $google_user->getId())->first();
 
             // ถ้าไม่พบ ให้ค้นหาผู้ใช้จากอีเมล
+            // ถ้าไม่พบ ให้ค้นหาผู้ใช้จากอีเมล
             if (!$user) {
                 $user = User::where('email', $google_user->getEmail())->first();
 
                 if (!$user) {
-                    // แยกชื่อและนามสกุล
-                    $fullName = $google_user->getName();
-                    $nameParts = explode(' ', $fullName);
-                    $fname = $nameParts[0];
-                    $lname = isset($nameParts[1]) ? $nameParts[1] : '';
-
                     // สร้างผู้ใช้ใหม่
                     $user = User::create([
-                        'fname' => $fname,
-                        'lname' => $lname,
+                        'name' => $google_user->getName(), // ใช้ชื่อเต็มจาก Google
                         'email' => $google_user->getEmail(),
                         'google_id' => $google_user->getId(),
                         'password' => null, // ไม่จำเป็นต้องมีรหัสผ่าน
                     ]);
                 } else {
-                    // ถ้าอีเมลมีอยู่แล้วแต่ไม่มี Google ID ให้ทำการอัปเดต Google ID
+                    // ถ้าผู้ใช้งานมีอยู่แล้วและต้องการอัปเดตข้อมูล
                     $user->update([
-                        'google_id' => $google_user->getId(),
+                        'name' => $google_user->getName(), // อัปเดตชื่อเต็ม
+                        'google_id' => $google_user->getId(), // อัปเดต Google ID
+                        'email' => $google_user->getEmail(), // อัปเดตอีเมล หากจำเป็น
                     ]);
                 }
             }
+
 
             // เข้าสู่ระบบ
             Auth::login($user);

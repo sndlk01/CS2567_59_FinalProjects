@@ -29,7 +29,6 @@ class StudentsTableSeeder extends Seeder
                 'card_id' => '1234567890123',
                 'phone' => '0823456789',
                 'email' => 'chakit.p@kkumail.com',
-                // 'user_id' => $users-> , //+2
             ],
             // [
             //     'student_id' => '643021342-5',
@@ -55,8 +54,7 @@ class StudentsTableSeeder extends Seeder
                 Students::create([
                     'student_id' => $student['student_id'],
                     'prefix' => $student['prefix'],
-                    'fname' => $student['fname'],
-                    'lname' => $student['lname'],
+                    'name' => $student['name'],
                     'card_id' => $student['card_id'],
                     'phone' => $student['phone'],
                     'email' => $student['email'],
