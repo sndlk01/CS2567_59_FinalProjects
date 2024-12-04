@@ -20,23 +20,20 @@
                                 </div>
                                 <div class="col-md-4">
                                     <input type="text" class="form-control" placeholder="ชื่อ"
-                                        value="{{ Auth::user()->fname ?? 'N/A : ชื่อ' }}" disabled>
-                                </div>
-                                <div class="col-md-4">
-                                    <input type="text" class="form-control" placeholder="นามสกุล"
-                                        value="{{ Auth::user()->lname ?? 'N/A : นามสกุล' }}" disabled>
+                                        value="{{ Auth::user()->name ?? 'N/A : ชื่อ' }}" disabled>
                                 </div>
                                 <div class="col-md-3">
                                     <input type="tel" class="form-control" placeholder="รหัสนักศึกษา"
                                         value="{{ Auth::user()->student_id ?? 'N/A : นักศึกษา' }}" disabled>
                                 </div>
-                            </div>
-
-                            <div class="row mb-3">
                                 <div class="col-md-4">
                                     <input type="text" class="form-control" placeholder="อีเมล"
                                         value="{{ Auth::user()->email ?? 'N/A : อีเมล' }}" disabled>
                                 </div>
+                            </div>
+
+                            <div class="row mb-3">
+
                                 <div class="col-md-4">
                                     <input type="text" class="form-control" placeholder="รหัสบัตรประจำตัวประชาชน"
                                         value="{{ Auth::user()->card_id ?? 'N/A : รหัสบัตรประจำตัวประชาชน' }}" disabled>
@@ -95,12 +92,6 @@
                             <div class="mb-3">
                                 <small class="text-danger">*** นักศึกษาสามารถเป็นผู้ช่วยสอนได้ไม่เกิน 3 รายวิชา</small>
                             </div>
-
-                            {{-- <div id="sectionsContainer" class="mb-4">
-                                <label for="section_num">กรอกเลขเซคชัน:</label>
-                                <input type="number" name="section_num" class="form-control" placeholder="กรอกเลขเซคชัน"
-                                    required>
-                            </div> --}}
 
                             <button type="submit" class="btn btn-success">ยืนยันการสมัคร</button>
 

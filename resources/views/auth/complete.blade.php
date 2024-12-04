@@ -32,16 +32,9 @@
 
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label for="fname" class="form-label">ชื่อ</label>
-                                <input type="text" class="form-control @error('fname') is-invalid @enderror" id="fname" name="fname" value="{{ old('fname', $user->fname) }}">
-                                @error('fname')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="lname" class="form-label">นามสกุล</label>
-                                <input type="text" class="form-control @error('lname') is-invalid @enderror" id="lname" name="lname" value="{{ old('lname', $user->lname) }}">
-                                @error('lname')
+                                <label for="name" class="form-label">ชื่อ</label>
+                                <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name', $user->name) }}">
+                                @error('name')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>

@@ -15,8 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('prefix', 256);
             $table->string('student_id', 11);
-            $table->string('fname', 1024);
-            $table->string('lname', 1024);
+            $table->string('name', 1024);
             $table->string('card_id', 13);
             $table->string('phone', 11);
             $table->string('email', 1024);
