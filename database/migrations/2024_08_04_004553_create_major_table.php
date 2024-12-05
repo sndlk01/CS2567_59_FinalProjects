@@ -19,7 +19,7 @@ return new class extends Migration
             $table->unsignedBigInteger('cur_id');
             $table->char('status', 1);
             
-            $table->foreign('cur_id')->references('id')->on('curriculums')->onDelete('cascade');
+            $table->foreign('cur_id')->references('cur_id')->on('curriculums')->onDelete('cascade');
             $table->timestamps();
         });
     }
