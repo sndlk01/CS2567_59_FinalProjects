@@ -26,7 +26,7 @@ return new class extends Migration
             $table->unsignedBigInteger('teaching_id');
             $table->unsignedBigInteger('class_id');
 
-            $table->foreign('teacher_id')->references('id')->on('teachers')->onDelete('cascade');
+            $table->foreign('teacher_id')->references('teacher_id')->on('teachers')->onDelete('cascade');
             $table->foreign('teaching_id')->references('id')->on('teaching')->onDelete('cascade');
             $table->foreign('class_id')->references('id')->on('classes')->onDelete('cascade');
             $table->timestamps();

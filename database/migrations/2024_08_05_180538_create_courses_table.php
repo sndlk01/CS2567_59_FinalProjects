@@ -20,7 +20,7 @@ return new class extends Migration
             $table->unsignedBigInteger('major_id')->nullable(); 
             $table->unsignedBigInteger('cur_id');
             $table->foreign('subject_id')->references('subject_id')->on('subjects');
-            $table->foreign('owner_teacher_id')->references('id')->on('teachers');
+            $table->foreign('owner_teacher_id')->references('teacher_id')->on('teachers');
             $table->foreign('semesters_id')->references('id')->on('semesters');
             $table->foreign('major_id')->references('id')->on('major');
             $table->foreign('cur_id')->references('id')->on('curriculums');

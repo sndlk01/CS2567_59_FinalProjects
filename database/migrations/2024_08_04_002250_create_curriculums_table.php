@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name_th'); 
             $table->string('name_en'); 
-            $table->foreignId('head_teacher_id')->constrained('teachers')->onDelete('cascade');
+            $table->foreignId('head_teacher_id')->references('teacher_id')->on('teachers')->onDelete('cascade');
             $table->timestamps();
         });
     }
