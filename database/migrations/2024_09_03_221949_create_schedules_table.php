@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('schedules', function (Blueprint $table) {
-            $table->id();
+            $table->id('schedule_id');
             $table->enum('class_day', ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']);
             $table->time('start_time');
             $table->time('end_time');
@@ -21,7 +21,7 @@ return new class extends Migration
             $table->char('class_type', 1);
             $table->unsignedBigInteger('class_id');
 
-            $table->foreign('class_id')->references('id')->on('classes');
+            $table->foreign('class_id')->references('class_id')->on('classes');
 
             $table->timestamps();
         });

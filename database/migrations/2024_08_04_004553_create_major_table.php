@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('major', function (Blueprint $table) {
-            $table->id();
+            $table->id('major_id');
             $table->string('name_th', 1024);
             $table->string('name_en', 1024);
             $table->enum('major_type', ['N', 'S']); // normal and specials

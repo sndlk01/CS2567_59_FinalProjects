@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('classes', function (Blueprint $table) {
-            $table->id(); // 'id' คอลัมน์หลักที่เป็น AUTO_INCREMENT
+            $table->id('class_id'); // 'id' คอลัมน์หลักที่เป็น AUTO_INCREMENT
             $table->integer('section_num')->unsigned(); // ลบ AUTO_INCREMENT
             $table->string('title', 45); // section
             $table->integer('open_num'); // เปิดรับกี่คน
@@ -24,8 +24,8 @@ return new class extends Migration
             $table->unsignedBigInteger('major_id');
             $table->foreign('teacher_id')->references('teacher_id')->on('teachers');
             $table->foreign('course_id')->references('course_id')->on('courses');
-            $table->foreign('semester_id')->references('id')->on('semesters');
-            $table->foreign('major_id')->references('id')->on('major');
+            $table->foreign('semester_id')->references('semester_id')->on('semesters');
+            $table->foreign('major_id')->references('major_id')->on('major');
             $table->timestamps();
         });
     }

@@ -18,9 +18,12 @@ return new class extends Migration
             $table->integer('credits'); 
             $table->string('weight', 20); 
             $table->string('detail', 1024); 
-            $table->foreignId('cur_id')->constrained('curriculums')->onDelete('cascade'); 
+            $table->unsignedBigInteger('cur_id',); 
             $table->char('status', 1);
             $table->timestamps(); 
+
+            $table->foreign('cur_id')->references('cur_id')->on('curriculums');
+
         });
     }
 
