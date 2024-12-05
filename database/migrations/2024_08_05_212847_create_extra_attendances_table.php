@@ -22,7 +22,7 @@ return new class extends Migration
 
             $table->foreign('class_type')->references('class_type_id')->on('class_type')->onDelete('cascade');
             $table->foreign('student_id')->references('id')->on('students')->onDelete('cascade');
-            $table->foreign('course_id')->references('id')->on('courses')->onDelete('cascade');
+            $table->foreign('course_id')->references('course_id')->on('courses')->onDelete('cascade');
             $table->timestamps();
         });
     }
