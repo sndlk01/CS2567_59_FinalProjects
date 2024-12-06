@@ -44,6 +44,16 @@
                                 </div>
                             </div>
 
+                            <div class="col-md-6">
+                                <strong>ภาคการศึกษาปัจจุบัน:</strong> 
+                                {{ $currentSemester['semester'] }}/{{ $currentSemester['year'] }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>ระยะเวลาของภาคการศึกษา:</strong> 
+                                {{ \Carbon\Carbon::parse($currentSemester['start_date'])->format('d/m/Y') }} - 
+                                {{ \Carbon\Carbon::parse($currentSemester['end_date'])->format('d/m/Y') }}
+                            </div>
+
                             <!-- พื้นที่แสดงรายวิชาที่เลือก -->
                             <div class="mb-3">
                                 <label>วิชาที่คุณเลือก:</label>
@@ -53,21 +63,26 @@
                             {{-- ส่วนของการเลือกวิชา --}}
                             <div class="mb-3">
                                 <label class="form-label">เลือกรายวิชาและเซคชันที่ต้องการสมัคร</label>
+                                <input type="text" id="subjectSearch" class="form-control mb-3"
+                                        placeholder="ค้นหารายวิชา...">
                                 <div class="subject-container"
                                     style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
                                     {{-- ส่วนสำหรับการค้นหารายวิชา --}}
-                                    <input type="text" id="subjectSearch" class="form-control mb-3"
-                                        placeholder="ค้นหารายวิชา...">
+                                    
                                     @foreach ($subjectsWithSections as $index => $item)
                                         <div class="subject-item mb-3">
                                             <div class="form-check">
                                                 <input class="form-check-input subject-checkbox" type="checkbox"
                                                     name="applications[{{ $index }}][subject_id]"
-                                                    value="{{ $item['subject']->subject_id }}"
-                                                    id="subject{{ $item['subject']->subject_id }}">
+                                                    value="{{ $item['subject']['subject_id'] }}"
+                                                    id="subject{{ $item['subject']['subject_id'] }}">
                                                 <label class="form-check-label"
-                                                    for="subject{{ $item['subject']->subject_id }}">
-                                                    {{ $item['subject']->subject_id }} {{ $item['subject']->name_en }}
+                                                    for="subject{{ $item['subject']['subject_id'] }}">
+                                                    {{ $item['subject']['subject_id'] }}
+                                                    {{ $item['subject']['subject_name_th'] }}
+                                                    <br>
+                                                    <small
+                                                        class="text-muted">{{ $item['subject']['subject_name_en'] }}</small>
                                                 </label>
                                             </div>
                                             <div class="sections-container ml-4 mt-2" style="display: none;">
@@ -76,9 +91,9 @@
                                                         <input class="form-check-input section-checkbox" type="checkbox"
                                                             name="applications[{{ $index }}][sections][]"
                                                             value="{{ $section }}"
-                                                            id="section-{{ $item['subject']->subject_id }}-{{ $section }}">
+                                                            id="section-{{ $item['subject']['subject_id'] }}-{{ $section }}">
                                                         <label class="form-check-label"
-                                                            for="section-{{ $item['subject']->subject_id }}-{{ $section }}">
+                                                            for="section-{{ $item['subject']['subject_id'] }}-{{ $section }}">
                                                             Section {{ $section }}
                                                         </label>
                                                     </div>
