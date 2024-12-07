@@ -22,6 +22,7 @@ return new class extends Migration
             $table->unsignedBigInteger('course_id'); 
             $table->unsignedBigInteger('semester_id'); 
             $table->unsignedBigInteger('major_id');
+            $table->string('status',3);
             $table->foreign('teacher_id')->references('teacher_id')->on('teachers');
             $table->foreign('course_id')->references('course_id')->on('courses');
             $table->foreign('semester_id')->references('semester_id')->on('semesters');

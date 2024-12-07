@@ -312,7 +312,13 @@ class TaController extends Controller
                             'section_num' => $class['section_num'],
                             'course_id' => $localCourse->course_id,
                             'title' => $class['title'] ?? null,
-                            'status' => $class['status']
+                            'status' => $class['status'],
+                            'open_num' => $class['open_num'] ?? 0,        // เพิ่มฟิลด์ที่จำเป็น
+                            'enrolled_num' => $class['enrolled_num'] ?? 0, // กำหนดค่าเริ่มต้นเป็น 0
+                            'available_num' => $class['available_num'] ?? 0,
+                            'teacher_id' => $class['teacher_id'],         // ต้องระบุค่า foreign key
+                            'semester_id' => $class['semester_id'],       // ต้องระบุค่า foreign key
+                            'major_id' => $class['major_id']             // ต้องระบุค่า foreign key
                         ]
                     );
 
