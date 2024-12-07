@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Services\TDBMApiService;
-
+use Yoeunes\Toastr\Facades\Toastr;
 
 
 class TaController extends Controller
@@ -177,7 +177,8 @@ class TaController extends Controller
                 })->first();
 
             if (!$currentSemester) {
-                return redirect()->back()->with('error', 'ไม่อยู่ในช่วงเวลารับสมัคร');
+                Toastr()->error('ไม่อยู่ในช่วงเวลารับสมัคร', 'เกิดข้อผิดพลาด!');
+                return redirect()->back();
             }
 
             // 4. Create or update semester
@@ -211,7 +212,8 @@ class TaController extends Controller
             // 6. Check course limit
             $currentCourseCount = CourseTas::where('student_id', $student->id)->count();
             if ($currentCourseCount + count($applications) > 3) {
-                return redirect()->back()->with('error', 'คุณไม่สามารถสมัครเป็นผู้ช่วยสอนได้เกิน 3 วิชา');
+                Toastr()->warning('คุณไม่สามารถสมัครเป็นผู้ช่วยสอนได้เกิน 3 วิชา', 'คำเตือน!');
+                return redirect()->back();
             }
 
             // 7. Process each application
@@ -226,14 +228,16 @@ class TaController extends Controller
 
                 if (!$course) {
                     DB::rollBack();
-                    return redirect()->back()->with('error', 'ไม่พบรายวิชา ' . $subjectId . ' ในระบบ');
+                    Toastr()->error('ไม่พบรายวิชา ' . $subjectId . ' ในระบบ', 'เกิดข้อผิดพลาด!');
+                    return redirect()->back();
                 }
 
                 // Get subject data
                 $subjectData = $subjects->where('subject_id', $course['subject_id'])->first();
                 if (!$subjectData) {
                     DB::rollBack();
-                    return redirect()->back()->with('error', 'ไม่พบข้อมูลรายวิชา ' . $subjectId);
+                    Toastr()->error('ไม่พบข้อมูลรายวิชา ' . $subjectId, 'เกิดข้อผิดพลาด!');
+                    return redirect()->back();
                 }
 
                 // Check duplicate
@@ -243,7 +247,8 @@ class TaController extends Controller
 
                 if ($existingTA) {
                     DB::rollBack();
-                    return redirect()->back()->with('error', 'คุณได้สมัครเป็นผู้ช่วยสอนในวิชา ' . $subjectId . ' แล้ว');
+                    Toastr()->warning('คุณได้สมัครเป็นผู้ช่วยสอนในวิชา ' . $subjectId . ' แล้ว', 'คำเตือน!');
+                    return redirect()->back();
                 }
 
                 // Create subject
@@ -273,7 +278,8 @@ class TaController extends Controller
                         'subject_id' => $subjectId
                     ]);
                     DB::rollBack();
-                    return redirect()->back()->with('error', 'ไม่พบข้อมูลอาจารย์ผู้สอนสำหรับรายวิชา ' . $subjectId);
+                    Toastr()->error('ไม่พบข้อมูลอาจารย์ผู้สอนสำหรับรายวิชา ' . $subjectId, 'เกิดข้อผิดพลาด!');
+                    return redirect()->back();
                 }
 
                 // สร้าง course โดยตรวจสอบข้อมูลที่จำเป็นทั้งหมด
@@ -303,7 +309,8 @@ class TaController extends Controller
 
                     if (!$class) {
                         DB::rollBack();
-                        return redirect()->back()->with('error', 'ไม่พบเซคชัน ' . $sectionNum . ' สำหรับวิชา ' . $subjectId);
+                        Toastr()->error('ไม่พบเซคชัน ' . $sectionNum . ' สำหรับวิชา ' . $subjectId, 'เกิดข้อผิดพลาด!');
+                        return redirect()->back();
                     }
 
                     $localClass = Classes::firstOrCreate(
@@ -337,11 +344,13 @@ class TaController extends Controller
             }
 
             DB::commit();
-            return redirect()->route('layout.ta.request')->with('success', 'สมัครเป็นผู้ช่วยสอนสำเร็จ');
+            Toastr()->success('สมัครเป็นผู้ช่วยสอนสำเร็จ', 'สำเร็จ!');
+            return redirect()->route('layout.ta.request');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
+            Toastr()->error('เกิดข้อผิดพลาด: ' . $e->getMessage(), 'เกิดข้อผิดพลาด!');
+            return redirect()->back();
         }
     }
 
