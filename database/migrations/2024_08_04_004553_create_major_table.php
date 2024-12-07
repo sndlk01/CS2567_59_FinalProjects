@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('major', function (Blueprint $table) {
             $table->id('major_id');
-            $table->string('name_th', 1024);
-            $table->string('name_en', 1024);
+            $table->string('name_th', 1024)->nullable();
+            $table->string('name_en', 1024)->nullable();
             $table->enum('major_type', ['N', 'S']); // normal and specials
             $table->unsignedBigInteger('cur_id');
             $table->char('status', 1);

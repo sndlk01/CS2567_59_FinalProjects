@@ -13,6 +13,8 @@ use App\Models\Students;
 use App\Models\Announce;
 use App\Models\Requests;
 use App\Models\CourseTas;
+use App\Models\Curriculums;
+use App\Models\Semesters;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -66,7 +68,7 @@ class TaController extends Controller
     {
         // Get current semester
         $currentSemester = collect($this->tdbmService->getSemesters())
-        // ตรวจสอบว่าวันที่ปัจจุบันอยู่ระหว่าง start_date และ end_date
+            // ตรวจสอบว่าวันที่ปัจจุบันอยู่ระหว่าง start_date และ end_date
             ->filter(function ($semester) {
                 $startDate = \Carbon\Carbon::parse($semester['start_date']);
                 $endDate = \Carbon\Carbon::parse($semester['end_date']);
@@ -148,91 +150,195 @@ class TaController extends Controller
 
     public function apply(Request $request)
     {
-        $user = Auth::user();
+        try {
+            DB::beginTransaction();
 
-        // Validate the incoming request data
-        $request->validate([
-            'applications' => 'required|array|min:1|max:3',
-            'applications.*.subject_id' => 'required|exists:subjects,subject_id',
-            'applications.*.sections' => 'required|array|min:1',
-            'applications.*.sections.*' => 'required|numeric',
-        ]);
+            // 1. Validate request
+            $request->validate([
+                'applications' => 'required|array|min:1|max:3',
+                'applications.*.subject_id' => 'required',
+                'applications.*.sections' => 'required|array|min:1',
+                'applications.*.sections.*' => 'required|numeric',
+            ]);
 
-        // Create or update the student record
-        $student = Students::updateOrCreate(
-            ['user_id' => $user->id],
-            [
-                'prefix' => $user->prefix,
-                'fname' => $user->fname,
-                'lname' => $user->lname,
-                'student_id' => $user->student_id,
-                'email' => $user->email,
-                'card_id' => $user->card_id,
-                'phone' => $user->phone,
-            ]
-        );
+            $user = Auth::user();
 
-        $applications = $request->input('applications');
+            // 2. Get API data
+            $courses = collect($this->tdbmService->getCourses());
+            $studentClasses = collect($this->tdbmService->getStudentClasses());
+            $subjects = collect($this->tdbmService->getSubjects());
 
-        $currentCourseCount = CourseTas::where('student_id', $student->id)->count();
-        if ($currentCourseCount + count($applications) > 3) {
-            return redirect()->back()->with('error', 'คุณไม่สามารถสมัครเป็นผู้ช่วยสอนได้เกิน 3 วิชา');
-        }
+            // 3. Get current semester
+            $currentSemester = collect($this->tdbmService->getSemesters())
+                ->filter(function ($semester) {
+                    $startDate = \Carbon\Carbon::parse($semester['start_date']);
+                    $endDate = \Carbon\Carbon::parse($semester['end_date']);
+                    return now()->between($startDate, $endDate);
+                })->first();
 
-        foreach ($applications as $application) {
-            $subjectId = $application['subject_id'];
-            $sectionNums = $application['sections'];
+            if (!$currentSemester) {
+                return redirect()->back()->with('error', 'ไม่อยู่ในช่วงเวลารับสมัคร');
+            }
 
-            // Find the course with the matching subject_id
-            $course = Courses::where('subject_id', $subjectId)->first();
+            // 4. Create or update semester
+            $localSemester = Semesters::firstOrCreate(
+                [
+                    'semester_id' => $currentSemester['semester_id']
+                ],
+                [
+                    'year' => intval($currentSemester['year']),
+                    'semesters' => intval($currentSemester['semester']), // แก้จาก semester เป็น semesters
+                    'start_date' => $currentSemester['start_date'],
+                    'end_date' => $currentSemester['end_date']
+                ]
+            );
 
-            if ($course) {
-                // Check if the user has already applied for this course
+            // 5. Create or update student
+            $student = Students::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'prefix' => $user->prefix,
+                    'name' => $user->name,
+                    'student_id' => $user->student_id,
+                    'email' => $user->email,
+                    'card_id' => $user->card_id,
+                    'phone' => $user->phone,
+                ]
+            );
+
+            $applications = $request->input('applications');
+
+            // 6. Check course limit
+            $currentCourseCount = CourseTas::where('student_id', $student->id)->count();
+            if ($currentCourseCount + count($applications) > 3) {
+                return redirect()->back()->with('error', 'คุณไม่สามารถสมัครเป็นผู้ช่วยสอนได้เกิน 3 วิชา');
+            }
+
+            // 7. Process each application
+            foreach ($applications as $application) {
+                $subjectId = $application['subject_id'];
+                $sectionNums = $application['sections'];
+
+                // Find course from API
+                $course = $courses->where('subject_id', $subjectId)
+                    ->where('semester_id', $currentSemester['semester_id'])
+                    ->first();
+
+                if (!$course) {
+                    DB::rollBack();
+                    return redirect()->back()->with('error', 'ไม่พบรายวิชา ' . $subjectId . ' ในระบบ');
+                }
+
+                // Get subject data
+                $subjectData = $subjects->where('subject_id', $course['subject_id'])->first();
+                if (!$subjectData) {
+                    DB::rollBack();
+                    return redirect()->back()->with('error', 'ไม่พบข้อมูลรายวิชา ' . $subjectId);
+                }
+
+                // Check duplicate
                 $existingTA = CourseTas::where('student_id', $student->id)
-                    ->where('course_id', $course->id)
+                    ->where('course_id', $course['course_id'])
                     ->first();
 
                 if ($existingTA) {
+                    DB::rollBack();
                     return redirect()->back()->with('error', 'คุณได้สมัครเป็นผู้ช่วยสอนในวิชา ' . $subjectId . ' แล้ว');
                 }
 
-                // สร้าง course_ta
-                $courseTA = CourseTas::create([
-                    'student_id' => $student->id,
-                    'course_id' => $course->id,
+                // Create subject
+                $localSubject = Subjects::firstOrCreate(
+                    ['subject_id' => $subjectData['subject_id']],
+                    [
+                        'name_th' => $subjectData['name_th'],
+                        'name_en' => $subjectData['name_en'],
+                        'credit' => $subjectData['credit'],
+                        'cur_id' => $subjectData['cur_id'],
+                        'weight' => $subjectData['weight'] ?? null,
+                        'detail' => $subjectData['detail'] ?? null,
+                        'status' => 'A'
+                    ]
+                );
+
+                // Debug ข้อมูลที่ได้จาก API ก่อนสร้าง course
+                \Log::info('Course data from API:', [
+                    'course' => $course,
+                    'owner_teacher_id' => $course['owner_teacher_id'] ?? null
                 ]);
 
+                // ตรวจสอบว่ามี owner_teacher_id ก่อนสร้าง course
+                if (!isset($course['owner_teacher_id']) || empty($course['owner_teacher_id'])) {
+                    \Log::error('Missing owner_teacher_id:', [
+                        'course_id' => $course['course_id'],
+                        'subject_id' => $subjectId
+                    ]);
+                    DB::rollBack();
+                    return redirect()->back()->with('error', 'ไม่พบข้อมูลอาจารย์ผู้สอนสำหรับรายวิชา ' . $subjectId);
+                }
+
+                // สร้าง course โดยตรวจสอบข้อมูลที่จำเป็นทั้งหมด
+                $localCourse = Courses::firstOrCreate(
+                    ['course_id' => $course['course_id']],
+                    [
+                        'subject_id' => $localSubject->subject_id,
+                        'semester_id' => $localSemester->semester_id,
+                        'owner_teacher_id' => $course['owner_teacher_id'], // ต้องไม่เป็น null
+                        'major_id' => $course['major_id'] ?: null,  // ถ้าไม่มีให้เป็น null
+                        'cur_id' => $course['cur_id'] ?: '1',      // ถ้าไม่มีให้เป็น '1'
+                        'status' => $course['status'] ?: 'A'       // ถ้าไม่มีให้เป็น 'A'
+                    ]
+                );
+
+                // Create course TA
+                $courseTA = CourseTas::create([
+                    'student_id' => $student->id,
+                    'course_id' => $localCourse->course_id,
+                ]);
+
+                // Process sections
                 foreach ($sectionNums as $sectionNum) {
-                    // ตรวจสอบว่า section_num มีใน classes หรือไม่
-                    $class = Classes::where('section_num', $sectionNum)
-                        ->where('course_id', $course->id)
+                    $class = $studentClasses->where('course_id', $course['course_id'])
+                        ->where('section_num', $sectionNum)
                         ->first();
 
-                    if ($class) {
-                        // สร้าง course_ta_classes
-                        $courseTaClass = CourseTaClasses::create([
-                            'class_id' => $class->id,
-                            'course_ta_id' => $courseTA->id,
-                        ]);
-
-                        // Save to requests table
-                        Requests::create([
-                            'course_ta_class_id' => $courseTaClass->id,
-                            'status' => 'W', // Pending status
-                            'comment' => null,
-                            'approved_at' => null,
-                        ]);
-                    } else {
+                    if (!$class) {
+                        DB::rollBack();
                         return redirect()->back()->with('error', 'ไม่พบเซคชัน ' . $sectionNum . ' สำหรับวิชา ' . $subjectId);
                     }
-                }
-            } else {
-                return redirect()->back()->with('error', 'ไม่พบรายวิชา ' . $subjectId . ' ในระบบ');
-            }
-        }
 
-        return redirect()->route('layout.ta.request')->with('success', 'สมัครเป็นผู้ช่วยสอนสำเร็จ');
+                    $localClass = Classes::firstOrCreate(
+                        ['class_id' => $class['class_id']],
+                        [
+                            'section_num' => $class['section_num'],
+                            'course_id' => $localCourse->course_id,
+                            'title' => $class['title'] ?? null,
+                            'status' => $class['status']
+                        ]
+                    );
+
+                    $courseTaClass = CourseTaClasses::create([
+                        'class_id' => $localClass->class_id,
+                        'course_ta_id' => $courseTA->id,
+                    ]);
+
+                    Requests::create([
+                        'course_ta_class_id' => $courseTaClass->id,
+                        'status' => 'W',
+                        'comment' => null,
+                        'approved_at' => null,
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return redirect()->route('layout.ta.request')->with('success', 'สมัครเป็นผู้ช่วยสอนสำเร็จ');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
+        }
     }
+
     public function getSections($course_id)
     {
         // ดึง sections ทั้งหมดของ course_id นั้น

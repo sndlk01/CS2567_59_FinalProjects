@@ -21,7 +21,7 @@ class CourseTas extends Model
 
     public function course()
     {
-        return $this->belongsTo(Courses::class, 'course_id', 'id');
+        return $this->belongsTo(Courses::class, 'course_id', 'course_id');
     }
 
     public function requests()

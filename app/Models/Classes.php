@@ -22,6 +22,7 @@ class Classes extends Model
         'courses_id',
         'semesters_id',
         'major_id',
+        'status'
     ];
 
 

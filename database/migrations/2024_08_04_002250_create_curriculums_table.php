@@ -13,9 +13,9 @@ return new class extends Migration
     {
         Schema::create('curriculums', function (Blueprint $table) {
             $table->unsignedBigInteger('cur_id')->primary();
-            $table->string('name_th'); 
-            $table->string('name_en'); 
-            $table->foreignId('head_teacher_id')->references('teacher_id')->on('teachers')->onDelete('cascade');
+            $table->string('name_th')->nullable(); 
+            $table->string('name_en')->nullable(); 
+            $table->foreignId('head_teacher_id')->nullable()->references('teacher_id')->on('teachers')->onDelete('cascade');
             $table->timestamps();
         });
     }
