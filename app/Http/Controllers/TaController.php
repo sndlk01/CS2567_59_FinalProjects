@@ -15,18 +15,14 @@ use App\Models\Requests;
 use App\Models\CourseTas;
 use App\Models\Curriculums;
 use App\Models\Semesters;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\{Auth, DB, Log};
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
 use App\Services\TDBMApiService;
 use Yoeunes\Toastr\Facades\Toastr;
 
 
 class TaController extends Controller
 {
-
-
-
     // public function __construct()
     // {
     //     $this->middleware('auth');
@@ -266,14 +262,14 @@ class TaController extends Controller
                 );
 
                 // Debug ข้อมูลที่ได้จาก API ก่อนสร้าง course
-                \Log::info('Course data from API:', [
+                Log::info('Course data from API:', [
                     'course' => $course,
                     'owner_teacher_id' => $course['owner_teacher_id'] ?? null
                 ]);
 
                 // ตรวจสอบว่ามี owner_teacher_id ก่อนสร้าง course
                 if (!isset($course['owner_teacher_id']) || empty($course['owner_teacher_id'])) {
-                    \Log::error('Missing owner_teacher_id:', [
+                    Log::error('Missing owner_teacher_id:', [
                         'course_id' => $course['course_id'],
                         'subject_id' => $subjectId
                     ]);
