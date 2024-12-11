@@ -96,10 +96,24 @@
                                             {{ $teaching->teacher_id->name }}
                                         </td>
                                         <td>
-                                            @if ($teaching->status === 'S')
+                                            {{-- @if ($teaching->status === 'S')
                                                 <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
                                             @else
                                                 <span class="badge bg-danger">เข้าปฏิบัติการสอน</span>
+                                            @endif --}}
+                                            {{-- @if ($teaching->status === 'S')
+                                                <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
+                                            @elseif ($teaching->status === 'L')
+                                                <span class="badge bg-warning">ลา</span>
+                                            @else
+                                                <span class="badge bg-secondary">รอการลงเวลา</span>
+                                            @endif --}}
+                                            @if ($teaching->attendance && $teaching->attendance->status === 'เข้าปฏิบัติการสอน')
+                                                <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
+                                            @elseif ($teaching->attendance && $teaching->attendance->status === 'ลา')
+                                                <span class="badge bg-warning">ลา</span>
+                                            @else
+                                                <span class="badge bg-secondary">รอการลงเวลา</span>
                                             @endif
                                         </td>
                                         <td>{{ $teaching->attendance->note ?? '-' }}</td>

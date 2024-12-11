@@ -394,77 +394,89 @@ class TaController extends Controller
     //             return redirect()->back()->with('error', 'กรุณาระบุ Class ID');
     //         }
 
-    //         DB::beginTransaction(); // เริ่ม transaction
+    //         DB::beginTransaction();
 
-    //         // Get data from API
-    //         $teachings = collect($this->tdbmService->getTeachings())
+    //         // 1. Get and store data from API
+    //         $apiTeachings = collect($this->tdbmService->getTeachings())
     //             ->filter(function ($teaching) use ($id) {
     //                 return $teaching['class_id'] == $id;
     //             });
 
-    //         if ($teachings->isEmpty()) {
+    //         if ($apiTeachings->isEmpty()) {
     //             session()->flash('info', 'ยังไม่มีข้อมูลการสอนสำหรับรายวิชานี้');
     //             return view('layouts.ta.teaching', ['teachings' => []]);
     //         }
 
-    //         // Get related data from API
-    //         $classes = collect($this->tdbmService->getStudentClasses());
-    //         $teachers = collect($this->tdbmService->getTeachers());
+    //         // 2. Get related API data
+    //         $apiClasses = collect($this->tdbmService->getStudentClasses());
+    //         $apiTeachers = collect($this->tdbmService->getTeachers());
 
-    //         // Process and save each teaching record
-    //         $processedTeachings = $teachings->map(function ($teaching) use ($classes, $teachers) {
-    //             $class = $classes->firstWhere('class_id', $teaching['class_id']);
-    //             $teacher = $teachers->firstWhere('teacher_id', $teaching['teacher_id']);
-
-    //             // บันทึกข้อมูลลง local database
-    //             $localTeaching = Teaching::firstOrCreate(
+    //         // 3. Save API data to local DB
+    //         foreach ($apiTeachings as $teaching) {
+    //             Teaching::updateOrCreate(
     //                 ['teaching_id' => $teaching['teaching_id']],
     //                 [
     //                     'start_time' => $teaching['start_time'],
     //                     'end_time' => $teaching['end_time'],
     //                     'duration' => $teaching['duration'],
-    //                     'class_type' => $teaching['class_type'] ?? 'N', // ถ้าไม่มีให้เป็น 'N'
-    //                     'status' => $teaching['status'] ?? 'W',         // ถ้าไม่มีให้เป็น 'W'
+    //                     'class_type' => $teaching['class_type'] ?? 'N',
+    //                     'status' => $teaching['status'] ?? 'W',
     //                     'class_id' => $teaching['class_id'],
     //                     'teacher_id' => $teaching['teacher_id']
     //                 ]
     //             );
+    //         }
 
-    //             // สร้าง object สำหรับส่งไป view
-    //             return (object)[
-    //                 'id' => $localTeaching->teaching_id,
-    //                 'start_time' => $localTeaching->start_time,
-    //                 'end_time' => $localTeaching->end_time,
-    //                 'duration' => $localTeaching->duration,
-    //                 'status' => $localTeaching->status,
-    //                 'class_id' => (object)[
-    //                     'title' => $class['title'] ?? 'N/A',
-    //                 ],
-    //                 'teacher_id' => (object)[
-    //                     'position' => $teacher['position'] ?? '',
-    //                     'degree' => $teacher['degree'] ?? '',
-    //                     'name' => $teacher['name'] ?? '',
-    //                 ],
-    //                 'attendance' => (object)[
-    //                     'note' => $teaching['note'] ?? ''
-    //                 ]
-    //             ];
-    //         })->sortBy('start_time');
+    //         // 4. Fetch data from local DB with relationships
+    //         $localTeachings = Teaching::with(['class', 'teacher', 'attendance'])
+    //             ->where('class_id', $id)
+    //             ->orderBy('start_time', 'asc')
+    //             ->get()
+    //             ->map(function ($teaching) use ($apiClasses, $apiTeachers) {
+    //                 $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
+    //                 $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
 
-    //         DB::commit(); // ยืนยัน transaction
+    //                 return (object)[
+    //                     'id' => $teaching->teaching_id,
+    //                     'start_time' => $teaching->start_time,
+    //                     'end_time' => $teaching->end_time,
+    //                     'duration' => $teaching->duration,
+    //                     'status' => $teaching->status,
+    //                     'class_id' => (object)[
+    //                         'title' => $class['title'] ?? 'N/A',
+    //                     ],
+    //                     'teacher_id' => (object)[
+    //                         'position' => $teacher['position'] ?? '',
+    //                         'degree' => $teacher['degree'] ?? '',
+    //                         'name' => $teacher['name'] ?? 'N/A',
+    //                     ],
+    //                     'attendance' => $teaching->attendance ? (object)[
+    //                         'note' => $teaching->attendance->note ?? ''
+    //                     ] : (object)[
+    //                         'note' => ''
+    //                     ]
+    //                 ];
+    //             });
+
+    //         DB::commit();
+
+    //         // 5. Debug logging
+    //         Log::info('Local Teachings:', [
+    //             'count' => $localTeachings->count(),
+    //             'first_item' => $localTeachings->first()
+    //         ]);
 
     //         return view('layouts.ta.teaching', [
-    //             'teachings' => $processedTeachings
+    //             'teachings' => $localTeachings
     //         ]);
     //     } catch (\Exception $e) {
-    //         DB::rollBack(); // ถ้าเกิด error ให้ rollback
+    //         DB::rollBack();
     //         Log::error('Error in showTeachingData: ' . $e->getMessage());
     //         return redirect()
     //             ->back()
     //             ->with('error', 'เกิดข้อผิดพลาดในการแสดงข้อมูลการสอน: ' . $e->getMessage());
     //     }
     // }
-
 
 
     public function showTeachingData($id = null)
@@ -516,12 +528,14 @@ class TaController extends Controller
                     $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
                     $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
 
+                    // ดึงข้อมูล attendance
+                    $attendance = $teaching->attendance;
+
                     return (object)[
                         'id' => $teaching->teaching_id,
                         'start_time' => $teaching->start_time,
                         'end_time' => $teaching->end_time,
                         'duration' => $teaching->duration,
-                        'status' => $teaching->status,
                         'class_id' => (object)[
                             'title' => $class['title'] ?? 'N/A',
                         ],
@@ -530,11 +544,10 @@ class TaController extends Controller
                             'degree' => $teacher['degree'] ?? '',
                             'name' => $teacher['name'] ?? 'N/A',
                         ],
-                        'attendance' => $teaching->attendance ? (object)[
-                            'note' => $teaching->attendance->note ?? ''
-                        ] : (object)[
-                            'note' => ''
-                        ]
+                        'attendance' => $attendance ? (object)[
+                            'status' => $attendance->status,
+                            'note' => $attendance->note ?? ''
+                        ] : null
                     ];
                 });
 
@@ -558,75 +571,83 @@ class TaController extends Controller
         }
     }
 
+
     public function showAttendanceForm($teaching_id)
     {
-        // Find the teaching session by ID
-        $teaching = Teaching::findOrFail($teaching_id);
-        return view('layouts.ta.attendances', compact('teaching'));
+        try {
+            // ดึงข้อมูล teaching จาก local DB
+            $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
+
+            // ถ้ามี attendance แล้วให้ redirect กลับ
+            if ($teaching->attendance) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'คุณได้ลงเวลาการสอนไปแล้ว');
+            }
+
+            return view('layouts.ta.attendances', compact('teaching'));
+        } catch (\Exception $e) {
+            Log::error('Error in showAttendanceForm: ' . $e->getMessage());
+            return redirect()
+                ->back()
+                ->with('error', 'เกิดข้อผิดพลาดในการแสดงฟอร์มลงเวลา');
+        }
     }
-
-    // public function submitAttendance(Request $request, $teaching_id)
-    // {
-    //     // Validate the request
-    //     $request->validate([
-    //         'status' => 'required', // Either 'เข้าปฏิบัติการสอน' or 'ลา'
-    //         'note' => 'nullable|string',
-    //     ]);
-
-    //     $user = Auth::user();
-    //     $student = Students::where('user_id', $user->id)->first();
-
-    //     // Insert into the attendances table
-    //     Attendances::create([
-    //         'status' => $request->status,
-    //         'approve_at' => null,  // Set as null initially
-    //         'approve_user_id' => null,  // Set as null initially
-    //         'note' => $request->note,
-    //         'user_id' => $user->id,
-    //         'teaching_id' => $teaching_id,
-    //         'student_id' => $student->id,
-    //     ]);
-
-    //     // Update the teaching status in the teaching table
-    //     $teaching = Teaching::findOrFail($teaching_id);
-    //     $teaching->status = $request->status === 'เข้าปฏิบัติการสอน' ? 'S' : 'L'; // 'S' for success, 'L' for leave
-    //     $teaching->save();
-
-    //     // Redirect back to the form or some confirmation page
-    //     return redirect()->route('layout.ta.teaching', ['id' => $teaching->class_id])
-    //         ->with('success', 'บันทึกข้อมูลสำเร็จ');
-    // }
-
 
     public function submitAttendance(Request $request, $teaching_id)
     {
-        // Validate the request
-        $request->validate([
-            'status' => 'required', // Either 'เข้าปฏิบัติการสอน' or 'ลา'
-            'note' => 'required|string',  // 'note' is now required
-        ]);
+        try {
+            DB::beginTransaction();
 
-        $user = Auth::user();
-        $student = Students::where('user_id', $user->id)->first();
+            // Validate request
+            $request->validate([
+                'status' => 'required|in:เข้าปฏิบัติการสอน,ลา',
+                'note' => 'required|string|max:255',
+            ], [
+                'status.required' => 'กรุณาเลือกสถานะการเข้าสอน',
+                'note.required' => 'กรุณากรอกงานที่ปฏิบัติ',
+                'note.max' => 'งานที่ปฏิบัติต้องไม่เกิน 255 ตัวอักษร'
+            ]);
 
-        // Insert into the attendances table
-        Attendances::create([
-            'status' => $request->status,
-            'approve_at' => null,  // Set as null initially
-            'approve_user_id' => null,  // Set as null initially
-            'note' => $request->note,
-            'user_id' => $user->id,
-            'teaching_id' => $teaching_id,
-            'student_id' => $student->id,
-        ]);
+            $user = Auth::user();
+            $student = Students::where('user_id', $user->id)->firstOrFail();
+            $teaching = Teaching::findOrFail($teaching_id);
 
-        // Update the teaching status in the teaching table
-        $teaching = Teaching::findOrFail($teaching_id);
-        $teaching->status = $request->status === 'เข้าปฏิบัติการสอน' ? 'S' : 'L'; // 'S' for success, 'L' for leave
-        $teaching->save();
+            // ตรวจสอบว่ามีการลงเวลาไปแล้วหรือไม่
+            if ($teaching->attendance) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'คุณได้ลงเวลาการสอนไปแล้ว');
+            }
 
-        // Redirect back to the form or some confirmation page
-        return redirect()->route('layout.ta.teaching', ['id' => $teaching->class_id])
-            ->with('success', 'บันทึกข้อมูลสำเร็จ');
+            // สร้าง attendance record
+            Attendances::create([
+                'status' => $request->status,
+                'note' => $request->note,
+                'teaching_id' => $teaching_id,
+                'user_id' => $user->id,
+                'student_id' => $student->id,
+                'approve_at' => null,
+                'approve_user_id' => null
+            ]);
+
+            // อัพเดทสถานะใน teaching
+            // $teaching->update([
+            //     'status' => $request->status === 'เข้าปฏิบัติการสอน' ? 'S' : 'L'
+            // ]);
+
+            DB::commit();
+
+            return redirect()
+                ->route('layout.ta.teaching', ['id' => $teaching->class_id])
+                ->with('success', 'บันทึกการลงเวลาสำเร็จ');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error in submitAttendance: ' . $e->getMessage());
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        }
     }
 }

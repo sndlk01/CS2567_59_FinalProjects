@@ -51,7 +51,7 @@ class Teaching extends Model
 
     public function attendance()
     {
-        return $this->hasOne(Attendances::class, 'teaching_id');
+        return $this->hasOne(Attendances::class, 'teaching_id', 'teaching_id');
     }
 
     public function extra_teaching()
