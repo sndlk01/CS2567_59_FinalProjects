@@ -56,7 +56,7 @@ class Courses extends Model
 
     public function course_tas() 
     {
-        return $this->hasMany(CourseTas::class , 'course_id', 'id');
+        return $this->hasMany(CourseTas::class , 'course_id', 'course_id');
     }
 
     public function course_teacher() 

@@ -1,114 +1,94 @@
 @extends('layouts.adminLayout')
 
-@section('title', 'request')
+@section('title', 'ข้อมูลผู้ช่วยสอนรายบุคคล')
 
 @section('content')
 <div class="row">
     <div class="col-12">
         <div class="card mb-4">
-            <!-- <div class="card-header">{{ __('Admin') }}</div> -->
-            <div class="container mt-4">
-
-                <!-- <div class="card mb-4"> -->
-                <div class="card-body">
-                    <div class="row">
-                        <h4 class="mb-4">ข้อมูลผู้ช่วยสอน</h4>
-
-                        <div class="col-md-6">
-                            <p><strong>ชื่อ - นามสกุล:</strong> ชาคริต ปรากฎ</p>
-                            <p><strong>รหัสนักศึกษา:</strong> 643021316-6</p>
-                            <p><strong>ระดับ:</strong> ปริญญาตรี</p>
-                            <p><strong>เบอร์โทรศัพท์:</strong> 0812345678</p>
-                            <p><strong>อีเมล:</strong> chakit.p@gmail.com</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>บัญชีธนาคาร:</strong> 04 ธนาคารกสิกรไทย</p>
-                            <p><strong>เลขที่บัญชีธนาคาร:</strong> 064-123-4567</p>
-                            <p><strong>สำเนาบัตรประจำประชาชน:</strong> <a href="#" class="text-primary">click</a>
-                            </p>
-                            <p><strong>สำเนาหน้าบัญชีธนาคาร:</strong> <a href="#" class="text-primary">click</a></p>
-                            <p><strong>แบบแจ้งข้อมูลเจ้าหนี้:</strong> <a href="#" class="text-primary">click</a></p>
+            <div class="card-body">
+                <h4>ข้อมูลผู้ช่วยสอน</h4>
+                
+                <!-- ข้อมูลส่วนตัว -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">ข้อมูลส่วนตัว</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>รหัสนักศึกษา:</strong> {{ $student->student_id }}</p>
+                                <p><strong>ชื่อ-นามสกุล:</strong> {{ $student->name }}</p>
+                                <p><strong>ระดับการศึกษา:</strong> {{ $student->degree ?? 'ปริญญาตรี' }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>อีเมล:</strong> {{ $student->email }}</p>
+                                <p><strong>เบอร์โทรศัพท์:</strong> {{ $student->phone ?? 'ไม่ระบุ' }}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <!-- </div> -->
 
-                <div class="card-body">
-                    <div class="row">
-                        <h4 class="mb-4">ชั่วโมงการสอน</h4>
-                        <div class="mb-3">
-                            <div class="dropdown">
-                                <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton"
-                                    data-bs-toggle="dropdown" aria-expanded="false"> เลือกเดือน
-                                </button>
-                                <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                                    <li><a class="dropdown-item" href="#">มิถุนายน</a></li>
-                                    <li><a class="dropdown-item" href="#">กรกฎาคม</a></li>
-                                    <li><a class="dropdown-item" href="#">สิงหาคม</a></li>
-                                    <li><a class="dropdown-item" href="#">กันยายน</a></li>
-
-                                </ul>
-                            </div>
-                        </div>
-
+                <!-- ประวัติการเป็น TA -->
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">ประวัติการเป็นผู้ช่วยสอน</h5>
                         <div class="table-responsive">
-                            <table class="table table-striped">
+                            <table class="table">
                                 <thead>
                                     <tr>
-                                        <td>วัน/เดือน/ปี</td>
-                                        <td>เวลาที่ปฏิบัติงาน</td>
-                                        <td>กลุ่มเรียน (ปกติ/พิเศษ)</td>
-                                        <td>ชั่วโมงการสอน</td>
-                                        <td>การสอน</td>
-                                        <td>งานที่ปฏิบัติ</td>
+                                        <th>ลำดับ</th>
+                                        <th>รหัสวิชา</th>
+                                        <th>ชื่อวิชา</th>
+                                        <th>ปีการศึกษา</th>
+                                        <th>อาจารย์ผู้สอน</th>
+                                        <th>สถานะ</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td>13-08-2567</td>
-                                        <td>16:00-17:00</td>
-                                        <td>sec.3 พิเศษ</td>
-                                        <td>1</td>
-                                        <td>ปฏิบัติการ</td>
-                                        <td><span class="badge bg-secondary">เตรียมแลป</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>14-08-2567</td>
-                                        <td>10:30-12:30</td>
-                                        <td>sec.3 พิเศษ</td>
-                                        <td>2</td>
-                                        <td>ปฏิบัติการ</td>
-                                        <td><span class="badge bg-secondary">ให้คำแนะนำแลป</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>15-08-2567</td>
-                                        <td>16:00-17:00</td>
-                                        <td>sec.3 พิเศษ</td>
-                                        <td>1</td>
-                                        <td>ปฏิบัติการ</td>
-                                        <td><span class="badge bg-secondary">เตรียมแลป</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>16-08-2567</td>
-                                        <td>15:00-17:00</td>
-                                        <td>sec.3 พิเศษ</td>
-                                        <td>2</td>
-                                        <td>ปฏิบัติการ</td>
-                                        <td><span class="badge bg-secondary">ให้คำแนะนำแลป</span></td>
-                                    </tr>
+                                    @forelse($student->courseTas as $index => $courseTa)
+                                        <tr>
+                                            <td>{{ $index + 1 }}</td>
+                                            <td>{{ $courseTa->course->subjects->subject_id }}</td>
+                                            <td>{{ $courseTa->course->subjects->name_en }}</td>
+                                            <td>
+                                                {{ $courseTa->course->semesters->semesters }}/{{ $courseTa->course->semesters->year }}
+                                            </td>
+                                            <td>
+                                                {{ $courseTa->course->teachers->position }}
+                                                {{ $courseTa->course->teachers->name }}
+                                            </td>
+                                            <td>
+                                                @php
+                                                    $request = $courseTa->courseTaClasses
+                                                        ->flatMap->requests
+                                                        ->sortByDesc('created_at')
+                                                        ->first();
+                                                @endphp
+                                                @if($request && $request->status === 'A')
+                                                    <span class="badge bg-success">อนุมัติ</span>
+                                                @else
+                                                    <span class="badge bg-secondary">ไม่ระบุ</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="6" class="text-center">ไม่พบประวัติการเป็นผู้ช่วยสอน</td>
+                                        </tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>
-                        </row>
                     </div>
+                </div>
 
-
-                    <div class="mt-3">
-                        <button class="btn btn-success">Export</button>
-                    </div>
+                <!-- ปุ่มย้อนกลับ -->
+                <div class="mt-3">
+                    <a href="{{ url()->previous() }}" class="btn btn-secondary">
+                        ย้อนกลับ
+                    </a>
                 </div>
             </div>
         </div>
     </div>
-</row>
-    @endsection
+</div>
+@endsection

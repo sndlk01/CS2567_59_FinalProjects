@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Models\Announce;
 use App\Models\Courses;
+use App\Models\Students;
 use App\Models\course_tas;
 
 
@@ -22,59 +23,73 @@ class AdminController extends Controller
 
 
     /// ADMIN ROLE
-    //  /**
-    //  * Show the application dashboard.
-    //  *
-    //  * @return \Illuminate\Contracts\Support\Renderable
-    //  */
-    // public function announce()
-    // {
-    //     return view('layouts.admin.announce');
-    // }
 
-    /**
-     * Show the application dashboard.
-     *
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
     public function taUsers()
     {
-
-        $coursesWithTAs = Courses::whereHas('course_tas', function($query) {
-            $query->whereNotNull('approved_at');
+        $coursesWithTAs = Courses::whereHas('course_tas.courseTaClasses.requests', function ($query) {
+            $query->where('status', 'A')  // เช็คสถานะว่าอนุมัติ
+                ->whereNotNull('approved_at');  // และมีวันที่อนุมัติ
         })
-        ->with(['subjects', 'teachers', 'course_tas' => function($query) {
-            $query->whereNotNull('approved_at');
-        }])
-        ->get();
+            ->with([
+                'subjects',  // ข้อมูลวิชา
+                'teachers',  // ข้อมูลอาจารย์
+                'course_tas.student',  // ข้อมูลนักศึกษา TA
+                'course_tas.courseTaClasses.requests' => function ($query) {
+                    $query->where('status', 'A')
+                        ->whereNotNull('approved_at');
+                }
+            ])
+            ->get();
 
-    return view('layouts.admin.taUsers', compact('coursesWithTAs'));
+        // Debug ข้อมูล
+        \Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
 
+        return view('layouts.admin.taUsers', compact('coursesWithTAs'));
     }
+
     
-    public function showTADetails($courseId)
-    {
-        $course = Courses::with(['subjects', 'teachers', 'course_tas.student'])
-            ->findOrFail($courseId);
 
-        return view('admin.course_ta_details', compact('course'));
+    public function showTaDetails($course_id)
+    {
+        $course = Courses::with([
+            'subjects',
+            'teachers',
+            'semesters',
+            'course_tas.student',
+            'course_tas.courseTaClasses.requests' => function ($query) {
+                $query->where('status', 'A')
+                    ->whereNotNull('approved_at');
+            }
+        ])
+            ->where('course_id', $course_id)
+            ->firstOrFail();
+
+        return view('layouts.admin.detailsTa', compact('course'));
     }
 
-    /**
-     * Show the application dashboard.
-     *
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
+
+    public function showTaProfile($student_id)
+    {
+        $student = Students::with([
+            'courseTas.course.subjects',
+            'courseTas.course.teachers',
+            'courseTas.course.semesters',
+            'courseTas.courseTaClasses.requests' => function ($query) {
+                $query->where('status', 'A')
+                    ->whereNotNull('approved_at');
+            }
+        ])->findOrFail($student_id);
+
+        return view('layouts.admin.detailsById', compact('student'));
+    }
+
+
     public function detailsTa()
     {
         return view('layouts.admin.detailsTa');
     }
 
-    /**
-     * Show the application dashboard.
-     *
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
+
     public function detailsByid()
     {
         return view('layouts.admin.detailsByid');
@@ -89,7 +104,7 @@ class AdminController extends Controller
     public function index()
     {
         $announces = Announce::latest()->paginate(5);
-        return view('layouts.admin.index',compact('announces'))
+        return view('layouts.admin.index', compact('announces'))
             ->with('i', (request()->input('page', 1) - 1) * 5);
     }
 
@@ -115,7 +130,7 @@ class AdminController extends Controller
 
         return redirect()
             ->route('announces.index')
-            ->with('success','announce created successfully.');
+            ->with('success', 'announce created successfully.');
     }
 
     /**
@@ -123,7 +138,7 @@ class AdminController extends Controller
      */
     public function show(Announce $announce)
     {
-        return view('layouts.admin.show',compact('announce'));
+        return view('layouts.admin.show', compact('announce'));
     }
 
     /**
@@ -131,7 +146,7 @@ class AdminController extends Controller
      */
     public function edit(Announce $announce)
     {
-        return view('layouts.admin.edit',compact('announce'));
+        return view('layouts.admin.edit', compact('announce'));
     }
 
     /**
@@ -148,7 +163,7 @@ class AdminController extends Controller
 
         return redirect()
             ->route('announces.index')
-            ->with('success','announce updated successfully');
+            ->with('success', 'announce updated successfully');
     }
 
     /**
@@ -159,7 +174,7 @@ class AdminController extends Controller
         $announce->delete();
         return redirect()
             ->route('announces.index')
-            ->with('success','announce deleted successfully');
+            ->with('success', 'announce deleted successfully');
     }
 
 }
