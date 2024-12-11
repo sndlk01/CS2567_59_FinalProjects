@@ -10,8 +10,15 @@
                 <div class="card-body">
                     <h4>คำร้องการสมัครผู้ช่วยสอน</h4>
                     <div class="container shadow-lg bg-body rounded p-5">
-                        @if($courseTas->isEmpty())
+                        @if ($courseTas->isEmpty())
                             <p>ไม่พบข้อมูลคำร้องการสมัคร</p>
+                            <!-- Debug information -->
+                            @if (config('app.debug'))
+                                <div class="alert alert-info">
+                                    <p>Debug Info:</p>
+                                    <pre>{{ print_r($courseTas->toArray(), true) }}</pre>
+                                </div>
+                            @endif
                         @else
                             <form action="{{ route('teacher.home') }}" method="POST">
                                 @csrf
@@ -56,11 +63,15 @@
                                                     @endif
                                                 </td>
                                                 <td>
-                                                    <input type="hidden" name="course_ta_ids[]" value="{{ $courseTa['course_ta_id'] }}">
+                                                    <input type="hidden" name="course_ta_ids[]"
+                                                        value="{{ $courseTa['course_ta_id'] }}">
                                                     <select name="statuses[]" class="form-select mb-2">
-                                                        <option value="a" {{ $status === 'a' ? 'selected' : '' }}>อนุมัติ</option>
-                                                        <option value="w" {{ $status === 'w' ? 'selected' : '' }}>รอดำเนินการ</option>
-                                                        <option value="r" {{ $status === 'r' ? 'selected' : '' }}>ไม่อนุมัติ</option>
+                                                        <option value="a" {{ $status === 'a' ? 'selected' : '' }}>
+                                                            อนุมัติ</option>
+                                                        <option value="w" {{ $status === 'w' ? 'selected' : '' }}>
+                                                            รอดำเนินการ</option>
+                                                        <option value="r" {{ $status === 'r' ? 'selected' : '' }}>
+                                                            ไม่อนุมัติ</option>
                                                     </select>
                                                     <input type="text" name="comments[]" class="form-control mb-2"
                                                         placeholder="ความคิดเห็น" value="{{ $courseTa['comment'] }}">

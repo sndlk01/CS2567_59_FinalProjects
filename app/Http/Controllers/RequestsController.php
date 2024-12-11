@@ -35,7 +35,7 @@ class RequestsController extends Controller
 
                 return [
                     'student_id' => $courseTa->student->student_id,
-                    'full_name' => $courseTa->student->fname . ' ' . $courseTa->student->lname,
+                    'full_name' => $courseTa->student->name,
                     'course' => $courseTa->course->subjects->subject_id . ' ' . $courseTa->course->subjects->name_en,
                     'applied_at' => $courseTa->created_at,
                     'status' => $latestRequest ? $latestRequest->status : null,
