@@ -360,43 +360,42 @@ class TaController extends Controller
     }
 
     public function showCourseTas()
-    {
-        $user = Auth::user();
-        $student = Students::where('user_id', $user->id)->first();
+{
+    $user = Auth::user();
+    $student = Students::where('user_id', $user->id)->first();
 
-        if (!$student) {
-            // ถ้าไม่มีข้อมูลนักศึกษา ให้ redirect ไปที่หน้าหลักหรือหน้าแจ้งเตือน
-            return redirect()->route('layout.ta.request')->with('error', 'ไม่พบข้อมูลนักศึกษา');
-        }
-
-
-        // ดึงข้อมูลจาก course_ta_classes ผ่าน course_tas แล้วไปดึงข้อมูล courses
-        $courseTaClasses = CourseTaClasses::with([
-            'courseTa.course.subjects',   // ดึงข้อมูลวิชา
-            'courseTa.course.semesters',  // ดึงข้อมูลปีการศึกษา และเทอม
-            'courseTa.course.teachers',   // ดึงข้อมูลอาจารย์
-            'courseTa.course.curriculums', // ดึงข้อมูลหลักสูตร
-            'class'                        // ดึงข้อมูล section_num จากตาราง classes
-        ])->whereHas('courseTa', function ($query) use ($student) {
-            $query->where('student_id', $student->id);
-        })->get();
-
-
-
-        // วนลูปผ่านข้อมูล courseTaClasses เพื่อประมวลผล major name_th
-        foreach ($courseTaClasses as $courseTaClass) {
-            // if (isset($courseTaClass->courseTa->course->major->name_th)) {
-            //     // ใช้ Str::after() เพื่อดึงเฉพาะคำว่า "ภาคปกติ"
-            //     $courseTaClass->courseTa->course->major->name_th = trim(Str::after($courseTaClass->courseTa->course->major->name_th, ' '));
-            // }
-            if (isset($courseTaClass->courseTa->course->curriculums->name_th)) {
-                // ใช้ Str::before() เพื่อดึงเฉพาะชื่อสาขา
-                $courseTaClass->courseTa->course->curriculums->name_th = trim(Str::before($courseTaClass->courseTa->course->curriculums->name_th, ' '));
-            }
-        }
-
-        return view('layouts.ta.subjectList', compact('courseTaClasses'));
+    if (!$student) {
+        return redirect()->route('layout.ta.request')->with('error', 'ไม่พบข้อมูลนักศึกษา');
     }
+
+    // เพิ่ม requests เข้าไปใน with และเพิ่มเงื่อนไขการกรอง
+    $courseTaClasses = CourseTaClasses::with([
+        'courseTa.course.subjects',
+        'courseTa.course.semesters',
+        'courseTa.course.teachers',
+        'courseTa.course.curriculums',
+        'class',
+        'requests'  // เพิ่มการดึงข้อมูล requests
+    ])
+    ->whereHas('courseTa', function ($query) use ($student) {
+        $query->where('student_id', $student->id);
+    })
+    ->whereHas('requests', function($query) {
+        $query->where('status', 'A')  // กรองเฉพาะ status = 'A' (Approve)
+              ->whereNotNull('approved_at');  // และต้องมี approved_at
+    })
+    ->get();
+
+    // ประมวลผลข้อมูลหลักสูตร
+    foreach ($courseTaClasses as $courseTaClass) {
+        if (isset($courseTaClass->courseTa->course->curriculums->name_th)) {
+            $courseTaClass->courseTa->course->curriculums->name_th = 
+                trim(Str::before($courseTaClass->courseTa->course->curriculums->name_th, ' '));
+        }
+    }
+
+    return view('layouts.ta.subjectList', compact('courseTaClasses'));
+}
 
     public function showSubjectDetail($id, $classId)
     {

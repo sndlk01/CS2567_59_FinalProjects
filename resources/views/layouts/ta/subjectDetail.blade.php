@@ -19,10 +19,9 @@
                                 </p>
                                 <p><strong>อาจารย์ประจำวิชา:</strong>
                                     {{ $courseTaClass->class->teachers->position }}{{ $courseTaClass->class->teachers->degree }}
-                                    {{ $courseTaClass->class->teachers->fname }}
-                                    {{ $courseTaClass->class->teachers->lname }}</p>
-                                <p><strong>ชื่อผู้ช่วยสอน:</strong> {{ $student->fname }} {{ $student->lname }}</p>
-                                <p><strong>หน่วยกิต:</strong> {{ $courseTaClass->class->course->subjects->credits }}</p>
+                                    {{ $courseTaClass->class->teachers->name }}
+                                <p><strong>ชื่อผู้ช่วยสอน:</strong> {{ $student->name }}</p>
+                                {{-- <p><strong>หน่วยกิต:</strong> {{ $courseTaClass->class->course->subjects->credits }}</p> --}}
                                 {{-- <p><strong>Section:</strong> {{ $courseTaClass->class->section_num }}</p> --}}
                             </div>
                         </div>
