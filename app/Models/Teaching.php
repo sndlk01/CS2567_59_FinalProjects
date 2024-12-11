@@ -10,15 +10,26 @@ class Teaching extends Model
     use HasFactory;
 
     protected $table = 'teaching';
+    protected $primaryKey = 'teaching_id';
+
+    public $incrementing = false;
 
     protected $fillable = [
+        'teaching_id',
         'start_time',
         'end_time',
         'duration',
-        'class_type_id',
+        'class_type',
         'status',
-        'classes_id',
-        'teachers_id',
+        'class_id',
+        'teacher_id'
+    ];
+
+    protected $dates = [
+        'start_time',
+        'end_time',
+        'created_at',
+        'updated_at'
     ];
 
     public function class_type()

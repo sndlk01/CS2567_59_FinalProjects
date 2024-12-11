@@ -23,11 +23,6 @@ use Yoeunes\Toastr\Facades\Toastr;
 
 class TaController extends Controller
 {
-    // public function __construct()
-    // {
-    //     $this->middleware('auth');
-    // }
-
     private $tdbmService;
 
     public function __construct(TDBMApiService $tdbmService)
@@ -35,30 +30,6 @@ class TaController extends Controller
         $this->middleware('auth');
         $this->tdbmService = $tdbmService;
     }
-
-
-
-    /// TA ROLE
-
-    // public function request()
-    // {
-    //     $subjects = Subjects::all();
-    //     $subjectsWithSections = [];
-
-    //     foreach ($subjects as $subject) {
-    //         $course = Courses::where('subject_id', $subject->subject_id)->first();
-    //         if ($course) {
-    //             $sections = Classes::where('course_id', $course->id)->pluck('section_num')->toArray();
-    //             $subjectsWithSections[] = [
-    //                 'subject' => $subject,
-    //                 'sections' => $sections
-    //             ];
-    //         }
-    //     }
-
-    //     return view('layouts.ta.request', compact('subjectsWithSections'));
-    // }
-
 
     public function request()
     {
@@ -108,8 +79,6 @@ class TaController extends Controller
 
         return view('layouts.ta.request', compact('subjectsWithSections', 'currentSemester'));
     }
-
-
 
     public function taSubject()
     {
@@ -342,7 +311,6 @@ class TaController extends Controller
             DB::commit();
             Toastr()->success('สมัครเป็นผู้ช่วยสอนสำเร็จ', 'สำเร็จ!');
             return redirect()->route('layout.ta.request');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Toastr()->error('เกิดข้อผิดพลาด: ' . $e->getMessage(), 'เกิดข้อผิดพลาด!');
@@ -350,55 +318,51 @@ class TaController extends Controller
         }
     }
 
-    public function getSections($course_id)
-    {
-        // ดึง sections ทั้งหมดของ course_id นั้น
-        $sections = Classes::where('course_id', $course_id)->get(['id', 'section_num']);
-
-        // ส่งข้อมูลกลับในรูปแบบ JSON
-        return response()->json($sections);
-    }
-
     public function showCourseTas()
-{
-    $user = Auth::user();
-    $student = Students::where('user_id', $user->id)->first();
+    {
+        $user = Auth::user();
+        $student = Students::where('user_id', $user->id)->first();
 
-    if (!$student) {
-        return redirect()->route('layout.ta.request')->with('error', 'ไม่พบข้อมูลนักศึกษา');
-    }
-
-    // เพิ่ม requests เข้าไปใน with และเพิ่มเงื่อนไขการกรอง
-    $courseTaClasses = CourseTaClasses::with([
-        'courseTa.course.subjects',
-        'courseTa.course.semesters',
-        'courseTa.course.teachers',
-        'courseTa.course.curriculums',
-        'class',
-        'requests'  // เพิ่มการดึงข้อมูล requests
-    ])
-    ->whereHas('courseTa', function ($query) use ($student) {
-        $query->where('student_id', $student->id);
-    })
-    ->whereHas('requests', function($query) {
-        $query->where('status', 'A')  // กรองเฉพาะ status = 'A' (Approve)
-              ->whereNotNull('approved_at');  // และต้องมี approved_at
-    })
-    ->get();
-
-    // ประมวลผลข้อมูลหลักสูตร
-    foreach ($courseTaClasses as $courseTaClass) {
-        if (isset($courseTaClass->courseTa->course->curriculums->name_th)) {
-            $courseTaClass->courseTa->course->curriculums->name_th = 
-                trim(Str::before($courseTaClass->courseTa->course->curriculums->name_th, ' '));
+        if (!$student) {
+            return redirect()->route('layout.ta.request')->with('error', 'ไม่พบข้อมูลนักศึกษา');
         }
-    }
 
-    return view('layouts.ta.subjectList', compact('courseTaClasses'));
-}
+        // เพิ่ม requests เข้าไปใน with และเพิ่มเงื่อนไขการกรอง
+        $courseTaClasses = CourseTaClasses::with([
+            'courseTa.course.subjects',
+            'courseTa.course.semesters',
+            'courseTa.course.teachers',
+            'courseTa.course.curriculums',
+            'class',
+            'requests'  // เพิ่มการดึงข้อมูล requests
+        ])
+            ->whereHas('courseTa', function ($query) use ($student) {
+                $query->where('student_id', $student->id);
+            })
+            ->whereHas('requests', function ($query) {
+                $query->where('status', 'A')  // กรองเฉพาะ status = 'A' (Approve)
+                    ->whereNotNull('approved_at');  // และต้องมี approved_at
+            })
+            ->get();
+
+        // ประมวลผลข้อมูลหลักสูตร
+        foreach ($courseTaClasses as $courseTaClass) {
+            if (isset($courseTaClass->courseTa->course->curriculums->name_th)) {
+                $courseTaClass->courseTa->course->curriculums->name_th =
+                    trim(Str::before($courseTaClass->courseTa->course->curriculums->name_th, ' '));
+            }
+        }
+        return view('layouts.ta.subjectList', compact('courseTaClasses'));
+    }
 
     public function showSubjectDetail($id, $classId)
     {
+        // เพิ่ม debug log
+        Log::info('showSubjectDetail params:', [
+            'id' => $id,
+            'classId' => $classId,
+        ]);
+
         $user = Auth::user();
         $student = Students::where('user_id', $user->id)->first();
 
@@ -423,17 +387,175 @@ class TaController extends Controller
         return view('layouts.ta.subjectDetail', compact('courseTaClass', 'student'));
     }
 
-    public function showTeachingData($id)
-    {
-        // ดึงข้อมูลของ class จาก id ที่ส่งมา พร้อมกับข้อมูลการสอน (teaching) และอาจารย์ (teachers)
-        $teachings = Teaching::with([
-            'class',          // เชื่อมต่อกับตาราง classes
-            'teacher'         // เชื่อมต่อกับตาราง teachers
-        ])->where('class_id', $id)  // กรองด้วย class_id ที่ส่งมา
-            ->get();
+    // public function showTeachingData($id = null)
+    // {
+    //     try {
+    //         if (!$id) {
+    //             return redirect()->back()->with('error', 'กรุณาระบุ Class ID');
+    //         }
 
-        // ส่งข้อมูลไปที่ view
-        return view('layouts.ta.teaching', compact('teachings'));
+    //         DB::beginTransaction(); // เริ่ม transaction
+
+    //         // Get data from API
+    //         $teachings = collect($this->tdbmService->getTeachings())
+    //             ->filter(function ($teaching) use ($id) {
+    //                 return $teaching['class_id'] == $id;
+    //             });
+
+    //         if ($teachings->isEmpty()) {
+    //             session()->flash('info', 'ยังไม่มีข้อมูลการสอนสำหรับรายวิชานี้');
+    //             return view('layouts.ta.teaching', ['teachings' => []]);
+    //         }
+
+    //         // Get related data from API
+    //         $classes = collect($this->tdbmService->getStudentClasses());
+    //         $teachers = collect($this->tdbmService->getTeachers());
+
+    //         // Process and save each teaching record
+    //         $processedTeachings = $teachings->map(function ($teaching) use ($classes, $teachers) {
+    //             $class = $classes->firstWhere('class_id', $teaching['class_id']);
+    //             $teacher = $teachers->firstWhere('teacher_id', $teaching['teacher_id']);
+
+    //             // บันทึกข้อมูลลง local database
+    //             $localTeaching = Teaching::firstOrCreate(
+    //                 ['teaching_id' => $teaching['teaching_id']],
+    //                 [
+    //                     'start_time' => $teaching['start_time'],
+    //                     'end_time' => $teaching['end_time'],
+    //                     'duration' => $teaching['duration'],
+    //                     'class_type' => $teaching['class_type'] ?? 'N', // ถ้าไม่มีให้เป็น 'N'
+    //                     'status' => $teaching['status'] ?? 'W',         // ถ้าไม่มีให้เป็น 'W'
+    //                     'class_id' => $teaching['class_id'],
+    //                     'teacher_id' => $teaching['teacher_id']
+    //                 ]
+    //             );
+
+    //             // สร้าง object สำหรับส่งไป view
+    //             return (object)[
+    //                 'id' => $localTeaching->teaching_id,
+    //                 'start_time' => $localTeaching->start_time,
+    //                 'end_time' => $localTeaching->end_time,
+    //                 'duration' => $localTeaching->duration,
+    //                 'status' => $localTeaching->status,
+    //                 'class_id' => (object)[
+    //                     'title' => $class['title'] ?? 'N/A',
+    //                 ],
+    //                 'teacher_id' => (object)[
+    //                     'position' => $teacher['position'] ?? '',
+    //                     'degree' => $teacher['degree'] ?? '',
+    //                     'name' => $teacher['name'] ?? '',
+    //                 ],
+    //                 'attendance' => (object)[
+    //                     'note' => $teaching['note'] ?? ''
+    //                 ]
+    //             ];
+    //         })->sortBy('start_time');
+
+    //         DB::commit(); // ยืนยัน transaction
+
+    //         return view('layouts.ta.teaching', [
+    //             'teachings' => $processedTeachings
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack(); // ถ้าเกิด error ให้ rollback
+    //         Log::error('Error in showTeachingData: ' . $e->getMessage());
+    //         return redirect()
+    //             ->back()
+    //             ->with('error', 'เกิดข้อผิดพลาดในการแสดงข้อมูลการสอน: ' . $e->getMessage());
+    //     }
+    // }
+
+
+
+    public function showTeachingData($id = null)
+    {
+        try {
+            if (!$id) {
+                return redirect()->back()->with('error', 'กรุณาระบุ Class ID');
+            }
+
+            DB::beginTransaction();
+
+            // 1. Get and store data from API
+            $apiTeachings = collect($this->tdbmService->getTeachings())
+                ->filter(function ($teaching) use ($id) {
+                    return $teaching['class_id'] == $id;
+                });
+
+            if ($apiTeachings->isEmpty()) {
+                session()->flash('info', 'ยังไม่มีข้อมูลการสอนสำหรับรายวิชานี้');
+                return view('layouts.ta.teaching', ['teachings' => []]);
+            }
+
+            // 2. Get related API data
+            $apiClasses = collect($this->tdbmService->getStudentClasses());
+            $apiTeachers = collect($this->tdbmService->getTeachers());
+
+            // 3. Save API data to local DB
+            foreach ($apiTeachings as $teaching) {
+                Teaching::updateOrCreate(
+                    ['teaching_id' => $teaching['teaching_id']],
+                    [
+                        'start_time' => $teaching['start_time'],
+                        'end_time' => $teaching['end_time'],
+                        'duration' => $teaching['duration'],
+                        'class_type' => $teaching['class_type'] ?? 'N',
+                        'status' => $teaching['status'] ?? 'W',
+                        'class_id' => $teaching['class_id'],
+                        'teacher_id' => $teaching['teacher_id']
+                    ]
+                );
+            }
+
+            // 4. Fetch data from local DB with relationships
+            $localTeachings = Teaching::with(['class', 'teacher', 'attendance'])
+                ->where('class_id', $id)
+                ->orderBy('start_time', 'asc')
+                ->get()
+                ->map(function ($teaching) use ($apiClasses, $apiTeachers) {
+                    $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
+                    $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
+
+                    return (object)[
+                        'id' => $teaching->teaching_id,
+                        'start_time' => $teaching->start_time,
+                        'end_time' => $teaching->end_time,
+                        'duration' => $teaching->duration,
+                        'status' => $teaching->status,
+                        'class_id' => (object)[
+                            'title' => $class['title'] ?? 'N/A',
+                        ],
+                        'teacher_id' => (object)[
+                            'position' => $teacher['position'] ?? '',
+                            'degree' => $teacher['degree'] ?? '',
+                            'name' => $teacher['name'] ?? 'N/A',
+                        ],
+                        'attendance' => $teaching->attendance ? (object)[
+                            'note' => $teaching->attendance->note ?? ''
+                        ] : (object)[
+                            'note' => ''
+                        ]
+                    ];
+                });
+
+            DB::commit();
+
+            // 5. Debug logging
+            Log::info('Local Teachings:', [
+                'count' => $localTeachings->count(),
+                'first_item' => $localTeachings->first()
+            ]);
+
+            return view('layouts.ta.teaching', [
+                'teachings' => $localTeachings
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error in showTeachingData: ' . $e->getMessage());
+            return redirect()
+                ->back()
+                ->with('error', 'เกิดข้อผิดพลาดในการแสดงข้อมูลการสอน: ' . $e->getMessage());
+        }
     }
 
     public function showAttendanceForm($teaching_id)
@@ -474,6 +596,7 @@ class TaController extends Controller
     //     return redirect()->route('layout.ta.teaching', ['id' => $teaching->class_id])
     //         ->with('success', 'บันทึกข้อมูลสำเร็จ');
     // }
+
 
     public function submitAttendance(Request $request, $teaching_id)
     {

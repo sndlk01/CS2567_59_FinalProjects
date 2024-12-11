@@ -29,7 +29,7 @@
                                     <th></th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            {{-- <tbody>
                                 @php
                                     $previousClassTitle = null; // กำหนดตัวแปรชั่วคราว
                                 @endphp
@@ -50,7 +50,7 @@
                                         <td>{{ \Carbon\Carbon::parse($teaching->end_time)->format('d-m-Y H:i') }}</td>
                                         <td>{{ $teaching->duration }}</td>
                                         <td>{{ $teaching->teacher->position }}{{ $teaching->teacher->degree }}
-                                            {{ $teaching->teacher->fname }} {{ $teaching->teacher->lname }}
+                                            {{ $teaching->teacher->name }}
                                         </td>
                                         <td>
                                             @if ($teaching->status === 'S')
@@ -60,7 +60,6 @@
                                             @endif
                                         </td>
                                         <td>{{ $teaching->attendance->note ?? '' }}</td>
-                                        <!-- เข้าถึง attendance ผ่าน relation -->
                                         <td>
                                             <a href="{{ route('attendances.form', $teaching->id) }}"
                                                 class="btn btn-outline-primary"
@@ -70,6 +69,52 @@
                                         </td>
                                     </tr>
                                 @endforeach
+                            </tbody> --}}
+                            <tbody>
+                                @php
+                                    $previousClassTitle = null;
+                                @endphp
+                                @forelse ($teachings as $teaching)
+                                    @if ($previousClassTitle != $teaching->class_id->title)
+                                        <tr>
+                                            <td colspan="8" class="fw-bold bg-light">
+                                                {{ $teaching->class_id->title }}
+                                            </td>
+                                        </tr>
+                                        @php
+                                            $previousClassTitle = $teaching->class_id->title;
+                                        @endphp
+                                    @endif
+                                    <tr>
+                                        <td></td>
+                                        <td>{{ \Carbon\Carbon::parse($teaching->start_time)->format('d-m-Y H:i') }}</td>
+                                        <td>{{ \Carbon\Carbon::parse($teaching->end_time)->format('d-m-Y H:i') }}</td>
+                                        <td>{{ $teaching->duration }}</td>
+                                        <td>
+                                            {{ $teaching->teacher_id->position }}
+                                            {{ $teaching->teacher_id->degree }}
+                                            {{ $teaching->teacher_id->name }}
+                                        </td>
+                                        <td>
+                                            @if ($teaching->status === 'S')
+                                                <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
+                                            @else
+                                                <span class="badge bg-danger">เข้าปฏิบัติการสอน</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ $teaching->attendance->note ?? '-' }}</td>
+                                        <td>
+                                            <a href="{{ route('attendances.form', $teaching->id) }}"
+                                                class="btn btn-outline-primary btn-sm">
+                                                ลงเวลา
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="8" class="text-center">ไม่พบข้อมูลการสอน</td>
+                                    </tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>

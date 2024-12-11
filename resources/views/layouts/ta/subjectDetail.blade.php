@@ -15,7 +15,8 @@
                                 <p><strong>ชื่อวิชา:</strong> {{ $courseTaClass->class->course->subjects->subject_id }}
                                     {{ $courseTaClass->class->course->subjects->name_en }}</p>
                                 <p><strong>ปีการศึกษา:</strong>
-                                    {{ $courseTaClass->class->semesters->semesters }} / {{ $courseTaClass->class->semesters->year }}
+                                    {{ $courseTaClass->class->semesters->semesters }} /
+                                    {{ $courseTaClass->class->semesters->year }}
                                 </p>
                                 <p><strong>อาจารย์ประจำวิชา:</strong>
                                     {{ $courseTaClass->class->teachers->position }}{{ $courseTaClass->class->teachers->degree }}
@@ -30,7 +31,9 @@
                         <div class="card mb-3">
                             <div class="card-body">
                                 <div class="menu">
-                                    <a href="{{ route('layout.ta.teaching', ['id' => $courseTaClass->class->id]) }}" class="btn btn-primary">+ ลงเวลา</a>
+                                    <a href="{{ route('layout.ta.teaching', ['id' => $courseTaClass->class->class_id]) }}"
+                                        class="btn btn-primary">+ ลงเวลา</a>
+
                                     <a href="#" class="btn btn-success">ดาวน์โฟลดเอกสารสรุปภาระงาน</a>
                                     <a href="#" class="btn btn-success">ดาวน์โหลดเอกสาร</a>
                                 </div>
