@@ -14,14 +14,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CourseController;
 
-
-// Route::resource('ta',RequestController::class);
-// Route::resource('admin',AdminController::class);
-
-// Route::get('/', function () {
-//     return view('welcome');
-// });
-
 Auth::routes();
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -34,9 +26,6 @@ Route::get('/auth/google/call-back', [GoogleAuthController::class, 'callbackGoog
 // update profile
 Route::get('/complete-profile', [ProfileController::class, 'showCompleteProfileForm'])->name('complete.profile');
 Route::post('/complete-profile', [ProfileController::class, 'saveCompleteProfile'])->name('save.profile');
-
-
-// Route::get('admin/home', [HomeController::class, 'adminHome'])->name('admin.home')->middleware('admin.home');
 
 //Ta Routes List
 Route::middleware(['auth', 'user-access:user'])->group(function () {
@@ -53,13 +42,10 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layout.ta.disbursements');
     Route::post('/disbursements', [DisbursementsController::class, 'uploads'])->name('layout.ta.disbursements');
 
-    // Route::post('/apply-courseta', [TaController::class, 'applyCourseTa'])->name('apply.ta');
-    Route::get('/tasubject', [TaController::class, 'taSubject'])->name('layout.ta.taSubject');
     Route::get('/taSubject', [TaController::class, 'showCourseTas'])->name('ta.showCourseTas');
-    Route::get('/attendances', [TaController::class, 'attendances'])->name('layout.ta.attendances');
-    // Route::get('/attendances/{id}', [TaController::class, 'showSubjectDetail'])->name('layout.ta.attendances');
-    // Route::get('/course_ta/{id}/class/{classId?}', [TaController::class, 'showSubjectDetail']);
     Route::get('/course_ta/{id}/class/{classId?}', [TaController::class, 'showSubjectDetail'])->name('course_ta.show');
+
+    Route::get('/attendances', [TaController::class, 'attendances'])->name('layout.ta.attendances');
     // Route สำหรับแสดงข้อมูลการสอน
     Route::get('/teaching/{id?}', action: [TaController::class, 'showTeachingData'])->name('layout.ta.teaching');
     // Route to display the attendance form for the selected teaching session
