@@ -422,8 +422,6 @@ class TaController extends Controller
             // รับค่าเดือนจาก request
             $selectedMonth = $request->query('month');
 
-            DB::beginTransaction();
-
             // 1. Get and store data from API
             $apiTeachings = collect($this->tdbmService->getTeachings())
                 ->filter(function ($teaching) use ($id) {
