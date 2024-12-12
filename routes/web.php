@@ -41,6 +41,7 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     // Route::get('/disbursements', [TaController::class, 'disbursements'])->name('layout.ta.disbursements');
     Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layout.ta.disbursements');
     Route::post('/disbursements', [DisbursementsController::class, 'uploads'])->name('layout.ta.disbursements');
+    Route::get('/ta/documents/download/{id}', [DisbursementsController::class, 'downloadDocument'])->name('layout.ta.download-document');
 
     Route::get('/taSubject', [TaController::class, 'showCourseTas'])->name('ta.showCourseTas');
     Route::get('/course_ta/{id}/class/{classId?}', [TaController::class, 'showSubjectDetail'])->name('course_ta.show');
