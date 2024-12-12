@@ -73,6 +73,8 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
     Route::get('/fetchdata', [ApiController::class, 'fetchData']);
     Route::get('/admin/detailsta/{course_id}', [AdminController::class, 'showTaDetails'])->name('layout.admin.detailsTa');
     Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'showTaProfile'])->name('admin.ta.profile');
+    Route::get('/layout/ta/download-document/{id}', [AdminController::class, 'downloadDocument'])
+    ->name('layout.ta.download-document');
 
 
 });

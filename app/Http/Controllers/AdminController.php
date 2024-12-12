@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 use App\Models\Announce;
 use App\Models\Courses;
 use App\Models\Students;
-use App\Models\course_tas;
+use App\Models\Disbursements;
+use Illuminate\Support\Facades\Storage;
+
 
 
 use Illuminate\Http\Request;
@@ -47,7 +49,7 @@ class AdminController extends Controller
         return view('layouts.admin.taUsers', compact('coursesWithTAs'));
     }
 
-    
+
 
     public function showTaDetails($course_id)
     {
@@ -68,9 +70,10 @@ class AdminController extends Controller
     }
 
 
-    public function showTaProfile($student_id)
+    public function showTaProfile($student_id) 
     {
         $student = Students::with([
+            'disbursements',  // ใช้ชื่อ relationship ที่ถูกต้อง
             'courseTas.course.subjects',
             'courseTas.course.teachers',
             'courseTas.course.semesters',
@@ -79,10 +82,36 @@ class AdminController extends Controller
                     ->whereNotNull('approved_at');
             }
         ])->findOrFail($student_id);
-
+    
+        // ดูข้อมูลที่แท้จริงใน attributes
+        // dd([
+        //     'student_exists' => $student !== null,
+        //     'student_id' => $student->id,
+        //     'raw_disbursements' => $student->disbursements,
+        //     'attributes' => $student->disbursements?->getAttributes(),
+        //     'relationship_loaded' => $student->relationLoaded('disbursements')
+        // ]);
+    
         return view('layouts.admin.detailsById', compact('student'));
     }
 
+    public function downloadDocument($id)
+    {
+        try {
+            $disbursement = Disbursements::findOrFail($id);
+            
+            // ตรวจสอบว่าไฟล์มีอยู่จริง
+            // $filePath = storage_path('public' . $disbursement->file_path);
+            if (!Storage::exists('public' . $disbursement->file_path)) {
+                return back()->with('error', 'ไม่พบไฟล์เอกสาร');
+            }
+    
+            return Storage::disk('public')->download($disbursement->uploadfile);
+        } catch (\Exception $e) {
+            \Log::error('Document download error: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร');
+        }
+    }
 
     public function detailsTa()
     {

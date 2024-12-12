@@ -27,7 +27,8 @@ class Students extends Model
 
     public function disbursements()
     {
-        return $this->hasOne(Disbursements::class);
+        return $this->hasOne(Disbursements::class, 'student_id', 'id');
+
     }
     public function users()
     {

@@ -29,14 +29,14 @@
                 <div class="card-body">
                     <h5 class="card-title">ข้อมูลผู้ช่วยสอน</h5> 
                     <div class="table-responsive">
-                        <table class="table table-striped">
+                        <table class="table">
                             <thead>
                                 <tr>
                                     <th>ลำดับ</th>
                                     <th>รหัสนักศึกษา</th>
                                     <th>ชื่อ-นามสกุล</th>
                                     <th>ระดับ</th>
-                                    {{-- <th></th> --}}
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -49,7 +49,7 @@
                                         <td>{{ $ta->student->degree ?? 'ปริญญาตรี' }}</td>
                                         <td>
                                             <a href="{{ route('admin.ta.profile', $ta->student->id) }}" 
-                                               class="btn btn-info btn-sm">
+                                               class="btn btn-primary btn-sm">
                                                 ตรวจสอบข้อมูล
                                             </a>
                                         </td>
