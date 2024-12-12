@@ -29,47 +29,7 @@
                                     <th></th>
                                 </tr>
                             </thead>
-                            {{-- <tbody>
-                                @php
-                                    $previousClassTitle = null; // กำหนดตัวแปรชั่วคราว
-                                @endphp
-                                @foreach ($teachings as $teaching)
-                                    @if ($previousClassTitle != $teaching->class->title)
-                                        <tr>
-                                            <td colspan="8" class="fw-bold">
-                                                {{ $teaching->class->title }}
-                                            </td>
-                                        </tr>
-                                        @php
-                                            $previousClassTitle = $teaching->class->title;
-                                        @endphp
-                                    @endif
-                                    <tr>
-                                        <td></td>
-                                        <td>{{ \Carbon\Carbon::parse($teaching->start_time)->format('d-m-Y H:i') }}</td>
-                                        <td>{{ \Carbon\Carbon::parse($teaching->end_time)->format('d-m-Y H:i') }}</td>
-                                        <td>{{ $teaching->duration }}</td>
-                                        <td>{{ $teaching->teacher->position }}{{ $teaching->teacher->degree }}
-                                            {{ $teaching->teacher->name }}
-                                        </td>
-                                        <td>
-                                            @if ($teaching->status === 'S')
-                                                <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
-                                            @else
-                                                <span class="badge bg-danger">เข้าปฏิบัติการสอน</span>
-                                            @endif
-                                        </td>
-                                        <td>{{ $teaching->attendance->note ?? '' }}</td>
-                                        <td>
-                                            <a href="{{ route('attendances.form', $teaching->id) }}"
-                                                class="btn btn-outline-primary"
-                                                style="--bs-btn-padding-y: .25rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .75rem;">
-                                                ลงเวลา
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody> --}}
+
                             <tbody>
                                 @php
                                     $previousClassTitle = null;
@@ -96,18 +56,6 @@
                                             {{ $teaching->teacher_id->name }}
                                         </td>
                                         <td>
-                                            {{-- @if ($teaching->status === 'S')
-                                                <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
-                                            @else
-                                                <span class="badge bg-danger">เข้าปฏิบัติการสอน</span>
-                                            @endif --}}
-                                            {{-- @if ($teaching->status === 'S')
-                                                <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
-                                            @elseif ($teaching->status === 'L')
-                                                <span class="badge bg-warning">ลา</span>
-                                            @else
-                                                <span class="badge bg-secondary">รอการลงเวลา</span>
-                                            @endif --}}
                                             @if ($teaching->attendance && $teaching->attendance->status === 'เข้าปฏิบัติการสอน')
                                                 <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
                                             @elseif ($teaching->attendance && $teaching->attendance->status === 'ลา')

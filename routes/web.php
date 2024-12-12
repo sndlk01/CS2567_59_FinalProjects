@@ -54,6 +54,7 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::get('/attendances/{teaching_id}', [TaController::class, 'showAttendanceForm'])->name('attendances.form');
     // Route to handle attendance form submission
     Route::post('/attendances/{teaching_id}', [TaController::class, 'submitAttendance'])->name('attendances.submit');
+
 });
 
 //Admin Routes List

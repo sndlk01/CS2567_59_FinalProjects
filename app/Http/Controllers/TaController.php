@@ -357,134 +357,70 @@ class TaController extends Controller
 
     public function showSubjectDetail($id, $classId)
     {
-        // เพิ่ม debug log
-        Log::info('showSubjectDetail params:', [
-            'id' => $id,
-            'classId' => $classId,
-        ]);
+        try {
 
-        $user = Auth::user();
-        $student = Students::where('user_id', $user->id)->first();
 
-        // ดึงข้อมูลเฉพาะที่มี course_ta id ตรงกับ $id ที่ส่งมา และกรองด้วย student_id
-        $courseTaClass = CourseTaClasses::with([
-            'class.course.subjects',    // ดึงข้อมูลวิชา
-            'class.course.curriculums', // ดึงข้อมูลหลักสูตร
-            'class.teachers',           // ดึงข้อมูลอาจารย์ที่สอน
-            'class.semesters'           // ดึงข้อมูลปีการศึกษาและเทอม
-        ])->whereHas('courseTa', function ($query) use ($student) {
-            // กรองด้วย student_id จากตาราง course_tas
-            $query->where('student_id', $student->id);
-        })->where('course_ta_id', $id)  // กรองด้วย course_ta_id ที่ส่งมา
-            ->where('class_id', $classId)  // กรองด้วย class_id
-            ->first(); // ใช้ first() เพื่อดึงข้อมูลเฉพาะ 1 รายการ 
+            $user = Auth::user();
+            $student = Students::where('user_id', $user->id)->first();
 
-        // ตรวจสอบว่าข้อมูลถูกต้องหรือไม่
-        if (!$courseTaClass) {
-            abort(404, 'ไม่พบข้อมูล CourseTa ที่ระบุ');
+            // ดึงข้อมูล CourseTaClass
+            $courseTaClass = CourseTaClasses::with([
+                'class.course.subjects',
+                'class.course.curriculums',
+                'class.teachers',
+                'class.semesters'
+            ])->whereHas('courseTa', function ($query) use ($student) {
+                $query->where('student_id', $student->id);
+            })->where('course_ta_id', $id)
+                ->where('class_id', $classId)
+                ->first();
+
+            // ตรวจสอบว่าข้อมูลถูกต้องหรือไม่
+            if (!$courseTaClass) {
+                abort(404, 'ไม่พบข้อมูล CourseTa ที่ระบุ');
+            }
+
+            // ดึงข้อมูลเทอมจาก relation
+            $semester = $courseTaClass->class->semesters;
+
+            // สร้าง array เดือนในเทอม
+            $months = [];
+            if ($semester) {
+                $startDate = \Carbon\Carbon::parse($semester->start_date);
+                $endDate = \Carbon\Carbon::parse($semester->end_date);
+
+                // เพิ่ม endOfMonth() เพื่อให้ครอบคลุมทั้งเดือน
+                $endDate = $endDate->endOfMonth();
+
+                $currentDate = $startDate->copy()->startOfMonth();
+                while ($currentDate->lte($endDate)) {
+                    $months[] = [
+                        'value' => $currentDate->format('M'),
+                        'name' => $currentDate->locale('th')->monthName
+                    ];
+                    $currentDate->addMonth();
+                }
+            }
+
+            return view('layouts.ta.subjectDetail', compact('courseTaClass', 'student', 'months'));
+
+        } catch (\Exception $e) {
+            Log::error('Error in showSubjectDetail: ' . $e->getMessage());
+            return redirect()
+                ->back()
+                ->with('error', 'เกิดข้อผิดพลาดในการแสดงข้อมูล');
         }
-
-        return view('layouts.ta.subjectDetail', compact('courseTaClass', 'student'));
     }
 
-    // public function showTeachingData($id = null)
-    // {
-    //     try {
-    //         if (!$id) {
-    //             return redirect()->back()->with('error', 'กรุณาระบุ Class ID');
-    //         }
-
-    //         DB::beginTransaction();
-
-    //         // 1. Get and store data from API
-    //         $apiTeachings = collect($this->tdbmService->getTeachings())
-    //             ->filter(function ($teaching) use ($id) {
-    //                 return $teaching['class_id'] == $id;
-    //             });
-
-    //         if ($apiTeachings->isEmpty()) {
-    //             session()->flash('info', 'ยังไม่มีข้อมูลการสอนสำหรับรายวิชานี้');
-    //             return view('layouts.ta.teaching', ['teachings' => []]);
-    //         }
-
-    //         // 2. Get related API data
-    //         $apiClasses = collect($this->tdbmService->getStudentClasses());
-    //         $apiTeachers = collect($this->tdbmService->getTeachers());
-
-    //         // 3. Save API data to local DB
-    //         foreach ($apiTeachings as $teaching) {
-    //             Teaching::updateOrCreate(
-    //                 ['teaching_id' => $teaching['teaching_id']],
-    //                 [
-    //                     'start_time' => $teaching['start_time'],
-    //                     'end_time' => $teaching['end_time'],
-    //                     'duration' => $teaching['duration'],
-    //                     'class_type' => $teaching['class_type'] ?? 'N',
-    //                     'status' => $teaching['status'] ?? 'W',
-    //                     'class_id' => $teaching['class_id'],
-    //                     'teacher_id' => $teaching['teacher_id']
-    //                 ]
-    //             );
-    //         }
-
-    //         // 4. Fetch data from local DB with relationships
-    //         $localTeachings = Teaching::with(['class', 'teacher', 'attendance'])
-    //             ->where('class_id', $id)
-    //             ->orderBy('start_time', 'asc')
-    //             ->get()
-    //             ->map(function ($teaching) use ($apiClasses, $apiTeachers) {
-    //                 $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
-    //                 $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
-
-    //                 return (object)[
-    //                     'id' => $teaching->teaching_id,
-    //                     'start_time' => $teaching->start_time,
-    //                     'end_time' => $teaching->end_time,
-    //                     'duration' => $teaching->duration,
-    //                     'status' => $teaching->status,
-    //                     'class_id' => (object)[
-    //                         'title' => $class['title'] ?? 'N/A',
-    //                     ],
-    //                     'teacher_id' => (object)[
-    //                         'position' => $teacher['position'] ?? '',
-    //                         'degree' => $teacher['degree'] ?? '',
-    //                         'name' => $teacher['name'] ?? 'N/A',
-    //                     ],
-    //                     'attendance' => $teaching->attendance ? (object)[
-    //                         'note' => $teaching->attendance->note ?? ''
-    //                     ] : (object)[
-    //                         'note' => ''
-    //                     ]
-    //                 ];
-    //             });
-
-    //         DB::commit();
-
-    //         // 5. Debug logging
-    //         Log::info('Local Teachings:', [
-    //             'count' => $localTeachings->count(),
-    //             'first_item' => $localTeachings->first()
-    //         ]);
-
-    //         return view('layouts.ta.teaching', [
-    //             'teachings' => $localTeachings
-    //         ]);
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         Log::error('Error in showTeachingData: ' . $e->getMessage());
-    //         return redirect()
-    //             ->back()
-    //             ->with('error', 'เกิดข้อผิดพลาดในการแสดงข้อมูลการสอน: ' . $e->getMessage());
-    //     }
-    // }
-
-
-    public function showTeachingData($id = null)
+    public function showTeachingData($id = null, Request $request)
     {
         try {
             if (!$id) {
                 return redirect()->back()->with('error', 'กรุณาระบุ Class ID');
             }
+
+            // รับค่าเดือนจาก request
+            $selectedMonth = $request->query('month');
 
             DB::beginTransaction();
 
@@ -520,16 +456,19 @@ class TaController extends Controller
             }
 
             // 4. Fetch data from local DB with relationships
-            $localTeachings = Teaching::with(['class', 'teacher', 'attendance'])
-                ->where('class_id', $id)
-                ->orderBy('start_time', 'asc')
+            $query = Teaching::with(['class', 'teacher', 'attendance'])
+                ->where('class_id', $id);
+
+            // กรองตามเดือนที่เลือก
+            if ($selectedMonth) {
+                $query->whereMonth('start_time', \Carbon\Carbon::parse("1-{$selectedMonth}-2024")->month);
+            }
+
+            $localTeachings = $query->orderBy('start_time', 'asc')
                 ->get()
                 ->map(function ($teaching) use ($apiClasses, $apiTeachers) {
                     $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
                     $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
-
-                    // ดึงข้อมูล attendance
-                    $attendance = $teaching->attendance;
 
                     return (object)[
                         'id' => $teaching->teaching_id,
@@ -544,24 +483,20 @@ class TaController extends Controller
                             'degree' => $teacher['degree'] ?? '',
                             'name' => $teacher['name'] ?? 'N/A',
                         ],
-                        'attendance' => $attendance ? (object)[
-                            'status' => $attendance->status,
-                            'note' => $attendance->note ?? ''
+                        'attendance' => $teaching->attendance ? (object)[
+                            'status' => $teaching->attendance->status,
+                            'note' => $teaching->attendance->note ?? ''
                         ] : null
                     ];
                 });
 
             DB::commit();
 
-            // 5. Debug logging
-            Log::info('Local Teachings:', [
-                'count' => $localTeachings->count(),
-                'first_item' => $localTeachings->first()
+            return view('layouts.ta.teaching', [
+                'teachings' => $localTeachings,
+                'selectedMonth' => $selectedMonth
             ]);
 
-            return view('layouts.ta.teaching', [
-                'teachings' => $localTeachings
-            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in showTeachingData: ' . $e->getMessage());

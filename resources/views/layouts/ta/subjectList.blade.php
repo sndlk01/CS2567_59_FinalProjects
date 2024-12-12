@@ -37,8 +37,8 @@
                                             </td>
                                             <td>{{ $courseTaClass->courseTa->course->teachers->position }}
                                                 {{ $courseTaClass->courseTa->course->teachers->degree }}
-                                                {{ $courseTaClass->courseTa->course->teachers->fname }}
-                                                {{ $courseTaClass->courseTa->course->teachers->lname }}</td>
+                                                {{ $courseTaClass->courseTa->course->teachers->name }}
+                                                </td>
                                             <td>{{ $courseTaClass->courseTa->course->curriculums->name_th }}</td>
                                             <td>{{ $courseTaClass->class->section_num }}</td>
                                             <td>

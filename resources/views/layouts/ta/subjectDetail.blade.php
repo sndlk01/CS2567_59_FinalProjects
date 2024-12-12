@@ -28,26 +28,28 @@
                         </div>
 
                         <h4>ลงเวลาการสอน</h4>
-                        <div class="card mb-3">
-                            <div class="card-body">
-                                <div class="menu">
-                                    <a href="{{ route('layout.ta.teaching', ['id' => $courseTaClass->class->class_id]) }}"
-                                        class="btn btn-primary">+ ลงเวลา</a>
-
-                                    <a href="#" class="btn btn-success">ดาวน์โฟลดเอกสารสรุปภาระงาน</a>
-                                    <a href="#" class="btn btn-success">ดาวน์โหลดเอกสาร</a>
-                                </div>
-                                <div class="dropdown">
-                                    <select name="month" class="form-select" aria-label="Default select example">
-                                        <option value="Jun">มิถุนายน</option>
-                                        <option value="Jul">กรกฎาคม</option>
-                                        <option value="Aug">สิงหาคม</option>
-                                        <option value="Sept">กันยายน</option>
-                                        <option value="Oct">ตุลาคม</option>
-                                    </select>
-                                </div>
+                        <div class="card-body">
+                            <div class="menu">
+                                <form action="{{ route('layout.ta.teaching', ['id' => $courseTaClass->class->class_id]) }}" 
+                                    method="GET" class="d-block">
+                                    <!-- ใช้ d-block แทน d-flex เพื่อให้ elements อยู่คนละบรรทัด -->
+                                    <div class="mb-3">
+                                        <!-- ใช้ mb-3 เพื่อให้มี margin bottom -->
+                                        <button type="submit" class="btn btn-primary">+ ลงเวลา</button>
+                                        <a href="#" class="btn btn-success">ดาวน์โฟลดเอกสารสรุปภาระงาน</a>
+                                        <a href="#" class="btn btn-success">ดาวน์โหลดเอกสาร</a>
+                                    </div>
+                                    <div class="dropdown">
+                                        <select name="month" class="form-select" aria-label="Default select example">
+                                            @forelse($months as $month)
+                                                <option value="{{ $month['value'] }}">{{ $month['name'] }}</option>
+                                            @empty
+                                                <option value="" disabled>ไม่พบข้อมูลเดือน</option>
+                                            @endforelse
+                                        </select>
+                                    </div>
+                                </form>
                             </div>
-                        </div>
                     </div>
                 </div>
             </div>
