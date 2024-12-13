@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\Courses;
 use App\Models\Subjects;
 use App\Models\Teachers;
@@ -17,6 +18,7 @@ use App\Services\TDBMApiService;
 
 class TeacherController extends Controller
 {
+    private $tdbmService;
     /**
      * Create a new controller instance.
      *
@@ -232,6 +234,7 @@ class TeacherController extends Controller
                     'course' => $subject['subject_id'] . ' ' . $subject['name_en'],
                     'student_id' => $courseTa->student->student_id,
                     'student_name' => $courseTa->student->name,
+                    'student_name' => $courseTa->student->name,
                     'status' => $latestRequest ? strtolower($latestRequest->status) : 'w',
                     'approved_at' => $latestRequest ? $latestRequest->approved_at : null,
                     'comment' => $latestRequest ? $latestRequest->comment : '',
@@ -241,7 +244,6 @@ class TeacherController extends Controller
             Log::info('Formatted Course TAs count: ' . $formattedCourseTas->count());
 
             return view('teacherHome', ['courseTas' => $formattedCourseTas]);
-
         } catch (\Exception $e) {
             Log::error('Error in showTARequests: ' . $e->getMessage());
             return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
@@ -255,17 +257,19 @@ class TeacherController extends Controller
         $comments = $request->input('comments', []);
 
         foreach ($courseTaIds as $index => $courseTaId) {
-            $courseTaClass = CourseTaClasses::where('course_ta_id', $courseTaId)->first();
+            // ดึงทุก course_ta_classes ที่เกี่ยวข้องกับ course_ta_id นี้
+            $courseTaClasses = CourseTaClasses::where('course_ta_id', $courseTaId)->get();
 
-            if ($courseTaClass) {
-                Requests::updateOrCreate(
-                    ['course_ta_class_id' => $courseTaClass->id],
-                    [
+            if ($courseTaClasses->isNotEmpty()) {
+                foreach ($courseTaClasses as $courseTaClass) {
+                    // สร้างหรืออัพเดท request สำหรับแต่ละ class
+                    Requests::create([
+                        'course_ta_class_id' => $courseTaClass->id,
                         'status' => $statuses[$index],
                         'comment' => $comments[$index],
                         'approved_at' => now(),
-                    ]
-                );
+                    ]);
+                }
             }
         }
 

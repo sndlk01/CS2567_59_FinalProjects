@@ -1,6 +1,6 @@
 @extends('layouts.taLayout')
 
-@section('title', 'request')
+@section('title', 'subjectList')
 @section('break', 'ข้อมูลรายวิชาผู้ช่วยสอน')
 
 @section('content')

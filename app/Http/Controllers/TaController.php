@@ -327,33 +327,36 @@ class TaController extends Controller
             return redirect()->route('layout.ta.request')->with('error', 'ไม่พบข้อมูลนักศึกษา');
         }
 
-        // เพิ่ม requests เข้าไปใน with และเพิ่มเงื่อนไขการกรอง
         $courseTaClasses = CourseTaClasses::with([
             'courseTa.course.subjects',
             'courseTa.course.semesters',
             'courseTa.course.teachers',
             'courseTa.course.curriculums',
             'class',
-            'requests'  // เพิ่มการดึงข้อมูล requests
+            'requests'
         ])
             ->whereHas('courseTa', function ($query) use ($student) {
                 $query->where('student_id', $student->id);
             })
-            ->whereHas('requests', function ($query) {
-                $query->where('status', 'A')  // กรองเฉพาะ status = 'A' (Approve)
-                    ->whereNotNull('approved_at');  // และต้องมี approved_at
+            ->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('requests')
+                    ->whereColumn('requests.course_ta_class_id', 'course_ta_classes.id')
+                    ->where('status', 'A')
+                    ->whereNotNull('approved_at');
             })
             ->get();
 
-        // ประมวลผลข้อมูลหลักสูตร
         foreach ($courseTaClasses as $courseTaClass) {
             if (isset($courseTaClass->courseTa->course->curriculums->name_th)) {
                 $courseTaClass->courseTa->course->curriculums->name_th =
                     trim(Str::before($courseTaClass->courseTa->course->curriculums->name_th, ' '));
             }
         }
+
         return view('layouts.ta.subjectList', compact('courseTaClasses'));
     }
+
 
     public function showSubjectDetail($id, $classId)
     {
@@ -403,7 +406,6 @@ class TaController extends Controller
             }
 
             return view('layouts.ta.subjectDetail', compact('courseTaClass', 'student', 'months'));
-
         } catch (\Exception $e) {
             Log::error('Error in showSubjectDetail: ' . $e->getMessage());
             return redirect()
@@ -494,7 +496,6 @@ class TaController extends Controller
                 'teachings' => $localTeachings,
                 'selectedMonth' => $selectedMonth
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in showTeachingData: ' . $e->getMessage());
