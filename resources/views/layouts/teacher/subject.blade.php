@@ -10,7 +10,7 @@
             <div class="card-body">
                 <h4>รายวิชาทั้งหมดที่สอน</h4>
                 <div class="container shadow-lg bg-body rounded p-5">
-                    @if($subjects->isEmpty())
+                    @if(empty($subjects))
                         <p>ไม่พบรายวิชาที่สอน</p>
                     @else
                         <table class="table">
@@ -27,11 +27,11 @@
                                 @foreach ($subjects as $index => $subject)
                                 <tr>
                                     <th scope="row">{{ $index + 1 }}</th>
-                                    <td>{{ $subject->subject_id }}</td>
-                                    <td>{{ $subject->name_en }}</td>
-                                    <td>{{ $subject->courses->count() }}</td>
+                                    <td>{{ $subject['subject_id'] }}</td>
+                                    <td>{{ $subject['name_en'] }}</td>
+                                    <td>{{ count($subject['courses']) }}</td>
                                     <td>
-                                        <a class="fw-bold" href="{{ url('/subject/subjectDetail/' . $subject->id) }}">รายละเอียดผู้ช่วยสอน</a>
+                                        <a class="fw-bold" href="{{ url('/subject/subjectDetail/' . $subject['subject_id']) }}">รายละเอียดผู้ช่วยสอน</a>
                                     </td>
                                 </tr>
                                 @endforeach
