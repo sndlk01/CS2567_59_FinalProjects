@@ -23,6 +23,8 @@
                                 <form action="{{ route('attendances.submit', $teaching->teaching_id) }}" method="POST">
                                     @csrf
 
+                                    <input type="hidden" name="selected_month" value="{{ request('selected_month') }}">
+
                                     <div class="mb-3">
                                         <label class="form-label">สถานะการเข้าสอน</label>
                                         <div class="form-check">

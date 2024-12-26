@@ -420,16 +420,16 @@ class TaController extends Controller
             if (!$id) {
                 return redirect()->back()->with('error', 'กรุณาระบุ Class ID');
             }
-    
+
             $selectedMonth = $request->query('month');
             DB::beginTransaction();
-    
+
             // 1. Get regular teachings
             $apiTeachings = collect($this->tdbmService->getTeachings())
                 ->filter(function ($teaching) use ($id) {
                     return $teaching['class_id'] == $id;
                 });
-    
+
             // 2. Get extra teachings
             $apiExtraTeachings = collect($this->tdbmService->getExtraTeachings())
                 ->filter(function ($teaching) use ($id) {
@@ -448,19 +448,19 @@ class TaController extends Controller
                         'teacher_id' => $teaching['teacher_id']
                     ];
                 });
-    
+
             // 3. Merge regular and extra teachings
             $allTeachings = $apiTeachings->concat($apiExtraTeachings);
-    
+
             if ($allTeachings->isEmpty()) {
                 session()->flash('info', 'ยังไม่มีข้อมูลการสอนสำหรับรายวิชานี้');
                 return view('layouts.ta.teaching', ['teachings' => []]);
             }
-    
+
             // 4. Get related API data
             $apiClasses = collect($this->tdbmService->getStudentClasses());
             $apiTeachers = collect($this->tdbmService->getTeachers());
-    
+
             // 5. Save all teachings to local DB
             foreach ($allTeachings as $teaching) {
                 Teaching::updateOrCreate(
@@ -476,21 +476,21 @@ class TaController extends Controller
                     ]
                 );
             }
-    
+
             // 6. Fetch data from local DB with filter
             $query = Teaching::with(['class', 'teacher', 'attendance'])
                 ->where('class_id', $id);
-    
+
             if ($selectedMonth) {
                 $query->whereMonth('start_time', \Carbon\Carbon::parse("1-{$selectedMonth}-2024")->month);
             }
-    
+
             $localTeachings = $query->orderBy('start_time', 'asc')
                 ->get()
                 ->map(function ($teaching) use ($apiClasses, $apiTeachers) {
                     $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
                     $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
-    
+
                     return (object)[
                         'id' => $teaching->teaching_id,
                         'start_time' => $teaching->start_time,
@@ -511,14 +511,13 @@ class TaController extends Controller
                         ] : null
                     ];
                 });
-    
+
             DB::commit();
-    
+
             return view('layouts.ta.teaching', [
                 'teachings' => $localTeachings,
                 'selectedMonth' => $selectedMonth
             ]);
-    
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in showTeachingData: ' . $e->getMessage());
@@ -527,7 +526,6 @@ class TaController extends Controller
                 ->with('error', 'เกิดข้อผิดพลาดในการแสดงข้อมูลการสอน: ' . $e->getMessage());
         }
     }
-
 
     public function showAttendanceForm($teaching_id)
     {
@@ -588,15 +586,17 @@ class TaController extends Controller
                 'approve_user_id' => null
             ]);
 
-            // อัพเดทสถานะใน teaching
-            // $teaching->update([
-            //     'status' => $request->status === 'เข้าปฏิบัติการสอน' ? 'S' : 'L'
-            // ]);
-
             DB::commit();
 
+            // เก็บค่าเดือนที่ส่งมาจาก form
+            $selectedMonth = $request->input('selected_month');
+
+            // redirect กลับไปยังหน้า teaching พร้อมกับส่งค่าเดือนที่เลือกไว้
             return redirect()
-                ->route('layout.ta.teaching', ['id' => $teaching->class_id])
+                ->route('layout.ta.teaching', [
+                    'id' => $teaching->class_id,
+                    'month' => $selectedMonth
+                ])
                 ->with('success', 'บันทึกการลงเวลาสำเร็จ');
         } catch (\Exception $e) {
             DB::rollBack();
