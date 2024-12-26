@@ -1,7 +1,7 @@
 @extends('layouts.taLayout')
 
-@section('title', 'attendance')
-@section('break', 'ลงเวลาการสอน')
+@section('title', 'subjectDetail')
+@section('break', 'เซคชั่นที่สอน')
 
 @section('content')
     <div class="row">
@@ -22,8 +22,6 @@
                                     {{ $courseTaClass->class->teachers->position }}{{ $courseTaClass->class->teachers->degree }}
                                     {{ $courseTaClass->class->teachers->name }}
                                 <p><strong>ชื่อผู้ช่วยสอน:</strong> {{ $student->name }}</p>
-                                {{-- <p><strong>หน่วยกิต:</strong> {{ $courseTaClass->class->course->subjects->credits }}</p> --}}
-                                {{-- <p><strong>Section:</strong> {{ $courseTaClass->class->section_num }}</p> --}}
                             </div>
                         </div>
 
@@ -32,9 +30,7 @@
                             <div class="menu">
                                 <form action="{{ route('layout.ta.teaching', ['id' => $courseTaClass->class->class_id]) }}" 
                                     method="GET" class="d-block">
-                                    <!-- ใช้ d-block แทน d-flex เพื่อให้ elements อยู่คนละบรรทัด -->
                                     <div class="mb-3">
-                                        <!-- ใช้ mb-3 เพื่อให้มี margin bottom -->
                                         <button type="submit" class="btn btn-primary">+ ลงเวลา</button>
                                         <a href="#" class="btn btn-success">ดาวน์โฟลดเอกสารสรุปภาระงาน</a>
                                         <a href="#" class="btn btn-success">ดาวน์โหลดเอกสาร</a>
