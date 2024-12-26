@@ -61,7 +61,7 @@ class DisbursementsController extends Controller
                 $fileName = time() . '_' . $file->getClientOriginalName();
                 $path = $file->storeAs('assets/fileUploads', $fileName, 'public');
                 $disbursement->uploadfile = $path;
-                $disbursement->original_filename = $file->getClientOriginalName(); // Add this if you have the column
+                // $disbursement->original_filename = $file->getClientOriginalName(); // Add this if you have the column
             }
 
             $disbursement->bookbank_id = $request->bookbank_id;
@@ -81,21 +81,27 @@ class DisbursementsController extends Controller
     public function downloadDocument($id)
     {
         try {
+            // ตรวจสอบสิทธิ์ user
             $user = Auth::user();
             $student = Students::where('user_id', $user->id)->first();
             $disbursement = Disbursements::findOrFail($id);
 
+            // ตรวจสอบว่าเป็นเจ้าของเอกสาร
             if (!$student || $disbursement->student_id !== $student->id) {
                 return redirect()->back()->with('error', 'ไม่มีสิทธิ์เข้าถึงเอกสารนี้');
             }
 
+            // ตรวจสอบว่าไฟล์มีอยู่จริง
             if (!Storage::disk('public')->exists($disbursement->uploadfile)) {
-                return redirect()->back()->with('error', 'ไม่พบไฟล์เอกสาร');
+                return back()->with('error', 'ไม่พบไฟล์เอกสาร');
             }
 
+            // ดาวน์โหลดไฟล์
             return Storage::disk('public')->download($disbursement->uploadfile);
+
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
+            \Log::error('Document download error: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร');
         }
     }
 }

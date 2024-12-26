@@ -87,6 +87,7 @@ Route::middleware(['auth', 'user-access:teacher'])->group(function () {
     Route::post('/teacherreq', [TeacherController::class, 'updateTARequestStatus'])->name('teacher.home');
     Route::get('/subject', [TeacherController::class, 'subjectTeacher'])->name('layout.teacher.subject');
     Route::get('/subject/subjectDetail', [TeacherController::class, 'subjectDetail'])->name('subjectDetail');
+    Route::get('/teacher/subjectDetail/{course_id}', [TeacherController::class, 'subjectDetail']);
     Route::get('/subject/subjectDetail/taDetail', [TeacherController::class, 'taDetail'])->name('taDetail');
 });
 
