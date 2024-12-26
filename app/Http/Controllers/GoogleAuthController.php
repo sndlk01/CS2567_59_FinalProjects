@@ -54,7 +54,6 @@ class GoogleAuthController extends Controller
                 }
             }
 
-
             // เข้าสู่ระบบ
             Auth::login($user);
 

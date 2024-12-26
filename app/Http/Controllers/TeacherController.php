@@ -56,137 +56,136 @@ class TeacherController extends Controller
     }
 
     public function subjectTeacher()
-{
-    try {
-        $user = Auth::user();
-        
-        $localTeacher = Teachers::where('user_id', $user->id)->first();
-        
-        $tdbmService = new TDBMApiService();
-        $teachers = collect($tdbmService->getTeachers());
-        
-        // Get current date
-        $currentDate = now();
-        $month = $currentDate->month;
-        $year = $currentDate->year + 543; // Convert to Buddhist year
-        
-        // Determine semester based on month
-        if ($month >= 6 && $month <= 11) {
-            $semester = 1;
-        } else {
-            $semester = 2;
-            // Adjust year for second semester spanning across years
-            if ($month >= 1 && $month <= 5) {
-                $year -= 1;
-            }
-        }
-        
-        $semesterId = $year . $semester;
-        
-        Log::info('Academic Calendar Info:', [
-            'current_date' => $currentDate,
-            'thai_year' => $year,
-            'semester' => $semester,
-            'semester_id' => $semesterId
-        ]);
+    {
+        try {
+            $user = Auth::user();
 
-        $teacher = null;
-        
-        $teacher = $teachers->where('account_user_id', $user->id)->first();
-        
-        if (!$teacher && $localTeacher && $localTeacher->email) {
-            $teacher = $teachers->where('email', $localTeacher->email)->first();
-        }
-        
-        if (!$teacher && $localTeacher && $localTeacher->name) {
-            $teacher = $teachers->where('name', 'like', '%'.$localTeacher->name.'%')->first();
-        }
-        
-        if (!$teacher && $localTeacher && $localTeacher->id) {
-            $teacher = $teachers->where('teacher_id', $localTeacher->id)->first();
-        }
+            $localTeacher = Teachers::where('user_id', $user->id)->first();
 
-        if (!$teacher) {
-            if ($localTeacher) {
-                $teacher = [
-                    'teacher_id' => $localTeacher->id,
-                    'name' => $localTeacher->name,
-                    'email' => $localTeacher->email,
-                    'prefix' => $localTeacher->prefix ?? '',
-                    'position' => $localTeacher->position ?? '',
-                    'degree' => $localTeacher->degree ?? ''
-                ];
+            $tdbmService = new TDBMApiService();
+            $teachers = collect($tdbmService->getTeachers());
+
+            // Get current date
+            $currentDate = now();
+            $month = $currentDate->month;
+            $year = $currentDate->year + 543; // Convert to Buddhist year
+
+            // Determine semester based on month
+            if ($month >= 6 && $month <= 11) {
+                $semester = 1;
             } else {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'ไม่พบข้อมูลอาจารย์',
-                    'debug_info' => [
-                        'user_id' => $user->id,
-                        'local_teacher_exists' => $localTeacher ? 'yes' : 'no'
-                    ]
-                ], 404);
+                $semester = 2;
+                // Adjust year for second semester spanning across years
+                if ($month >= 1 && $month <= 5) {
+                    $year -= 1;
+                }
             }
-        }
-        
-        $allSubjects = collect($tdbmService->getSubjects());
-        $allCourses = collect($tdbmService->getCourses());
-        
-        // Filter courses by current semester and teacher
-        $teacherCourses = $allCourses->where('owner_teacher_id', $teacher['teacher_id'])
-                                    ->where('status', 'A')
-                                    ->where('semester_id', $semesterId);
-        
-        $teacherSubjectIds = $teacherCourses->pluck('subject_id')->unique();
-        
-        // Initialize empty array for subjects
-        $subjects = [];
-        
-        // Only process subjects if we have any matching subject IDs
-        if ($teacherSubjectIds->isNotEmpty()) {
-            $subjects = $allSubjects->whereIn('subject_id', $teacherSubjectIds)
-                ->map(function($subjectItem) use ($teacherCourses) {
-                    // Make sure we have all required fields
-                    return [
-                        'subject_id' => $subjectItem['subject_id'] ?? '',
-                        'name_en' => $subjectItem['name_en'] ?? '',
-                        'courses' => $teacherCourses->where('subject_id', $subjectItem['subject_id'])
-                                                  ->values()
-                                                  ->toArray()
+
+            $semesterId = $year . $semester;
+
+            Log::info('Academic Calendar Info:', [
+                'current_date' => $currentDate,
+                'thai_year' => $year,
+                'semester' => $semester,
+                'semester_id' => $semesterId
+            ]);
+
+            $teacher = null;
+
+            $teacher = $teachers->where('account_user_id', $user->id)->first();
+
+            if (!$teacher && $localTeacher && $localTeacher->email) {
+                $teacher = $teachers->where('email', $localTeacher->email)->first();
+            }
+
+            if (!$teacher && $localTeacher && $localTeacher->name) {
+                $teacher = $teachers->where('name', 'like', '%' . $localTeacher->name . '%')->first();
+            }
+
+            if (!$teacher && $localTeacher && $localTeacher->id) {
+                $teacher = $teachers->where('teacher_id', $localTeacher->id)->first();
+            }
+
+            if (!$teacher) {
+                if ($localTeacher) {
+                    $teacher = [
+                        'teacher_id' => $localTeacher->id,
+                        'name' => $localTeacher->name,
+                        'email' => $localTeacher->email,
+                        'prefix' => $localTeacher->prefix ?? '',
+                        'position' => $localTeacher->position ?? '',
+                        'degree' => $localTeacher->degree ?? ''
                     ];
-                })
-                ->values()
-                ->toArray();
+                } else {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'ไม่พบข้อมูลอาจารย์',
+                        'debug_info' => [
+                            'user_id' => $user->id,
+                            'local_teacher_exists' => $localTeacher ? 'yes' : 'no'
+                        ]
+                    ], 404);
+                }
+            }
+
+            $allSubjects = collect($tdbmService->getSubjects());
+            $allCourses = collect($tdbmService->getCourses());
+
+            // Filter courses by current semester and teacher
+            $teacherCourses = $allCourses->where('owner_teacher_id', $teacher['teacher_id'])
+                ->where('status', 'A')
+                ->where('semester_id', $semesterId);
+
+            $teacherSubjectIds = $teacherCourses->pluck('subject_id')->unique();
+
+            // Initialize empty array for subjects
+            $subjects = [];
+
+            // Only process subjects if we have any matching subject IDs
+            if ($teacherSubjectIds->isNotEmpty()) {
+                $subjects = $allSubjects->whereIn('subject_id', $teacherSubjectIds)
+                    ->map(function ($subjectItem) use ($teacherCourses) {
+                        // Make sure we have all required fields
+                        return [
+                            'subject_id' => $subjectItem['subject_id'] ?? '',
+                            'name_en' => $subjectItem['name_en'] ?? '',
+                            'courses' => $teacherCourses->where('subject_id', $subjectItem['subject_id'])
+                                ->values()
+                                ->toArray()
+                        ];
+                    })
+                    ->values()
+                    ->toArray();
+            }
+
+            // Add teacher info to response
+            $teacherInfo = [
+                'id' => $teacher['teacher_id'],
+                'name' => ($teacher['prefix'] ?? '') .
+                    ($teacher['position'] ?? '') .
+                    ($teacher['degree'] ?? '') .
+                    $teacher['name'],
+                'email' => $teacher['email'],
+                'current_semester' => [
+                    'id' => $semesterId,
+                    'year' => $year,
+                    'semester' => $semester
+                ]
+            ];
+
+            return view('layouts.teacher.subject', [
+                'subjects' => $subjects,
+                'teacher' => $teacherInfo
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in subjectTeacher: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูล กรุณาลองใหม่อีกครั้ง',
+                'error' => $e->getMessage()
+            ], 500);
         }
-            
-        // Add teacher info to response
-        $teacherInfo = [
-            'id' => $teacher['teacher_id'],
-            'name' => ($teacher['prefix'] ?? '') . 
-                     ($teacher['position'] ?? '') . 
-                     ($teacher['degree'] ?? '') . 
-                     $teacher['name'],
-            'email' => $teacher['email'],
-            'current_semester' => [
-                'id' => $semesterId,
-                'year' => $year,
-                'semester' => $semester
-            ]
-        ];
-        
-        return view('layouts.teacher.subject', [
-            'subjects' => $subjects,
-            'teacher' => $teacherInfo
-        ]);
-        
-    } catch (\Exception $e) {
-        Log::error('Error in subjectTeacher: ' . $e->getMessage());
-        return response()->json([
-            'status' => 'error',
-            'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูล กรุณาลองใหม่อีกครั้ง',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     public function showTARequests(TDBMApiService $tdbmApiService)
     {
@@ -234,7 +233,7 @@ class TeacherController extends Controller
                     'course' => $subject['subject_id'] . ' ' . $subject['name_en'],
                     'student_id' => $courseTa->student->student_id,
                     'student_name' => $courseTa->student->name,
-                    'student_name' => $courseTa->student->name,
+                    // 'student_name' => $courseTa->student->name,
                     'status' => $latestRequest ? strtolower($latestRequest->status) : 'w',
                     'approved_at' => $latestRequest ? $latestRequest->approved_at : null,
                     'comment' => $latestRequest ? $latestRequest->comment : '',
