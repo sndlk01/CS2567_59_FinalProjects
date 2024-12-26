@@ -420,27 +420,49 @@ class TaController extends Controller
             if (!$id) {
                 return redirect()->back()->with('error', 'กรุณาระบุ Class ID');
             }
-
-            // รับค่าเดือนจาก request
+    
             $selectedMonth = $request->query('month');
-
-            // 1. Get and store data from API
+            DB::beginTransaction();
+    
+            // 1. Get regular teachings
             $apiTeachings = collect($this->tdbmService->getTeachings())
                 ->filter(function ($teaching) use ($id) {
                     return $teaching['class_id'] == $id;
                 });
-
-            if ($apiTeachings->isEmpty()) {
+    
+            // 2. Get extra teachings
+            $apiExtraTeachings = collect($this->tdbmService->getExtraTeachings())
+                ->filter(function ($teaching) use ($id) {
+                    return $teaching['class_id'] == $id;
+                })
+                ->map(function ($teaching) {
+                    // แปลงรูปแบบให้ตรงกับ regular teaching
+                    return [
+                        'teaching_id' => $teaching['teaching_id'],
+                        'start_time' => $teaching['class_date'] . ' ' . $teaching['start_time'],
+                        'end_time' => $teaching['class_date'] . ' ' . $teaching['end_time'],
+                        'duration' => $teaching['duration'],
+                        'class_type' => 'E', // E for Extra
+                        'status' => $teaching['status'],
+                        'class_id' => $teaching['class_id'],
+                        'teacher_id' => $teaching['teacher_id']
+                    ];
+                });
+    
+            // 3. Merge regular and extra teachings
+            $allTeachings = $apiTeachings->concat($apiExtraTeachings);
+    
+            if ($allTeachings->isEmpty()) {
                 session()->flash('info', 'ยังไม่มีข้อมูลการสอนสำหรับรายวิชานี้');
                 return view('layouts.ta.teaching', ['teachings' => []]);
             }
-
-            // 2. Get related API data
+    
+            // 4. Get related API data
             $apiClasses = collect($this->tdbmService->getStudentClasses());
             $apiTeachers = collect($this->tdbmService->getTeachers());
-
-            // 3. Save API data to local DB
-            foreach ($apiTeachings as $teaching) {
+    
+            // 5. Save all teachings to local DB
+            foreach ($allTeachings as $teaching) {
                 Teaching::updateOrCreate(
                     ['teaching_id' => $teaching['teaching_id']],
                     [
@@ -454,27 +476,27 @@ class TaController extends Controller
                     ]
                 );
             }
-
-            // 4. Fetch data from local DB with relationships
+    
+            // 6. Fetch data from local DB with filter
             $query = Teaching::with(['class', 'teacher', 'attendance'])
                 ->where('class_id', $id);
-
-            // กรองตามเดือนที่เลือก
+    
             if ($selectedMonth) {
                 $query->whereMonth('start_time', \Carbon\Carbon::parse("1-{$selectedMonth}-2024")->month);
             }
-
+    
             $localTeachings = $query->orderBy('start_time', 'asc')
                 ->get()
                 ->map(function ($teaching) use ($apiClasses, $apiTeachers) {
                     $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
                     $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
-
+    
                     return (object)[
                         'id' => $teaching->teaching_id,
                         'start_time' => $teaching->start_time,
                         'end_time' => $teaching->end_time,
                         'duration' => $teaching->duration,
+                        'class_type' => $teaching->class_type,
                         'class_id' => (object)[
                             'title' => $class['title'] ?? 'N/A',
                         ],
@@ -489,13 +511,14 @@ class TaController extends Controller
                         ] : null
                     ];
                 });
-
+    
             DB::commit();
-
+    
             return view('layouts.ta.teaching', [
                 'teachings' => $localTeachings,
                 'selectedMonth' => $selectedMonth
             ]);
+    
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in showTeachingData: ' . $e->getMessage());
