@@ -140,19 +140,10 @@ class TeacherController extends Controller
             }
 
             $allSubjects = collect($tdbmService->getSubjects());
-            $allStudentClasses = collect($tdbmService->getStudentClasses());
             $allCourses = collect($tdbmService->getCourses());
 
-            // Filter student classes by current semester and teacher
-            $teacherClasses = $allStudentClasses->where('teacher_id', $teacher['teacher_id'])
-                ->where('status', 'A')
-                ->where('semester_id', $semesterId);
-
-            // Get course IDs from student classes
-            $courseIds = $teacherClasses->pluck('course_id')->unique();
-
-            // Get corresponding courses
-            $teacherCourses = $allCourses->whereIn('course_id', $courseIds)
+            // Filter courses by current semester and teacher
+            $teacherCourses = $allCourses->where('owner_teacher_id', $teacher['teacher_id'])
                 ->where('status', 'A')
                 ->where('semester_id', $semesterId);
 
@@ -164,22 +155,14 @@ class TeacherController extends Controller
             // Only process subjects if we have any matching subject IDs
             if ($teacherSubjectIds->isNotEmpty()) {
                 $subjects = $allSubjects->whereIn('subject_id', $teacherSubjectIds)
-                    ->map(function ($subjectItem) use ($teacherCourses, $teacherClasses) {
-                        $coursesForSubject = $teacherCourses->where('subject_id', $subjectItem['subject_id']);
-
-                        // Add class information to each course
-                        $coursesWithClasses = $coursesForSubject->map(function ($course) use ($teacherClasses) {
-                            $classes = $teacherClasses->where('course_id', $course['course_id'])
-                                ->values()
-                                ->toArray();
-                            $course['classes'] = $classes;
-                            return $course;
-                        });
-
+                    ->map(function ($subjectItem) use ($teacherCourses) {
+                        // Make sure we have all required fields
                         return [
                             'subject_id' => $subjectItem['subject_id'] ?? '',
                             'name_en' => $subjectItem['name_en'] ?? '',
-                            'courses' => $coursesWithClasses->values()->toArray()
+                            'courses' => $teacherCourses->where('subject_id', $subjectItem['subject_id'])
+                                ->values()
+                                ->toArray()
                         ];
                     })
                     ->values()
@@ -205,7 +188,6 @@ class TeacherController extends Controller
                 'subjects' => $subjects,
                 'teacher' => $teacherInfo
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error in subjectTeacher: ' . $e->getMessage());
             return response()->json([
