@@ -88,8 +88,8 @@ Route::middleware(['auth', 'user-access:teacher'])->group(function () {
     Route::get('/subject', [TeacherController::class, 'subjectTeacher'])->name('layout.teacher.subject');
     Route::get('/subject/subjectDetail', [TeacherController::class, 'subjectDetail'])->name('subjectDetail');
     Route::get('/teacher/subjectDetail/{course_id}', [TeacherController::class, 'subjectDetail']);
-    Route::get('/subject/subjectDetail/taDetail', [TeacherController::class, 'taDetail'])->name('taDetail');
-});
+    Route::get('/subject/subjectDetail/taDetail/{student_id}', [TeacherController::class, 'taDetail'])->name('teacher.taDetail');});
+    Route::post('teacher/approve-attendance', [TeacherController::class, 'approveAttendance'])->name('teacher.approve-attendance');
 
 Route::fallback(function () {
     return view('error\404');

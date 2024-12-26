@@ -33,10 +33,11 @@
                             <thead>
                                 <tr>
                                     <th scope="col">ลำดับ</th>
-                                    <th scope="col">ชื่อ</th>
-                                    <th scope="col">นามสกุล</th>
+                                    
+                                    {{-- <th scope="col">นามสกุล</th> --}}
                                     <th scope="col">รหัสนักศึกษา</th>
-                                    <th scope="col">ระดับ</th>
+                                    <th scope="col">ชื่อ-นามสกุล</th>
+                                    <th scope="col">อีเมล</th>
                                     <th scope="col"></th>
                                 </tr>
                             </thead>
@@ -44,10 +45,11 @@
                                 @forelse($course['teaching_assistants'] as $index => $ta)
                                     <tr>
                                         <th scope="row">{{ $index + 1 }}</th>
-                                        <td>{{ $ta['firstname'] }}</td>
-                                        <td>{{ $ta['lastname'] }}</td>
+                                        
+                                        {{-- <td>{{ $ta['lastname'] }}</td> --}}
                                         <td>{{ $ta['student_id'] }}</td>
-                                        <td>{{ $ta['degree_level'] }}</td>
+                                        <td>{{ $ta['name'] }}</td>
+                                        <td>{{ $ta['email'] }}</td>
                                         <td>
                                             <a class="fw-bold" href="{{ url('/subject/subjectDetail/taDetail/' . $ta['id']) }}">
                                                 ตรวจสอบข้อมูล
