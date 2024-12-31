@@ -9,7 +9,7 @@ use App\Models\Students;
 use Illuminate\Http\Request;
 use App\Models\CourseTas;
 use App\Models\Requests;
-use App\Models\Attendances;
+use App\Models\Teaching;
 use App\Models\CourseTaClasses;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -91,79 +91,70 @@ class TeacherController extends Controller
         }
     }
 
-    public function taDetail($ta_id)
-    {
+    public function taDetail($ta_id) {
         try {
             $ta = CourseTas::with(['student', 'course.semesters'])->findOrFail($ta_id);
             $student = $ta->student;
             $semester = $ta->course->semesters;
-
-            $currentDate = \Carbon\Carbon::now();
-            $start = \Carbon\Carbon::parse($semester->start_date);
-            $end = \Carbon\Carbon::parse($semester->end_date);
-
-            if (!$currentDate->between($start, $end)) {
+            
+            $start = \Carbon\Carbon::parse($semester->start_date)->startOfDay();
+            $end = \Carbon\Carbon::parse($semester->end_date)->endOfDay();
+            
+            if (!\Carbon\Carbon::now()->between($start, $end)) {
                 return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
             }
-
-            $selectedMonth = request('month', $start->month);
-
-            $attendances = Attendances::where('student_id', $student->id)
-                ->whereYear('created_at', $start->year)
-                ->whereMonth('created_at', $selectedMonth)
-                ->get();
-
+    
+            // สร้างรายการเดือน
             $monthsInSemester = [];
-            $startMonth = $start->month;
-            $endMonth = $end->month;
-
-            if ($start->year == $end->year) {
-                for ($m = $startMonth; $m <= $endMonth; $m++) {
-                    $date = \Carbon\Carbon::create($start->year, $m, 1);
-                    $monthsInSemester[$m] = $date->locale('th')->monthName;
+            
+            // ถ้าปีเดียวกัน
+            if ($start->year === $end->year) {
+                for ($m = $start->month; $m <= $end->month; $m++) {
+                    $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
+                    $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
                 }
-            } else {
-                for ($m = $startMonth; $m <= 12; $m++) {
-                    $date = \Carbon\Carbon::create($start->year, $m, 1);
-                    $monthsInSemester[$m] = $date->locale('th')->monthName;
+            } 
+            // ถ้าคนละปี
+            else {
+                // เพิ่มเดือนของปีแรก
+                for ($m = $start->month; $m <= 12; $m++) {
+                    $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
+                    $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
                 }
-                for ($m = 1; $m <= $endMonth; $m++) {
-                    $date = \Carbon\Carbon::create($end->year, $m, 1);
-                    $monthsInSemester[$m] = $date->locale('th')->monthName;
+                
+                // เพิ่มเดือนของปีถัดไป
+                for ($m = 1; $m <= $end->month; $m++) {
+                    $date = \Carbon\Carbon::createFromDate($end->year, $m, 1);
+                    $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
                 }
             }
-
+    
+            // Get selected month from request, default to start month/year
+            $selectedYearMonth = request('month', $start->format('Y-m'));
+            $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
+    
+            // Query with month filter
+            $teachings = Teaching::with(['attendance', 'teacher', 'class'])
+                ->where('class_id', 'LIKE', $ta->course_id . '%')
+                ->whereBetween('start_time', [$start, $end])
+                ->whereHas('attendance', function($query) {
+                    $query->whereIn('status', ['เข้าปฏิบัติการสอน', 'ลา']);
+                })
+                ->whereYear('start_time', $selectedDate->year)
+                ->whereMonth('start_time', $selectedDate->month)
+                ->get();
+            
             return view('layouts.teacher.taDetail', compact(
                 'student',
                 'semester',
-                'attendances',
-                'monthsInSemester'
+                'teachings',
+                'monthsInSemester',
+                'selectedYearMonth'
             ));
-
+            
         } catch (\Exception $e) {
             \Log::error($e->getMessage());
-            return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล');
-        }
-    }
-
-
-
-    public function approveAttendance(Request $request)
-    {
-        try {
-            $status = $request->batch_status;
-            $attendanceIds = $request->input('attendance_ids', []);
-
-            Attendances::whereIn('id', $attendanceIds)
-                ->update([
-                    'status' => $status,
-                    'approve_at' => now(),
-                    'approve_user_id' => auth()->id()
-                ]);
-
-            return back()->with('success', 'บันทึกการอนุมัติเรียบร้อยแล้ว');
-        } catch (\Exception $e) {
-            return back()->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
 

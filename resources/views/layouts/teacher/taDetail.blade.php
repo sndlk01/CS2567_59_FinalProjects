@@ -24,37 +24,23 @@
                                 <p><strong>อีเมล:</strong> {{ $student->email }}</p>
                                 <p><strong>เบอร์โทรศัพท์:</strong> {{ $student->phone ?? 'ไม่ระบุ' }}</p>
 
-                                @if ($student->disbursements) {{-- เปลี่ยนเป็น disbursements --}}
+                                @if ($student->disbursements)
                                     <div class="mt-3">
                                         <p><strong>เอกสารสำคัญ:
                                                 @if ($student->disbursements->id)
-                                                    @php
-                                                        $downloadUrl = route(
-                                                            'layout.ta.download-document',
-                                                            $student->disbursements->id,
-                                                        );
-                                                        \Log::debug('Download URL:', ['url' => $downloadUrl]);
-                                                    @endphp
-                                                    <a href="{{ $downloadUrl }}" class=" color-primary"
-                                                        onclick="console.log('Download URL:', '{{ $downloadUrl }}')">
+                                                    <a href="{{ route('layout.ta.download-document', $student->disbursements->id) }}"
+                                                        class="color-primary">
                                                         ดาวน์โหลดเอกสาร click!
                                                     </a>
                                                 @endif
                                             </strong></p>
-
                                     </div>
                                 @else
-                                    <p class="text-muted">
-                                        ยังไม่มีการอัปโหลดเอกสาร
-                                        (Debug: {{ var_export($student->disbursements, true) }})
-                                    </p>
+                                    <p class="text-muted">ยังไม่มีการอัปโหลดเอกสาร</p>
                                 @endif
                             </div>
                         </div>
                     </div>
-
-
-                    <!-- ข้อมูลการลงเวลา -->
 
                     <!-- ข้อมูลการลงเวลา -->
                     <div class="card-body">
@@ -62,61 +48,89 @@
                             ({{ Carbon\Carbon::parse($semester->start_date)->format('d/m/Y') }} -
                             {{ Carbon\Carbon::parse($semester->end_date)->format('d/m/Y') }})</h5>
 
-                        <form action="{{ route('teacher.approve-attendance') }}" method="POST">
-                            @csrf
-                            <div class="mb-3">
-                                <form method="GET">
-                                    <select name="month" class="form-select" onchange="this.form.submit()">
-                                        @foreach($monthsInSemester as $month => $monthName)
-                                            <option value="{{ $month }}" {{ request('month') == $month ? 'selected' : '' }}>
-                                                {{ $monthName }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </form>
-                            </div>
-
+                        <div class="table-responsive">
                             <div class="table-responsive">
-                                <div class="d-flex justify-content-end mb-3">
-                                    <select name="batch_status" class="form-select w-auto me-2">
-                                        <option value="a">อนุมัติทั้งหมด</option>
-                                        <option value="w">รอดำเนินการทั้งหมด</option>
-                                        <option value="r">ไม่อนุมัติทั้งหมด</option>
-                                    </select>
-                                    <button type="submit" class="btn btn-primary">บันทึก</button>
-                                </div>
 
-                                <table class="table">
+                                <div class="mb-3">
+                                    <form method="GET" class="d-flex align-items-center">
+                                        <label for="month" class="me-2">เลือกเดือน:</label>
+                                        <select name="month" id="month" class="form-select w-15" onchange="this.form.submit()">
+                                            @foreach($monthsInSemester as $yearMonth => $monthName)
+                                                <option value="{{ $yearMonth }}" {{ $selectedYearMonth == $yearMonth ? 'selected' : '' }}>
+                                                    {{ $monthName }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </form>
+                                </div>
+                                <table class="table table-striped">
                                     <thead>
                                         <tr>
-                                            <th>วันที่</th>
-                                            <th>เวลา</th>
-                                            <th>หมายเหตุ</th>
-                                            <th>สถานะ</th>
+                                            <th>กลุ่ม</th>
+                                            <th>เวลาเริ่มเรียน</th>
+                                            <th>เวลาเลิกเรียน</th>
+                                            <th>เวลาที่สอน(นาที)</th>
+                                            <th>อาจารย์ประจำวิชา</th>
+                                            <th>การปฏิบัติงาน</th>
+                                            <th>รายละเอียด</th>
+                                            <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @forelse($attendances as $attendance)
+                                        @forelse($teachings as $teaching)
                                             <tr>
-                                                <td>{{ Carbon\Carbon::parse($attendance->created_at)->format('d/m/Y') }}
+                                                <td>
+                                                    @if ($teaching->class_type === 'E')
+                                                        <span>สอนชดเชย</span>
+                                                    @else
+                                                        {{ $teaching->class_type }}
+                                                    @endif
                                                 </td>
-                                                <td>{{ Carbon\Carbon::parse($attendance->created_at)->format('H:i') }}</td>
-                                                <td>{{ $attendance->note }}</td>
-                                                <td>{{ $attendance->status }}</td>
-                                                <input type="hidden" name="attendance_ids[]"
-                                                    value="{{ $attendance->id }}">
+                                                <td>{{ \Carbon\Carbon::parse($teaching->start_time)->format('d-m-Y H:i') }}</td>
+                                                <td>{{ \Carbon\Carbon::parse($teaching->end_time)->format('d-m-Y H:i') }}</td>
+                                                <td>{{ $teaching->duration }}</td>
+                                                <td>
+                                                    {{ $teaching->teacher->position ?? '' }}
+                                                    {{ $teaching->teacher->degree ?? '' }}
+                                                    {{ $teaching->teacher->name ?? '' }}
+                                                </td>
+                                                <td>
+                                                    @if ($teaching->attendance)
+                                                        @if ($teaching->attendance->status === 'เข้าปฏิบัติการสอน')
+                                                            <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
+                                                        @elseif ($teaching->attendance->status === 'ลา')
+                                                            <span class="badge bg-warning">ลา</span>
+                                                        @else
+                                                            <span class="badge bg-secondary">รอการลงเวลา</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="badge bg-secondary">รอการลงเวลา</span>
+                                                    @endif
+                                                </td>
+                                                <td>{{ $teaching->attendance->note ?? '-' }}</td>
+                                                <td>
+                                                    @if ($teaching->attendance)
+                                                        <button class="btn btn-outline-secondary btn-sm" disabled>
+                                                            ลงเวลาแล้ว
+                                                        </button>
+                                                    @else
+                                                        <a href="{{ route('attendances.form', ['teaching_id' => $teaching->teaching_id]) }}"
+                                                            class="btn btn-outline-primary btn-sm">
+                                                            ลงเวลา
+                                                        </a>
+                                                    @endif
+                                                </td>
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="4" class="text-center">ไม่พบข้อมูลการลงเวลา</td>
+                                                <td colspan="8" class="text-center">ไม่พบข้อมูลการสอน</td>
                                             </tr>
                                         @endforelse
                                     </tbody>
                                 </table>
                             </div>
-                        </form>
+                        </div>
                     </div>
-
 
                     <!-- ปุ่มย้อนกลับ -->
                     <div class="mt-3">
