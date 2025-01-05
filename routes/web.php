@@ -33,7 +33,8 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/home', [TaController::class, 'showAnnounces'])->name('home');
     Route::get('/request', [TaController::class, 'request'])->name('layout.ta.request');
-
+    Route::put('/requests/{studentId}', [RequestsController::class, 'update'])->name('requests.update');
+    Route::delete('/requests/{studentId}', [RequestsController::class, 'destroy'])->name('requests.destroy');
     Route::post('/request', [TaController::class, 'apply'])->name('ta.apply');
     Route::get('/ta/get-sections/{course_id}', [TaController::class, 'getSections'])->name('ta.getSections');
     Route::get('/statusrequest', [RequestsController::class, 'showTARequests'])->name('layouts.ta.statusRequest');

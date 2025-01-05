@@ -173,6 +173,7 @@
     <script src="https://kit.fontawesome.com/2db00bb8e9.js" crossorigin="anonymous"></script>
     <!-- Control Center for Soft Dashboard: parallax effects, scripts for the example pages etc -->
     <script src="/assets/js/argon-dashboard.min.js?v=2.0.4"></script>
+    @stack('scripts')
 </body>
 
 </html>
