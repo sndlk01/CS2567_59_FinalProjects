@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendances;
+use Illuminate\Support\Facades\Hash;
 use App\Models\Classes;
 use App\Models\Courses;
 use App\Models\CourseTaClasses;
@@ -13,7 +14,7 @@ use App\Models\Students;
 use App\Models\Announce;
 use App\Models\Requests;
 use App\Models\CourseTas;
-use App\Models\Curriculums;
+use App\Models\User;
 use App\Models\Semesters;
 use Illuminate\Support\Facades\{Auth, DB, Log};
 use Illuminate\Support\Str;
@@ -491,21 +492,21 @@ class TaController extends Controller
                     $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
                     $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
 
-                    return (object)[
+                    return (object) [
                         'id' => $teaching->teaching_id,
                         'start_time' => $teaching->start_time,
                         'end_time' => $teaching->end_time,
                         'duration' => $teaching->duration,
                         'class_type' => $teaching->class_type,
-                        'class_id' => (object)[
+                        'class_id' => (object) [
                             'title' => $class['title'] ?? 'N/A',
                         ],
-                        'teacher_id' => (object)[
+                        'teacher_id' => (object) [
                             'position' => $teacher['position'] ?? '',
                             'degree' => $teacher['degree'] ?? '',
                             'name' => $teacher['name'] ?? 'N/A',
                         ],
-                        'attendance' => $teaching->attendance ? (object)[
+                        'attendance' => $teaching->attendance ? (object) [
                             'status' => $teaching->attendance->status,
                             'note' => $teaching->attendance->note ?? ''
                         ] : null
@@ -605,6 +606,90 @@ class TaController extends Controller
                 ->back()
                 ->withInput()
                 ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        }
+    }
+
+    public function edit()
+    {
+        $user = Auth::user();
+        $student = null;
+
+        if ($user->type == 0) { // ถ้าเป็น TA
+            $student = Students::where('user_id', $user->id)->first();
+        }
+
+        return view('layouts.ta.profile', compact('user', 'student'));
+    }
+
+    public function update(Request $request)
+    {
+        // 1. Validate request
+        $request->validate([
+            'prefix' => 'nullable|string|max:256',
+            'name' => 'required|string|max:1024',
+            'card_id' => 'nullable|string|max:13',
+            'phone' => 'nullable|string|max:11',
+            'student_id' => 'nullable|string|max:11',
+            'email' => 'required|email|unique:users,email,' . Auth::id(),
+        ]);
+
+        // 2. Get current user
+        $user = Auth::user();
+
+        // 3. Start transaction
+        DB::beginTransaction();
+        try {
+            // 4. Update user table
+            $userUpdateData = [
+                'prefix' => $request->prefix,
+                'name' => $request->name,
+                'card_id' => $request->card_id,
+                'phone' => $request->phone,
+                'student_id' => $request->student_id,
+                'email' => $request->email,
+            ];
+
+            User::where('id', $user->id)->update($userUpdateData);
+
+            // 5. If password is provided, update it
+            if ($request->filled('password')) {
+                $request->validate([
+                    'password' => 'required|min:8|confirmed'
+                ]);
+                User::where('id', $user->id)->update([
+                    'password' => Hash::make($request->password)
+                ]);
+            }
+
+            // 6. Always update or create student record for type "user"
+            if ($user->type === "user") {  // เปลี่ยนเงื่อนไขจาก type == 0 เป็น type === "user"
+                $studentData = [
+                    'prefix' => $request->prefix,
+                    'name' => $request->name,
+                    'student_id' => $request->student_id,
+                    'card_id' => $request->card_id,
+                    'phone' => $request->phone,
+                    'email' => $request->email
+                ];
+
+                Students::updateOrCreate(
+                    ['user_id' => $user->id],  // เงื่อนไขค้นหา
+                    $studentData               // ข้อมูลที่จะอัพเดตหรือสร้างใหม่
+                );
+            }
+
+            // 7. Commit transaction
+            DB::commit();
+
+            // 8. Redirect with success message
+            return redirect()->back()->with('success', 'อัพเดตข้อมูลเรียบร้อยแล้ว'); 
+
+        } catch (\Exception $e) {
+            // 9. If error occurs, rollback
+            DB::rollback();
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'เกิดข้อผิดพลาดในการอัพเดตข้อมูล: ' . $e->getMessage());
         }
     }
 }
