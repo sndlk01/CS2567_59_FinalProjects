@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 use App\Models\Announce;
 use App\Models\Courses;
 use App\Models\Students;
+use App\Models\CourseTas;
 use App\Models\Disbursements;
+use App\Models\Teaching;
 use Illuminate\Support\Facades\Storage;
 
 
@@ -70,42 +72,42 @@ class AdminController extends Controller
     }
 
 
-    public function showTaProfile($student_id) 
-    {
-        $student = Students::with([
-            'disbursements',  // ใช้ชื่อ relationship ที่ถูกต้อง
-            'courseTas.course.subjects',
-            'courseTas.course.teachers',
-            'courseTas.course.semesters',
-            'courseTas.courseTaClasses.requests' => function ($query) {
-                $query->where('status', 'A')
-                    ->whereNotNull('approved_at');
-            }
-        ])->findOrFail($student_id);
-    
-        // ดูข้อมูลที่แท้จริงใน attributes
-        // dd([
-        //     'student_exists' => $student !== null,
-        //     'student_id' => $student->id,
-        //     'raw_disbursements' => $student->disbursements,
-        //     'attributes' => $student->disbursements?->getAttributes(),
-        //     'relationship_loaded' => $student->relationLoaded('disbursements')
-        // ]);
-    
-        return view('layouts.admin.detailsById', compact('student'));
-    }
+    // public function showTaProfile($student_id)
+    // {
+    //     $student = Students::with([
+    //         'disbursements',  // ใช้ชื่อ relationship ที่ถูกต้อง
+    //         'courseTas.course.subjects',
+    //         'courseTas.course.teachers',
+    //         'courseTas.course.semesters',
+    //         'courseTas.courseTaClasses.requests' => function ($query) {
+    //             $query->where('status', 'A')
+    //                 ->whereNotNull('approved_at');
+    //         }
+    //     ])->findOrFail($student_id);
+
+    //     // ดูข้อมูลที่แท้จริงใน attributes
+    //     // dd([
+    //     //     'student_exists' => $student !== null,
+    //     //     'student_id' => $student->id,
+    //     //     'raw_disbursements' => $student->disbursements,
+    //     //     'attributes' => $student->disbursements?->getAttributes(),
+    //     //     'relationship_loaded' => $student->relationLoaded('disbursements')
+    //     // ]);
+
+    //     return view('layouts.admin.detailsById', compact('student'));
+    // }
 
     public function downloadDocument($id)
     {
         try {
             $disbursement = Disbursements::findOrFail($id);
-            
+
             // ตรวจสอบว่าไฟล์มีอยู่จริง
             // $filePath = storage_path('public' . $disbursement->file_path);
             if (!Storage::exists('public' . $disbursement->file_path)) {
                 return back()->with('error', 'ไม่พบไฟล์เอกสาร');
             }
-    
+
             return Storage::disk('public')->download($disbursement->uploadfile);
         } catch (\Exception $e) {
             \Log::error('Document download error: ' . $e->getMessage());
@@ -119,12 +121,79 @@ class AdminController extends Controller
     }
 
 
-    public function detailsByid()
+    public function taDetail($student_id) 
     {
-        return view('layouts.admin.detailsByid');
+        try {
+            // ค้นหา TA จาก student_id
+            $ta = CourseTas::with(['student', 'course.semesters'])
+                ->where('student_id', $student_id)
+                ->firstOrFail();
+                
+            $student = $ta->student;
+            $semester = $ta->course->semesters;
+            
+            // กำหนดช่วงเวลาของภาคการศึกษา
+            $start = \Carbon\Carbon::parse($semester->start_date)->startOfDay();
+            $end = \Carbon\Carbon::parse($semester->end_date)->endOfDay();
+            
+            // ตรวจสอบว่าอยู่ในช่วงภาคการศึกษาปัจจุบันหรือไม่
+            if (!\Carbon\Carbon::now()->between($start, $end)) {
+                return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
+            }
+    
+            // สร้างรายการเดือน
+            $monthsInSemester = [];
+            
+            // ถ้าปีเดียวกัน
+            if ($start->year === $end->year) {
+                for ($m = $start->month; $m <= $end->month; $m++) {
+                    $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
+                    $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
+                }
+            } 
+            // ถ้าคนละปี
+            else {
+                // เพิ่มเดือนของปีแรก
+                for ($m = $start->month; $m <= 12; $m++) {
+                    $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
+                    $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
+                }
+                
+                // เพิ่มเดือนของปีถัดไป
+                for ($m = 1; $m <= $end->month; $m++) {
+                    $date = \Carbon\Carbon::createFromDate($end->year, $m, 1);
+                    $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
+                }
+            }
+    
+            // Get selected month from request, default to start month/year
+            $selectedYearMonth = request('month', $start->format('Y-m'));
+            $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
+    
+            // Query with month filter
+            $teachings = Teaching::with(['attendance', 'teacher', 'class'])
+                ->where('class_id', 'LIKE', $ta->course_id . '%')
+                ->whereBetween('start_time', [$start, $end])
+                ->whereHas('attendance', function($query) {
+                    $query->whereIn('status', ['เข้าปฏิบัติการสอน', 'ลา']);
+                })
+                ->whereYear('start_time', $selectedDate->year)
+                ->whereMonth('start_time', $selectedDate->month)
+                ->get();
+            
+            return view('layouts.admin.detailsById', compact(
+                'student',
+                'semester',
+                'teachings',
+                'monthsInSemester',
+                'selectedYearMonth'
+            ));
+            
+        } catch (\Exception $e) {
+            \Log::error($e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
+        }
     }
-
-
 
 
     /**

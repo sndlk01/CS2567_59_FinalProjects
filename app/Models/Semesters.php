@@ -20,7 +20,7 @@ class Semesters extends Model
 
     public function courses()
     {
-        return $this->belongsTo(Courses::class, 'semester_id');
+        return $this->hasMany(Courses::class, 'semester_id');
     }
 
     public function classes()

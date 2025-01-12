@@ -50,67 +50,110 @@
                         </div>
                     </div>
 
-                    <!-- ประวัติการเป็น TA -->
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">ประวัติการเป็นผู้ช่วยสอน</h5>
-                            <div class="table-responsive">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>ลำดับ</th>
-                                            <th>รหัสวิชา</th>
-                                            <th>ชื่อวิชา</th>
-                                            <th>ปีการศึกษา</th>
-                                            <th>อาจารย์ผู้สอน</th>
-                                            <th>สถานะ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($student->courseTas as $index => $courseTa)
-                                            <tr>
-                                                <td>{{ $index + 1 }}</td>
-                                                <td>{{ $courseTa->course->subjects->subject_id }}</td>
-                                                <td>{{ $courseTa->course->subjects->name_en }}</td>
-                                                <td>
-                                                    {{ $courseTa->course->semesters->semesters }}/{{ $courseTa->course->semesters->year }}
-                                                </td>
-                                                <td>
-                                                    {{ $courseTa->course->teachers->position }}
-                                                    {{ $courseTa->course->teachers->name }}
-                                                </td>
-                                                <td>
-                                                    @php
-                                                        $request = $courseTa->courseTaClasses->flatMap->requests
-                                                            ->sortByDesc('created_at')
-                                                            ->first();
-                                                    @endphp
-                                                    @if ($request && $request->status === 'A')
-                                                        <span class="badge bg-success">อนุมัติ</span>
-                                                    @else
-                                                        <span class="badge bg-secondary">ไม่ระบุ</span>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="6" class="text-center">ไม่พบประวัติการเป็นผู้ช่วยสอน</td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
+                    <!-- ข้อมูลการลงเวลา -->
+                    <div class="card-body">
+                        @if (isset($semester) && $semester)
+                            <h5 class="card-title">ข้อมูลการลงเวลาการสอน
+                                ({{ Carbon\Carbon::parse($semester->start_date)->format('d/m/Y') }} -
+                                {{ Carbon\Carbon::parse($semester->end_date)->format('d/m/Y') }})
+                            </h5>
+                        @else
+                            <h5 class="card-title">ข้อมูลการลงเวลาการสอน</h5>
+                        @endif
+
+                        <div class="table-responsive">
+                            <div class="mb-3">
+                                <form method="GET" class="d-flex align-items-center">
+                                    <label for="month" class="me-2">เลือกเดือน:</label>
+                                    <select name="month" id="month" class="form-select w-15"
+                                        onchange="this.form.submit()">
+                                        @foreach ($monthsInSemester as $yearMonth => $monthName)
+                                            <option value="{{ $yearMonth }}"
+                                                {{ $selectedYearMonth == $yearMonth ? 'selected' : '' }}>
+                                                {{ $monthName }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </form>
                             </div>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>กลุ่ม</th>
+                                        <th>เวลาเริ่มเรียน</th>
+                                        <th>เวลาเลิกเรียน</th>
+                                        <th>เวลาที่สอน(นาที)</th>
+                                        <th>อาจารย์ประจำวิชา</th>
+                                        <th>การปฏิบัติงาน</th>
+                                        <th>รายละเอียด</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($teachings as $teaching)
+                                        <tr>
+                                            <td>
+                                                @if ($teaching->class_type === 'E')
+                                                    <span>สอนชดเชย</span>
+                                                @else
+                                                    {{ $teaching->class_type }}
+                                                @endif
+                                            </td>
+                                            <td>{{ \Carbon\Carbon::parse($teaching->start_time)->format('d-m-Y H:i') }}
+                                            </td>
+                                            <td>{{ \Carbon\Carbon::parse($teaching->end_time)->format('d-m-Y H:i') }}</td>
+                                            <td>{{ $teaching->duration }}</td>
+                                            <td>
+                                                {{ $teaching->teacher->position ?? '' }}
+                                                {{ $teaching->teacher->degree ?? '' }}
+                                                {{ $teaching->teacher->name ?? '' }}
+                                            </td>
+                                            <td>
+                                                @if ($teaching->attendance)
+                                                    @if ($teaching->attendance->status === 'เข้าปฏิบัติการสอน')
+                                                        <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
+                                                    @elseif ($teaching->attendance->status === 'ลา')
+                                                        <span class="badge bg-warning">ลา</span>
+                                                    @else
+                                                        <span class="badge bg-secondary">รอการลงเวลา</span>
+                                                    @endif
+                                                @else
+                                                    <span class="badge bg-secondary">รอการลงเวลา</span>
+                                                @endif
+                                            </td>
+                                            <td>{{ $teaching->attendance->note ?? '-' }}</td>
+                                            <td>
+                                                @if ($teaching->attendance)
+                                                    <button class="btn btn-outline-secondary btn-sm" disabled>
+                                                        ลงเวลาแล้ว
+                                                    </button>
+                                                @else
+                                                    <a href="{{ route('attendances.form', ['teaching_id' => $teaching->teaching_id]) }}"
+                                                        class="btn btn-outline-primary btn-sm">
+                                                        ลงเวลา
+                                                    </a>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="text-center">ไม่พบข้อมูลการสอน</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
                     </div>
+                </div>
 
-                    <!-- ปุ่มย้อนกลับ -->
-                    <div class="mt-3">
-                        <a href="{{ url()->previous() }}" class="btn btn-secondary">
-                            ย้อนกลับ
-                        </a>
-                    </div>
+                <!-- ปุ่มย้อนกลับ -->
+                <div class="mt-3">
+                    <a href="{{ url()->previous() }}" class="btn btn-secondary">
+                        ย้อนกลับ
+                    </a>
                 </div>
             </div>
         </div>
+    </div>
     </div>
 @endsection

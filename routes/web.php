@@ -76,10 +76,10 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
     Route::get('/admin/detailsta/id', [AdminController::class, 'detailsByid'])->name('layout.admin.detailsByid');
     Route::get('/fetchdata', [ApiController::class, 'fetchData']);
     Route::get('/admin/detailsta/{course_id}', [AdminController::class, 'showTaDetails'])->name('layout.admin.detailsTa');
-    Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'showTaProfile'])->name('admin.ta.profile');
+    Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
     Route::get('/layout/ta/download-document/{id}', [AdminController::class, 'downloadDocument'])
-    ->name('layout.ta.download-document');
-
+        ->name('layout.ta.download-document');
+    // Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
 
 });
 
@@ -92,8 +92,9 @@ Route::middleware(['auth', 'user-access:teacher'])->group(function () {
     Route::get('/subject', [TeacherController::class, 'subjectTeacher'])->name('layout.teacher.subject');
     Route::get('/subject/subjectDetail', [TeacherController::class, 'subjectDetail'])->name('subjectDetail');
     Route::get('/teacher/subjectDetail/{course_id}', [TeacherController::class, 'subjectDetail']);
-    Route::get('/subject/subjectDetail/taDetail/{student_id}', [TeacherController::class, 'taDetail'])->name('teacher.taDetail');});
-    Route::post('teacher/approve-attendance', [TeacherController::class, 'approveAttendance'])->name('teacher.approve-attendance');
+    Route::get('/subject/subjectDetail/taDetail/{student_id}', [TeacherController::class, 'taDetail'])->name('teacher.taDetail');
+});
+Route::post('teacher/approve-attendance', [TeacherController::class, 'approveAttendance'])->name('teacher.approve-attendance');
 
 Route::fallback(function () {
     return view('error\404');
