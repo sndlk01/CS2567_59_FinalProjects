@@ -60,6 +60,7 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::get('/ta/profile', [TaController::class, 'edit'])->name('ta.profile');
     Route::put('/ta/profile/update', [TaController::class, 'update'])->name('ta.profile.update');
 
+    Route::post('/extra-attendance', [TaController::class, 'storeExtraAttendance'])->name('extra-attendance.store');
 });
 
 //Admin Routes List

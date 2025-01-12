@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\Classes;
 use App\Models\Courses;
 use App\Models\CourseTaClasses;
+use App\Models\ExtraAttendances;
 use App\Models\Teaching;
 use Illuminate\Http\Request;
 use App\Models\Subjects;
@@ -682,14 +683,56 @@ class TaController extends Controller
             DB::commit();
 
             // 8. Redirect with success message
-            return redirect()->back()->with('success', 'อัพเดตข้อมูลเรียบร้อยแล้ว'); 
-
+            return redirect()->back()->with('success', 'อัพเดตข้อมูลเรียบร้อยแล้ว');
         } catch (\Exception $e) {
             // 9. If error occurs, rollback
             DB::rollback();
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'เกิดข้อผิดพลาดในการอัพเดตข้อมูล: ' . $e->getMessage());
+        }
+    }
+
+    public function storeExtraAttendance(Request $request)
+    {
+        try {
+            // Validate the input
+            $request->validate([
+                'start_work' => 'required|date',
+                'class_type' => 'required|string|in:L,C', // Match the accepted class types
+                'detail' => 'required|string|max:255',
+                'duration' => 'required|integer|min:1',
+                'student_id' => 'required|exists:students,id',
+                'class_id' => 'required|exists:classes,class_id',
+            ]);
+
+            // Begin transaction
+            DB::beginTransaction();
+
+            // Insert the record into extra_attendances
+            ExtraAttendances::create([
+                'start_work' => $request->start_work,
+                'class_type' => $request->class_type,
+                'detail' => $request->detail,
+                'duration' => $request->duration,
+                'student_id' => $request->student_id,
+                'class_id' => $request->class_id,
+            ]);
+
+            // Commit the transaction
+            DB::commit();
+
+            // Redirect back with success message
+            return redirect()->back()->with('success', 'บันทึกการลงเวลาเพิ่มเติมสำเร็จ');
+        } catch (\Exception $e) {
+            // Rollback the transaction in case of error
+            DB::rollBack();
+
+            // Log the error for debugging
+            Log::error('Error in storeExtraAttendance: ' . $e->getMessage());
+
+            // Redirect back with error message and input data
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage())->withInput();
         }
     }
 }
