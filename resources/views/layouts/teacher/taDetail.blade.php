@@ -49,86 +49,109 @@
                             {{ Carbon\Carbon::parse($semester->end_date)->format('d/m/Y') }})</h5>
 
                         <div class="table-responsive">
-                            <div class="table-responsive">
+                            <div class="mb-3">
+                                <form method="GET" class="d-flex align-items-center">
+                                    <label for="month" class="me-2">เลือกเดือน:</label>
+                                    <select name="month" id="month" class="form-select w-15"
+                                        onchange="this.form.submit()">
+                                        @foreach ($monthsInSemester as $yearMonth => $monthName)
+                                            <option value="{{ $yearMonth }}"
+                                                {{ $selectedYearMonth == $yearMonth ? 'selected' : '' }}>
+                                                {{ $monthName }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </form>
+                            </div>
 
-                                <div class="mb-3">
-                                    <form method="GET" class="d-flex align-items-center">
-                                        <label for="month" class="me-2">เลือกเดือน:</label>
-                                        <select name="month" id="month" class="form-select w-15" onchange="this.form.submit()">
-                                            @foreach($monthsInSemester as $yearMonth => $monthName)
-                                                <option value="{{ $yearMonth }}" {{ $selectedYearMonth == $yearMonth ? 'selected' : '' }}>
-                                                    {{ $monthName }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </form>
+                            @if ($isMonthApproved)
+                                <div class="alert alert-success mb-3">
+                                    การลงเวลาของเดือนนี้ได้รับการอนุมัติแล้ว
+                                    @if ($approvalNote)
+                                        <br>หมายเหตุ: {{ $approvalNote }}
+                                    @endif
                                 </div>
-                                <table class="table table-striped">
-                                    <thead>
+                            @endif
+
+                            <!-- ส่วนของตาราง -->
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>การเรียน</th>
+                                        <th>เวลาเริ่มเรียน</th>
+                                        <th>เวลาเลิกเรียน</th>
+                                        <th>เวลาที่สอน(นาที)</th>
+                                        <th>อาจารย์ประจำวิชา</th>
+                                        <th>การปฏิบัติงาน</th>
+                                        <th>รายละเอียด</th>
+                                        <th>สถานะการอนุมัติ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($teachings as $teaching)
                                         <tr>
-                                            <th>กลุ่ม</th>
-                                            <th>เวลาเริ่มเรียน</th>
-                                            <th>เวลาเลิกเรียน</th>
-                                            <th>เวลาที่สอน(นาที)</th>
-                                            <th>อาจารย์ประจำวิชา</th>
-                                            <th>การปฏิบัติงาน</th>
-                                            <th>รายละเอียด</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($teachings as $teaching)
-                                            <tr>
-                                                <td>
-                                                    @if ($teaching->class_type === 'E')
-                                                        <span>สอนชดเชย</span>
-                                                    @else
-                                                        {{ $teaching->class_type }}
-                                                    @endif
-                                                </td>
-                                                <td>{{ \Carbon\Carbon::parse($teaching->start_time)->format('d-m-Y H:i') }}</td>
-                                                <td>{{ \Carbon\Carbon::parse($teaching->end_time)->format('d-m-Y H:i') }}</td>
-                                                <td>{{ $teaching->duration }}</td>
-                                                <td>
-                                                    {{ $teaching->teacher->position ?? '' }}
-                                                    {{ $teaching->teacher->degree ?? '' }}
-                                                    {{ $teaching->teacher->name ?? '' }}
-                                                </td>
-                                                <td>
-                                                    @if ($teaching->attendance)
-                                                        @if ($teaching->attendance->status === 'เข้าปฏิบัติการสอน')
-                                                            <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
-                                                        @elseif ($teaching->attendance->status === 'ลา')
-                                                            <span class="badge bg-warning">ลา</span>
-                                                        @else
-                                                            <span class="badge bg-secondary">รอการลงเวลา</span>
-                                                        @endif
+                                            <td>
+                                                @if ($teaching->class_type === 'E')
+                                                    <span>สอนชดเชย</span>
+                                                @else
+                                                    {{ $teaching->class_type }}
+                                                @endif
+                                            </td>
+                                            <td>{{ \Carbon\Carbon::parse($teaching->start_time)->format('d-m-Y H:i') }}
+                                            </td>
+                                            <td>{{ \Carbon\Carbon::parse($teaching->end_time)->format('d-m-Y H:i') }}</td>
+                                            <td>{{ $teaching->duration }}</td>
+                                            <td>
+                                                {{ $teaching->teacher->position ?? '' }}
+                                                {{ $teaching->teacher->degree ?? '' }}
+                                                {{ $teaching->teacher->name ?? '' }}
+                                            </td>
+                                            <td>
+                                                @if ($teaching->attendance)
+                                                    @if ($teaching->attendance->status === 'เข้าปฏิบัติการสอน')
+                                                        <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
+                                                    @elseif ($teaching->attendance->status === 'ลา')
+                                                        <span class="badge bg-warning">ลา</span>
                                                     @else
                                                         <span class="badge bg-secondary">รอการลงเวลา</span>
                                                     @endif
-                                                </td>
-                                                <td>{{ $teaching->attendance->note ?? '-' }}</td>
-                                                <td>
-                                                    @if ($teaching->attendance)
-                                                        <button class="btn btn-outline-secondary btn-sm" disabled>
-                                                            ลงเวลาแล้ว
-                                                        </button>
+                                                @else
+                                                    <span class="badge bg-secondary">รอการลงเวลา</span>
+                                                @endif
+                                            </td>
+                                            <td>{{ $teaching->attendance->note ?? '-' }}</td>
+                                            <td>
+                                                @if ($teaching->attendance)
+                                                    @if ($teaching->attendance->approve_status === 'a')
+                                                        <span class="badge bg-success">อนุมัติแล้ว</span>
                                                     @else
-                                                        <a href="{{ route('attendances.form', ['teaching_id' => $teaching->teaching_id]) }}"
-                                                            class="btn btn-outline-primary btn-sm">
-                                                            ลงเวลา
-                                                        </a>
+                                                        <span class="badge bg-warning">รออนุมัติ</span>
                                                     @endif
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="8" class="text-center">ไม่พบข้อมูลการสอน</td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
+                                                @else
+                                                    <span class="badge bg-secondary">รอการลงเวลา</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="text-center">ไม่พบข้อมูลการสอน</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+
+                            @if (!$isMonthApproved && count($teachings) > 0)
+                                <form action="{{ route('teacher.approve-month', ['ta_id' => $student->id]) }}"
+                                    method="POST" class="mt-4">
+                                    @csrf
+                                    <input type="hidden" name="year_month" value="{{ $selectedYearMonth }}">
+                                    <div class="mb-3">
+                                        <label for="note" class="form-label">หมายเหตุการอนุมัติ</label>
+                                        <textarea name="note" id="note" class="form-control" rows="3"></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">อนุมัติการลงเวลาประจำเดือน</button>
+                                </form>
+                            @endif
                         </div>
                     </div>
 

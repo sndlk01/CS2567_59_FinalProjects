@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Courses;
 use App\Models\Subjects;
 use App\Models\Teachers;
-use App\Models\Students;
+use App\Models\Attendances;
 use Illuminate\Http\Request;
 use App\Models\CourseTas;
 use App\Models\Requests;
@@ -44,83 +44,84 @@ class TeacherController extends Controller
     }
 
     public function subjectDetail($course_id)
-{
-    try {
-        $currentDate = now();
-        $semester = ($currentDate->month >= 6 && $currentDate->month <= 11) ? 1 : 2;
-        $year = $currentDate->year + 543;
-        if ($currentDate->month >= 1 && $currentDate->month <= 5) {
-            $year -= 1;
-        }
+    {
+        try {
+            $currentDate = now();
+            $semester = ($currentDate->month >= 6 && $currentDate->month <= 11) ? 1 : 2;
+            $year = $currentDate->year + 543;
+            if ($currentDate->month >= 1 && $currentDate->month <= 5) {
+                $year -= 1;
+            }
 
-        $tdbmService = new TDBMApiService();
-        $course = collect($tdbmService->getCourses())->firstWhere('course_id', $course_id);
+            $tdbmService = new TDBMApiService();
+            $course = collect($tdbmService->getCourses())->firstWhere('course_id', $course_id);
 
-        if (!$course) {
-            throw new \Exception('Course not found');
-        }
+            if (!$course) {
+                throw new \Exception('Course not found');
+            }
 
-        $subject = collect($tdbmService->getSubjects())->firstWhere('subject_id', $course['subject_id']);
-        $teacher = collect($tdbmService->getTeachers())->firstWhere('teacher_id', $course['owner_teacher_id']);
+            $subject = collect($tdbmService->getSubjects())->firstWhere('subject_id', $course['subject_id']);
+            $teacher = collect($tdbmService->getTeachers())->firstWhere('teacher_id', $course['owner_teacher_id']);
 
-        $course['subject'] = $subject;
-        $course['teacher'] = $teacher;
-        $course['current_semester'] = [
-            'semester' => $semester,
-            'year' => $year
-        ];
+            $course['subject'] = $subject;
+            $course['teacher'] = $teacher;
+            $course['current_semester'] = [
+                'semester' => $semester,
+                'year' => $year
+            ];
 
-        $teaching_assistants = CourseTas::with(['student', 'courseTaClasses.requests'])
-            ->where('course_id', $course_id)
-            ->get()
-            ->map(function ($ta) {
-                // Get the latest request status for this TA
-                $latestRequest = $ta->courseTaClasses
-                    ->flatMap->requests
-                    ->sortByDesc('created_at')
-                    ->first();
+            $teaching_assistants = CourseTas::with(['student', 'courseTaClasses.requests'])
+                ->where('course_id', $course_id)
+                ->get()
+                ->map(function ($ta) {
+                    // Get the latest request status for this TA
+                    $latestRequest = $ta->courseTaClasses
+                        ->flatMap->requests
+                        ->sortByDesc('created_at')
+                        ->first();
 
-                return [
-                    'id' => $ta->id,
-                    'name' => $ta->student->name,
-                    'email' => $ta->student->email,
-                    'student_id' => $ta->student->student_id,
-                    'status' => $latestRequest ? strtolower($latestRequest->status) : 'w'
-                ];
-            });
+                    return [
+                        'id' => $ta->id,
+                        'name' => $ta->student->name,
+                        'email' => $ta->student->email,
+                        'student_id' => $ta->student->student_id,
+                        'status' => $latestRequest ? strtolower($latestRequest->status) : 'w'
+                    ];
+                });
 
-        $course['teaching_assistants'] = $teaching_assistants;
+            $course['teaching_assistants'] = $teaching_assistants;
 
-        return view('layouts.teacher.subjectDetail', compact('course'));
-    } catch (\Exception $e) {
-        Log::error($e->getMessage());
+            return view('layouts.teacher.subjectDetail', compact('course'));
+        } catch (\Exception $e) {
+            Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล');
         }
     }
 
-    public function taDetail($ta_id) {
+    public function taDetail($ta_id)
+    {
         try {
             $ta = CourseTas::with(['student', 'course.semesters'])->findOrFail($ta_id);
             $student = $ta->student;
             $semester = $ta->course->semesters;
-            
+
             $start = \Carbon\Carbon::parse($semester->start_date)->startOfDay();
             $end = \Carbon\Carbon::parse($semester->end_date)->endOfDay();
-            
+
             if (!\Carbon\Carbon::now()->between($start, $end)) {
                 return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
             }
-    
+
             // สร้างรายการเดือน
             $monthsInSemester = [];
-            
+
             // ถ้าปีเดียวกัน
             if ($start->year === $end->year) {
                 for ($m = $start->month; $m <= $end->month; $m++) {
                     $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
                     $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
                 }
-            } 
+            }
             // ถ้าคนละปี
             else {
                 // เพิ่มเดือนของปีแรก
@@ -128,42 +129,124 @@ class TeacherController extends Controller
                     $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
                     $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
                 }
-                
+
                 // เพิ่มเดือนของปีถัดไป
                 for ($m = 1; $m <= $end->month; $m++) {
                     $date = \Carbon\Carbon::createFromDate($end->year, $m, 1);
                     $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
                 }
             }
-    
+
             // Get selected month from request, default to start month/year
             $selectedYearMonth = request('month', $start->format('Y-m'));
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
-    
-            // Query with month filter
+
+            // Query attendance records for the selected month
             $teachings = Teaching::with(['attendance', 'teacher', 'class'])
                 ->where('class_id', 'LIKE', $ta->course_id . '%')
                 ->whereBetween('start_time', [$start, $end])
-                ->whereHas('attendance', function($query) {
-                    $query->whereIn('status', ['เข้าปฏิบัติการสอน', 'ลา']);
-                })
                 ->whereYear('start_time', $selectedDate->year)
                 ->whereMonth('start_time', $selectedDate->month)
+                ->whereHas('attendance') // เพิ่มเงื่อนไขนี้เพื่อแสดงเฉพาะข้อมูลที่มี attendance
                 ->get();
-            
+
+            // ตรวจสอบว่าเดือนนี้มีการอนุมัติแล้วหรือไม่
+            $isMonthApproved = Attendances::where('student_id', $student->id)
+                ->whereYear('created_at', $selectedDate->year)
+                ->whereMonth('created_at', $selectedDate->month)
+                ->where('approve_status', 'a')
+                ->exists();
+
+            // ดึงข้อมูลหมายเหตุการอนุมัติล่าสุด
+            $approvalNote = null;
+            if ($isMonthApproved) {
+                $latestApproval = Attendances::where('student_id', $student->id)
+                    ->whereYear('created_at', $selectedDate->year)
+                    ->whereMonth('created_at', $selectedDate->month)
+                    ->where('approve_status', 'a')
+                    ->latest()
+                    ->first();
+                $approvalNote = $latestApproval ? $latestApproval->note : null;
+            }
+
             return view('layouts.teacher.taDetail', compact(
                 'student',
                 'semester',
                 'teachings',
                 'monthsInSemester',
-                'selectedYearMonth'
+                'selectedYearMonth',
+                'isMonthApproved',
+                'approvalNote'
             ));
-            
+
         } catch (\Exception $e) {
             \Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
+
+    public function approveMonthlyAttendance(Request $request, $ta_id)
+{
+    try {
+        // ดึงข้อมูลจาก request
+        $yearMonth = $request->input('year_month');
+        $note = $request->input('note');
+        
+        // แปลงรูปแบบวันที่
+        $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $yearMonth);
+        
+        // ดึงข้อมูล TA
+        $ta = CourseTas::with('student')->findOrFail($ta_id);
+        
+        // ดึงการลงเวลาทั้งหมดที่ยังไม่ได้อนุมัติในเดือนที่เลือก
+        $attendances = Attendances::whereHas('teaching', function($query) use ($ta, $selectedDate) {
+                $query->where('class_id', 'LIKE', $ta->course_id . '%')
+                    ->whereYear('start_time', $selectedDate->year)
+                    ->whereMonth('start_time', $selectedDate->month);
+            })
+            ->where('student_id', $ta->student_id)
+            ->where(function($query) {
+                $query->whereNull('approve_status')
+                    ->orWhere('approve_status', '!=', 'a');
+            })
+            ->get();
+
+        // ตรวจสอบว่ามีข้อมูลการลงเวลาหรือไม่
+        if ($attendances->isEmpty()) {
+            return back()->with('error', 'ไม่พบข้อมูลการลงเวลาที่รออนุมัติสำหรับเดือนที่เลือก');
+        }
+
+        // เริ่ม transaction
+        DB::beginTransaction();
+        
+        try {
+            // อัปเดตสถานะการลงเวลาทั้งหมด
+            foreach ($attendances as $attendance) {
+                $attendance->update([
+                    'approve_status' => 'a', // เปลี่ยนสถานะเป็น approved
+                    'approve_at' => now(),
+                    'approve_user_id' => auth()->id(),
+                    'note' => $note
+                ]);
+            }
+            
+            // ยืนยัน transaction
+            DB::commit();
+            
+            return back()->with('success', 'อนุมัติการลงเวลาประจำเดือนเรียบร้อยแล้ว');
+            
+        } catch (\Exception $e) {
+            // ถ้าเกิดข้อผิดพลาด ให้ rollback
+            DB::rollBack();
+            \Log::error('Error during approval: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการอนุมัติ: ' . $e->getMessage());
+        }
+        
+    } catch (\Exception $e) {
+        \Log::error($e->getMessage());
+        return back()->with('error', 'เกิดข้อผิดพลาดในการประมวลผล: ' . $e->getMessage());
+    }
+}
 
     public function subjectTeacher()
     {

@@ -12,13 +12,6 @@
                     <div class="container shadow-lg bg-body rounded p-5">
                         @if ($courseTas->isEmpty())
                             <p>ไม่พบข้อมูลคำร้องการสมัคร</p>
-                            <!-- Debug information -->
-                            @if (config('app.debug'))
-                                <div class="alert alert-info">
-                                    <p>Debug Info:</p>
-                                    <pre>{{ print_r($courseTas->toArray(), true) }}</pre>
-                                </div>
-                            @endif
                         @else
                             <form action="{{ route('teacher.home') }}" method="POST">
                                 @csrf
