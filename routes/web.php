@@ -61,6 +61,16 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::put('/ta/profile/update', [TaController::class, 'update'])->name('ta.profile.update');
 
     Route::post('/extra-attendance', [TaController::class, 'storeExtraAttendance'])->name('extra-attendance.store');
+
+    // For regular attendance
+    Route::get('/attendances/{teaching_id}/edit', [TaController::class, 'editAttendance'])->name('attendances.edit');
+    Route::put('/attendances/{teaching_id}', [TaController::class, 'updateAttendance'])->name('attendances.update');
+    Route::delete('/attendances/{teaching_id}', [TaController::class, 'deleteAttendance'])->name('attendances.delete');
+
+    // For extra attendance
+    Route::get('/extra-attendance/{id}/edit', [TaController::class, 'editExtraAttendance'])->name('extra-attendance.edit');
+    Route::put('/extra-attendance/{id}', [TaController::class, 'updateExtraAttendance'])->name('extra-attendance.update');
+    Route::delete('/extra-attendance/{id}', [TaController::class, 'deleteExtraAttendance'])->name('extra-attendance.delete');
 });
 
 //Admin Routes List
@@ -95,7 +105,7 @@ Route::middleware(['auth', 'user-access:teacher'])->group(function () {
     Route::get('/teacher/subjectDetail/{course_id}', [TeacherController::class, 'subjectDetail']);
     Route::get('/subject/subjectDetail/taDetail/{student_id}', [TeacherController::class, 'taDetail'])->name('teacher.taDetail');
     Route::post('/teacher/approve-month/{ta_id}', [TeacherController::class, 'approveMonthlyAttendance'])
-    ->name('teacher.approve-month');
+        ->name('teacher.approve-month');
 });
 
 Route::fallback(function () {

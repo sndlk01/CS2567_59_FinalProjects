@@ -438,7 +438,6 @@ class TaController extends Controller
                     return $teaching['class_id'] == $id;
                 })
                 ->map(function ($teaching) {
-                    // แปลงรูปแบบให้ตรงกับ regular teaching
                     return [
                         'teaching_id' => $teaching['teaching_id'],
                         'start_time' => $teaching['class_date'] . ' ' . $teaching['start_time'],
@@ -451,35 +450,57 @@ class TaController extends Controller
                     ];
                 });
 
-            // 3. Merge regular and extra teachings
-            $allTeachings = $apiTeachings->concat($apiExtraTeachings);
+            // 3. Get extra attendances
+            $extraAttendances = ExtraAttendances::where('class_id', $id)
+                ->get()
+                ->map(function ($attendance) {
+                    return [
+                        'teaching_id' => 'extra_' . $attendance->id, // Unique identifier
+                        'start_time' => $attendance->start_work,
+                        'end_time' => \Carbon\Carbon::parse($attendance->start_work)
+                            ->addMinutes($attendance->duration)
+                            ->format('Y-m-d H:i:s'),
+                        'duration' => $attendance->duration,
+                        'class_type' => $attendance->class_type,
+                        'status' => 'A', // Assuming approved
+                        'class_id' => $attendance->class_id,
+                        'teacher_id' => null, // No teacher for extra attendance
+                        'is_extra_attendance' => true,
+                        'detail' => $attendance->detail
+                    ];
+                });
+
+            // 4. Merge all teaching records
+            $allTeachings = $apiTeachings->concat($apiExtraTeachings)->concat($extraAttendances);
 
             if ($allTeachings->isEmpty()) {
                 session()->flash('info', 'ยังไม่มีข้อมูลการสอนสำหรับรายวิชานี้');
                 return view('layouts.ta.teaching', ['teachings' => []]);
             }
 
-            // 4. Get related API data
+            // 5. Get related API data
             $apiClasses = collect($this->tdbmService->getStudentClasses());
             $apiTeachers = collect($this->tdbmService->getTeachers());
 
-            // 5. Save all teachings to local DB
+            // 6. Save regular and extra teachings to local DB
             foreach ($allTeachings as $teaching) {
-                Teaching::updateOrCreate(
-                    ['teaching_id' => $teaching['teaching_id']],
-                    [
-                        'start_time' => $teaching['start_time'],
-                        'end_time' => $teaching['end_time'],
-                        'duration' => $teaching['duration'],
-                        'class_type' => $teaching['class_type'] ?? 'N',
-                        'status' => $teaching['status'] ?? 'W',
-                        'class_id' => $teaching['class_id'],
-                        'teacher_id' => $teaching['teacher_id']
-                    ]
-                );
+                if (!isset($teaching['is_extra_attendance'])) {
+                    Teaching::updateOrCreate(
+                        ['teaching_id' => $teaching['teaching_id']],
+                        [
+                            'start_time' => $teaching['start_time'],
+                            'end_time' => $teaching['end_time'],
+                            'duration' => $teaching['duration'],
+                            'class_type' => $teaching['class_type'] ?? 'N',
+                            'status' => $teaching['status'] ?? 'W',
+                            'class_id' => $teaching['class_id'],
+                            'teacher_id' => $teaching['teacher_id']
+                        ]
+                    );
+                }
             }
 
-            // 6. Fetch data from local DB with filter
+            // 7. Prepare data for view
             $query = Teaching::with(['class', 'teacher', 'attendance'])
                 ->where('class_id', $id);
 
@@ -487,37 +508,84 @@ class TaController extends Controller
                 $query->whereMonth('start_time', \Carbon\Carbon::parse("1-{$selectedMonth}-2024")->month);
             }
 
-            $localTeachings = $query->orderBy('start_time', 'asc')
+            $localTeachings = $query->orderBy('start_time', 'asc')->get();
+
+            // 8. Format teaching records for view
+            $formattedTeachings = $localTeachings->map(function ($teaching) use ($apiClasses, $apiTeachers) {
+                $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
+                $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
+
+                return (object) [
+                    'id' => $teaching->teaching_id,
+                    'start_time' => $teaching->start_time,
+                    'end_time' => $teaching->end_time,
+                    'duration' => $teaching->duration,
+                    'class_type' => $teaching->class_type,
+                    'class_id' => (object) [
+                        'title' => $class['title'] ?? 'N/A',
+                    ],
+                    'teacher_id' => (object) [
+                        'position' => $teacher['position'] ?? '',
+                        'degree' => $teacher['degree'] ?? '',
+                        'name' => $teacher['name'] ?? 'N/A',
+                    ],
+                    'attendance' => $teaching->attendance ? (object) [
+                        'status' => $teaching->attendance->status,
+                        'note' => $teaching->attendance->note ?? ''
+                    ] : null,
+                    'is_extra_attendance' => false
+                ];
+            });
+
+            // 9. Add extra attendances to formatted records
+            $formattedExtraAttendances = ExtraAttendances::where('class_id', $id)
+                ->when($selectedMonth, function ($query) use ($selectedMonth) {
+                    return $query->whereMonth('start_work', \Carbon\Carbon::parse("1-{$selectedMonth}-2024")->month);
+                })
                 ->get()
-                ->map(function ($teaching) use ($apiClasses, $apiTeachers) {
-                    $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
-                    $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
+                ->map(function ($attendance) use ($apiClasses, $apiTeachers) {
+                    $class = $apiClasses->firstWhere('class_id', $attendance->class_id);
+
+                    // Get the course associated with this class to find the teacher
+                    $course = Courses::where('course_id', $class['course_id'] ?? null)->first();
+                    $teacher = null;
+
+                    if ($course) {
+                        $teacher = $apiTeachers->firstWhere('teacher_id', $course->owner_teacher_id);
+                    }
 
                     return (object) [
-                        'id' => $teaching->teaching_id,
-                        'start_time' => $teaching->start_time,
-                        'end_time' => $teaching->end_time,
-                        'duration' => $teaching->duration,
-                        'class_type' => $teaching->class_type,
+                        'id' => 'extra_' . $attendance->id,
+                        'start_time' => $attendance->start_work,
+                        'end_time' => \Carbon\Carbon::parse($attendance->start_work)
+                            ->addMinutes($attendance->duration),
+                        'duration' => $attendance->duration,
+                        'class_type' => $attendance->class_type,
                         'class_id' => (object) [
                             'title' => $class['title'] ?? 'N/A',
                         ],
                         'teacher_id' => (object) [
                             'position' => $teacher['position'] ?? '',
                             'degree' => $teacher['degree'] ?? '',
-                            'name' => $teacher['name'] ?? 'N/A',
+                            'name' => $teacher['name'] ?? 'N/A'
                         ],
-                        'attendance' => $teaching->attendance ? (object) [
-                            'status' => $teaching->attendance->status,
-                            'note' => $teaching->attendance->note ?? ''
-                        ] : null
+                        'attendance' => (object) [
+                            'status' => 'เข้าปฏิบัติการสอน',
+                            'note' => $attendance->detail
+                        ],
+                        'is_extra_attendance' => true
                     ];
                 });
+
+            // 10. Merge and sort all records
+            $allRecords = $formattedTeachings->concat($formattedExtraAttendances)
+                ->sortBy('start_time')
+                ->values();
 
             DB::commit();
 
             return view('layouts.ta.teaching', [
-                'teachings' => $localTeachings,
+                'teachings' => $allRecords,
                 'selectedMonth' => $selectedMonth
             ]);
         } catch (\Exception $e) {
@@ -696,21 +764,20 @@ class TaController extends Controller
     public function storeExtraAttendance(Request $request)
     {
         try {
-            // Validate the input
+            // 1. Validate the input
             $request->validate([
                 'start_work' => 'required|date',
-                'class_type' => 'required|string|in:L,C', // Match the accepted class types
+                'class_type' => 'required|string|in:L,C',
                 'detail' => 'required|string|max:255',
                 'duration' => 'required|integer|min:1',
                 'student_id' => 'required|exists:students,id',
                 'class_id' => 'required|exists:classes,class_id',
             ]);
 
-            // Begin transaction
             DB::beginTransaction();
 
-            // Insert the record into extra_attendances
-            ExtraAttendances::create([
+            // 2. Create the extra attendance record
+            $extraAttendance = ExtraAttendances::create([
                 'start_work' => $request->start_work,
                 'class_type' => $request->class_type,
                 'detail' => $request->detail,
@@ -719,20 +786,167 @@ class TaController extends Controller
                 'class_id' => $request->class_id,
             ]);
 
-            // Commit the transaction
             DB::commit();
 
-            // Redirect back with success message
-            return redirect()->back()->with('success', 'บันทึกการลงเวลาเพิ่มเติมสำเร็จ');
+            // 3. Redirect back with success message and preserve month filter
+            $selectedMonth = $request->query('month');
+            return redirect()->route('layout.ta.teaching', [
+                'id' => $request->class_id,
+                'month' => $selectedMonth
+            ])->with('success', 'บันทึกการลงเวลาเพิ่มเติมสำเร็จ');
         } catch (\Exception $e) {
-            // Rollback the transaction in case of error
             DB::rollBack();
-
-            // Log the error for debugging
             Log::error('Error in storeExtraAttendance: ' . $e->getMessage());
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
+        }
+    }
 
-            // Redirect back with error message and input data
-            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage())->withInput();
+    // Add these methods to TaController.php
+
+    public function editAttendance($teaching_id)
+    {
+        try {
+            $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
+
+            if (!$teaching->attendance) {
+                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลา');
+            }
+
+            return view('layouts.ta.edit-attendance', compact('teaching'));
+        } catch (\Exception $e) {
+            Log::error('Error in editAttendance: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการแสดงฟอร์มแก้ไข');
+        }
+    }
+
+    public function updateAttendance(Request $request, $teaching_id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $request->validate([
+                'status' => 'required|in:เข้าปฏิบัติการสอน,ลา',
+                'note' => 'required|string|max:255',
+            ]);
+
+            $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
+
+            if (!$teaching->attendance) {
+                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลา');
+            }
+
+            $teaching->attendance->update([
+                'status' => $request->status,
+                'note' => $request->note,
+            ]);
+
+            DB::commit();
+
+            return redirect()
+                ->route('layout.ta.teaching', [
+                    'id' => $teaching->class_id,
+                    'month' => $request->input('selected_month')
+                ])
+                ->with('success', 'อัปเดตการลงเวลาสำเร็จ');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error in updateAttendance: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
+        }
+    }
+
+    public function deleteAttendance($teaching_id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
+
+            if (!$teaching->attendance) {
+                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลา');
+            }
+
+            $teaching->attendance->delete();
+
+            DB::commit();
+
+            return redirect()
+                ->back()
+                ->with('success', 'ลบการลงเวลาสำเร็จ');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error in deleteAttendance: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการลบข้อมูล');
+        }
+    }
+
+    public function editExtraAttendance($id)
+    {
+        try {
+            $extraAttendance = ExtraAttendances::findOrFail($id);
+            return view('layouts.ta.edit-extra-attendance', compact('extraAttendance'));
+        } catch (\Exception $e) {
+            Log::error('Error in editExtraAttendance: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการแสดงฟอร์มแก้ไข');
+        }
+    }
+
+    public function updateExtraAttendance(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $request->validate([
+                'start_work' => 'required|date',
+                'class_type' => 'required|string|in:L,C',
+                'detail' => 'required|string|max:255',
+                'duration' => 'required|integer|min:1',
+            ]);
+
+            $extraAttendance = ExtraAttendances::findOrFail($id);
+
+            $extraAttendance->update([
+                'start_work' => $request->start_work,
+                'class_type' => $request->class_type,
+                'detail' => $request->detail,
+                'duration' => $request->duration,
+            ]);
+
+            DB::commit();
+
+            return redirect()
+                ->route('layout.ta.teaching', [
+                    'id' => $extraAttendance->class_id,
+                    'month' => $request->input('selected_month')
+                ])
+                ->with('success', 'อัปเดตการลงเวลาเพิ่มเติมสำเร็จ');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error in updateExtraAttendance: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
+        }
+    }
+
+    public function deleteExtraAttendance($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $extraAttendance = ExtraAttendances::findOrFail($id);
+            $extraAttendance->delete();
+
+            DB::commit();
+
+            return redirect()
+                ->back()
+                ->with('success', 'ลบการลงเวลาเพิ่มเติมสำเร็จ');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error in deleteExtraAttendance: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการลบข้อมูล');
         }
     }
 }
