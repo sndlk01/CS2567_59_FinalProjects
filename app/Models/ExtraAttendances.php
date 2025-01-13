@@ -29,6 +29,7 @@ class ExtraAttendances extends Model
 
     public function classes()
     {
-        return $this->hasOne(Classes::class);
+        return $this->belongsTo(Classes::class, 'class_id', 'class_id');
     }
+    
 }

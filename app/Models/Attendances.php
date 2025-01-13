@@ -13,6 +13,7 @@ class Attendances extends Model
         'status',
         'approve_status',
         'approve_at',
+        'approve_note',
         'note',
         'user_id',
         'teaching_id',
