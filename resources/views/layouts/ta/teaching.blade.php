@@ -216,7 +216,6 @@
                                 <option value="">เลือกประเภทรายวิชา</option>
                                 <option value="L">ปฏิบัติ</option>
                                 <option value="C">บรรยาย</option>
-                                {{-- <option value="P">Project</option> --}}
                             </select>
                         </div>
 
@@ -235,6 +234,7 @@
 
                         <input type="hidden" name="student_id" value="{{ Auth::user()->student->id }}">
                         <input type="hidden" name="class_id" value="{{ request()->route('id') }}">
+                        <input type="hidden" name="selected_month" value="{{ $selectedMonth }}">
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>

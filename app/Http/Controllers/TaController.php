@@ -788,8 +788,11 @@ class TaController extends Controller
 
             DB::commit();
 
-            // 3. Redirect back with success message and preserve month filter
-            $selectedMonth = $request->query('month');
+            // 3. Get selected month from request or use the start_work month
+            $selectedMonth = $request->input('selected_month') ??
+                \Carbon\Carbon::parse($request->start_work)->format('M');
+
+            // 4. Redirect back with selected month parameter
             return redirect()->route('layout.ta.teaching', [
                 'id' => $request->class_id,
                 'month' => $selectedMonth
@@ -803,8 +806,6 @@ class TaController extends Controller
                 ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
         }
     }
-
-    // Add these methods to TaController.php
 
     public function editAttendance($teaching_id)
     {
