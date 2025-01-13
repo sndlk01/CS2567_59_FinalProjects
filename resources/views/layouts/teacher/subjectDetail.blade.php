@@ -16,8 +16,8 @@
                         <p><span class="fw-bold text-dark">ปีการศึกษา : </span>{{ $course['current_semester']['semester'] }}/{{ $course['current_semester']['year'] }}</p>
                         <p><span class="fw-bold text-dark">อาจารย์ประจำวิชา : </span>
                             @if(isset($course['teacher']))
-                                {{ $course['teacher']['position'] ?? '' }} 
-                                {{ $course['teacher']['degree'] ?? '' }} 
+                                {{ $course['teacher']['position'] ?? '' }}
+                                {{ $course['teacher']['degree'] ?? '' }}
                                 {{ $course['teacher']['name'] ?? '' }}
                             @else
                                 -
@@ -33,8 +33,6 @@
                             <thead>
                                 <tr>
                                     <th scope="col">ลำดับ</th>
-                                    
-                                    {{-- <th scope="col">นามสกุล</th> --}}
                                     <th scope="col">รหัสนักศึกษา</th>
                                     <th scope="col">ชื่อ-นามสกุล</th>
                                     <th scope="col">อีเมล</th>
@@ -42,11 +40,15 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($course['teaching_assistants'] as $index => $ta)
+                                @php
+                                    $approvedTAs = collect($course['teaching_assistants'])->filter(function($ta) {
+                                        return $ta['status'] === 'a';
+                                    });
+                                @endphp
+
+                                @forelse($approvedTAs as $index => $ta)
                                     <tr>
                                         <th scope="row">{{ $index + 1 }}</th>
-                                        
-                                        {{-- <td>{{ $ta['lastname'] }}</td> --}}
                                         <td>{{ $ta['student_id'] }}</td>
                                         <td>{{ $ta['name'] }}</td>
                                         <td>{{ $ta['email'] }}</td>
@@ -58,7 +60,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="text-center">ไม่พบข้อมูลผู้ช่วยสอน</td>
+                                        <td colspan="6" class="text-center">ไม่พบข้อมูลผู้ช่วยสอนที่ได้รับการอนุมัติ</td>
                                     </tr>
                                 @endforelse
                             </tbody>

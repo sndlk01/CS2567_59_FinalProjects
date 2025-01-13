@@ -44,49 +44,56 @@ class TeacherController extends Controller
     }
 
     public function subjectDetail($course_id)
-    {
-        try {
-            $currentDate = now();
-            $semester = ($currentDate->month >= 6 && $currentDate->month <= 11) ? 1 : 2;
-            $year = $currentDate->year + 543;
-            if ($currentDate->month >= 1 && $currentDate->month <= 5) {
-                $year -= 1;
-            }
+{
+    try {
+        $currentDate = now();
+        $semester = ($currentDate->month >= 6 && $currentDate->month <= 11) ? 1 : 2;
+        $year = $currentDate->year + 543;
+        if ($currentDate->month >= 1 && $currentDate->month <= 5) {
+            $year -= 1;
+        }
 
-            $tdbmService = new TDBMApiService();
-            $course = collect($tdbmService->getCourses())->firstWhere('course_id', $course_id);
+        $tdbmService = new TDBMApiService();
+        $course = collect($tdbmService->getCourses())->firstWhere('course_id', $course_id);
 
-            if (!$course) {
-                throw new \Exception('Course not found');
-            }
+        if (!$course) {
+            throw new \Exception('Course not found');
+        }
 
-            $subject = collect($tdbmService->getSubjects())->firstWhere('subject_id', $course['subject_id']);
-            $teacher = collect($tdbmService->getTeachers())->firstWhere('teacher_id', $course['owner_teacher_id']);
+        $subject = collect($tdbmService->getSubjects())->firstWhere('subject_id', $course['subject_id']);
+        $teacher = collect($tdbmService->getTeachers())->firstWhere('teacher_id', $course['owner_teacher_id']);
 
-            $course['subject'] = $subject;
-            $course['teacher'] = $teacher;
-            $course['current_semester'] = [
-                'semester' => $semester,
-                'year' => $year
-            ];
+        $course['subject'] = $subject;
+        $course['teacher'] = $teacher;
+        $course['current_semester'] = [
+            'semester' => $semester,
+            'year' => $year
+        ];
 
-            $teaching_assistants = CourseTas::with('student')
-                ->where('course_id', $course_id)
-                ->get()
-                ->map(function ($ta) {
-                    return [
-                        'id' => $ta->id,
-                        'name' => $ta->student->name,
-                        'email' => $ta->student->email,
-                        'student_id' => $ta->student->student_id,
-                    ];
-                });
+        $teaching_assistants = CourseTas::with(['student', 'courseTaClasses.requests'])
+            ->where('course_id', $course_id)
+            ->get()
+            ->map(function ($ta) {
+                // Get the latest request status for this TA
+                $latestRequest = $ta->courseTaClasses
+                    ->flatMap->requests
+                    ->sortByDesc('created_at')
+                    ->first();
 
-            $course['teaching_assistants'] = $teaching_assistants;
+                return [
+                    'id' => $ta->id,
+                    'name' => $ta->student->name,
+                    'email' => $ta->student->email,
+                    'student_id' => $ta->student->student_id,
+                    'status' => $latestRequest ? strtolower($latestRequest->status) : 'w'
+                ];
+            });
 
-            return view('layouts.teacher.subjectDetail', compact('course'));
-        } catch (\Exception $e) {
-            Log::error($e->getMessage());
+        $course['teaching_assistants'] = $teaching_assistants;
+
+        return view('layouts.teacher.subjectDetail', compact('course'));
+    } catch (\Exception $e) {
+        Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล');
         }
     }
