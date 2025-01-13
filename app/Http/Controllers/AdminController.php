@@ -7,6 +7,8 @@ use App\Models\Students;
 use App\Models\CourseTas;
 use App\Models\Disbursements;
 use App\Models\Teaching;
+use App\Models\Classes;
+use App\Models\ExtraAttendances;
 use Illuminate\Support\Facades\Storage;
 
 
@@ -121,80 +123,116 @@ class AdminController extends Controller
     }
 
 
-    public function taDetail($student_id) 
+    public function taDetail($student_id)
     {
         try {
-            // ค้นหา TA จาก student_id
             $ta = CourseTas::with(['student', 'course.semesters'])
                 ->where('student_id', $student_id)
                 ->firstOrFail();
-                
+
             $student = $ta->student;
             $semester = $ta->course->semesters;
-            
-            // กำหนดช่วงเวลาของภาคการศึกษา
+
             $start = \Carbon\Carbon::parse($semester->start_date)->startOfDay();
             $end = \Carbon\Carbon::parse($semester->end_date)->endOfDay();
-            
-            // ตรวจสอบว่าอยู่ในช่วงภาคการศึกษาปัจจุบันหรือไม่
+
             if (!\Carbon\Carbon::now()->between($start, $end)) {
                 return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
             }
-    
+
             // สร้างรายการเดือน
             $monthsInSemester = [];
-            
-            // ถ้าปีเดียวกัน
             if ($start->year === $end->year) {
                 for ($m = $start->month; $m <= $end->month; $m++) {
                     $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
                     $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
                 }
-            } 
-            // ถ้าคนละปี
-            else {
-                // เพิ่มเดือนของปีแรก
+            } else {
                 for ($m = $start->month; $m <= 12; $m++) {
                     $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
                     $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
                 }
-                
-                // เพิ่มเดือนของปีถัดไป
                 for ($m = 1; $m <= $end->month; $m++) {
                     $date = \Carbon\Carbon::createFromDate($end->year, $m, 1);
                     $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
                 }
             }
-    
-            // Get selected month from request, default to start month/year
+
             $selectedYearMonth = request('month', $start->format('Y-m'));
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
-    
-            // Query with month filter
-            $teachings = Teaching::with(['attendance', 'teacher', 'class'])
-                ->where('class_id', 'LIKE', $ta->course_id . '%')
-                ->whereBetween('start_time', [$start, $end])
-                ->whereHas('attendance', function($query) {
-                    $query->whereIn('status', ['เข้าปฏิบัติการสอน', 'ลา']);
-                })
-                ->whereYear('start_time', $selectedDate->year)
-                ->whereMonth('start_time', $selectedDate->month)
-                ->get();
-            
+
+            // Get attendance type filter
+            $attendanceType = request('type', 'all'); // 'all', 'regular', or 'special'
+
+            $allAttendances = collect();
+
+            // Get regular attendances if needed
+            if ($attendanceType === 'all' || $attendanceType === 'regular') {
+                $teachings = Teaching::with(['attendance', 'teacher', 'class'])
+                    ->where('class_id', 'LIKE', $ta->course_id . '%')
+                    ->whereBetween('start_time', [$start, $end])
+                    ->whereHas('attendance', function ($query) {
+                        $query->where('approve_status', 'A');
+                    })
+                    ->whereYear('start_time', $selectedDate->year)
+                    ->whereMonth('start_time', $selectedDate->month)
+                    ->get()
+                    ->groupBy(function ($teaching) {
+                        // แยกตาม section
+                        return $teaching->class->section_num;
+                    });
+
+                foreach ($teachings as $section => $sectionTeachings) {
+                    foreach ($sectionTeachings as $teaching) {
+                        $allAttendances->push([
+                            'type' => 'regular',
+                            'section' => $section,
+                            'date' => $teaching->start_time,
+                            'data' => $teaching
+                        ]);
+                    }
+                }
+            }
+
+            // Get extra attendances if needed
+            if ($attendanceType === 'all' || $attendanceType === 'special') {
+                $extraAttendances = ExtraAttendances::where('student_id', $student_id)
+                    ->where('approve_status', 'A')
+                    ->whereYear('start_work', $selectedDate->year)
+                    ->whereMonth('start_work', $selectedDate->month)
+                    ->get()
+                    ->groupBy('class_id');
+
+                foreach ($extraAttendances as $classId => $extras) {
+                    $class = Classes::find($classId);
+                    foreach ($extras as $extra) {
+                        $allAttendances->push([
+                            'type' => 'special',
+                            'section' => $class ? $class->section_num : 'N/A',
+                            'date' => $extra->start_work,
+                            'data' => $extra
+                        ]);
+                    }
+                }
+            }
+
+            // Group by section and sort by date
+            $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
+
             return view('layouts.admin.detailsById', compact(
                 'student',
                 'semester',
-                'teachings',
+                'attendancesBySection',
                 'monthsInSemester',
-                'selectedYearMonth'
+                'selectedYearMonth',
+                'attendanceType'
             ));
-            
+
         } catch (\Exception $e) {
             \Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
-
 
     /**
      * Display a listing of the resource.

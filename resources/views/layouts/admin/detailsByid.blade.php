@@ -51,6 +51,7 @@
                     </div>
 
                     <!-- ข้อมูลการลงเวลา -->
+                    <!-- ส่วนของฟิลเตอร์ -->
                     <div class="card-body">
                         @if (isset($semester) && $semester)
                             <h5 class="card-title">ข้อมูลการลงเวลาการสอน
@@ -61,12 +62,25 @@
                             <h5 class="card-title">ข้อมูลการลงเวลาการสอน</h5>
                         @endif
 
-                        <div class="table-responsive">
-                            <div class="mb-3">
-                                <form method="GET" class="d-flex align-items-center">
-                                    <label for="month" class="me-2">เลือกเดือน:</label>
-                                    <select name="month" id="month" class="form-select w-15"
-                                        onchange="this.form.submit()">
+                        <div class="mb-3">
+                            <form method="GET" class="d-flex align-items-center gap-3">
+                                <!-- ตัวเลือกประเภทการลงเวลา -->
+                                <div class="d-flex align-items-center">
+                                    <label for="type" class="me-2">ประเภท:</label>
+                                    <select name="type" id="type" class="form-select" style="width: 150px;">
+                                        <option value="all" {{ request('type', 'all') === 'all' ? 'selected' : '' }}>
+                                            ทั้งหมด</option>
+                                        <option value="regular" {{ request('type') === 'regular' ? 'selected' : '' }}>ปกติ
+                                        </option>
+                                        <option value="special" {{ request('type') === 'special' ? 'selected' : '' }}>พิเศษ
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <!-- ตัวเลือกเดือน -->
+                                <div class="d-flex align-items-center">
+                                    <label for="month" class="me-2">เดือน:</label>
+                                    <select name="month" id="month" class="form-select" style="width: 200px;">
                                         @foreach ($monthsInSemester as $yearMonth => $monthName)
                                             <option value="{{ $yearMonth }}"
                                                 {{ $selectedYearMonth == $yearMonth ? 'selected' : '' }}>
@@ -74,86 +88,137 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                </form>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">แสดงข้อมูล</button>
+                            </form>
+                        </div>
+
+                        <!-- แสดงข้อมูลแยกตาม Section -->
+                        <!-- แสดงข้อมูลแยกตาม Section -->
+                        @forelse($attendancesBySection as $section => $attendances)
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Section {{ $section }}</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>ประเภท</th>
+                                                    <th>รูปแบบ</th>
+                                                    <th>วันที่</th>
+                                                    <th>เวลาสอน</th>
+                                                    <th>ชั่วโมงการสอน</th>
+                                                    <th>อาจารย์ประจำวิชา</th>
+                                                    <th>สถานะ</th>
+                                                    <th>รายละเอียด</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($attendances as $attendance)
+                                                    <tr>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                <span class="badge bg-primary">ปกติ</span>
+                                                            @else
+                                                                <span class="badge bg-info">พิเศษ</span>
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                @if ($attendance['data']->class_type === 'L')
+                                                                    <span class="badge bg-warning">LAB</span>
+                                                                @else
+                                                                    <span class="badge bg-secondary">LECTURE</span>
+                                                                @endif
+                                                            @else
+                                                                @if ($attendance['data']->class_type === 'L')
+                                                                    <span class="badge bg-warning">LAB</span>
+                                                                @else
+                                                                    <span class="badge bg-secondary">LECTURE</span>
+                                                                @endif
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                {{ \Carbon\Carbon::parse($attendance['data']->start_time)->format('d-m-Y') }}
+                                                            @else
+                                                                {{ \Carbon\Carbon::parse($attendance['data']->start_work)->format('d-m-Y') }}
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                {{ \Carbon\Carbon::parse($attendance['data']->start_time)->format('H:i') }}
+                                                                -
+                                                                {{ \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i') }}
+                                                            @else
+                                                                {{ \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') }}
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                @php
+                                                                    $start = \Carbon\Carbon::parse(
+                                                                        $attendance['data']->start_time,
+                                                                    );
+                                                                    $end = \Carbon\Carbon::parse(
+                                                                        $attendance['data']->end_time,
+                                                                    );
+                                                                    $durationInHours = $end->diffInMinutes($start) / 60;
+                                                                @endphp
+                                                                {{ number_format($durationInHours, 2) }} ชั่วโมง
+                                                            @else
+                                                                {{ number_format($attendance['data']->duration / 60, 2) }}
+                                                                ชั่วโมง
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                {{ $attendance['data']->teacher->position ?? '' }}
+                                                                {{ $attendance['data']->teacher->degree ?? '' }}
+                                                                {{ $attendance['data']->teacher->name ?? '' }}
+                                                            @else
+                                                                -
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-success">อนุมัติแล้ว</span>
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                {{ $attendance['data']->attendance->note ?? '-' }}
+                                                            @else
+                                                                {{ $attendance['data']->detail ?? '-' }}
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>กลุ่ม</th>
-                                        <th>เวลาเริ่มเรียน</th>
-                                        <th>เวลาเลิกเรียน</th>
-                                        <th>เวลาที่สอน(นาที)</th>
-                                        <th>อาจารย์ประจำวิชา</th>
-                                        <th>การปฏิบัติงาน</th>
-                                        <th>รายละเอียด</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse($teachings as $teaching)
-                                        <tr>
-                                            <td>
-                                                @if ($teaching->class_type === 'E')
-                                                    <span>สอนชดเชย</span>
-                                                @else
-                                                    {{ $teaching->class_type }}
-                                                @endif
-                                            </td>
-                                            <td>{{ \Carbon\Carbon::parse($teaching->start_time)->format('d-m-Y H:i') }}
-                                            </td>
-                                            <td>{{ \Carbon\Carbon::parse($teaching->end_time)->format('d-m-Y H:i') }}</td>
-                                            <td>{{ $teaching->duration }}</td>
-                                            <td>
-                                                {{ $teaching->teacher->position ?? '' }}
-                                                {{ $teaching->teacher->degree ?? '' }}
-                                                {{ $teaching->teacher->name ?? '' }}
-                                            </td>
-                                            <td>
-                                                @if ($teaching->attendance)
-                                                    @if ($teaching->attendance->status === 'เข้าปฏิบัติการสอน')
-                                                        <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
-                                                    @elseif ($teaching->attendance->status === 'ลา')
-                                                        <span class="badge bg-warning">ลา</span>
-                                                    @else
-                                                        <span class="badge bg-secondary">รอการลงเวลา</span>
-                                                    @endif
-                                                @else
-                                                    <span class="badge bg-secondary">รอการลงเวลา</span>
-                                                @endif
-                                            </td>
-                                            <td>{{ $teaching->attendance->note ?? '-' }}</td>
-                                            <td>
-                                                @if ($teaching->attendance)
-                                                    <button class="btn btn-outline-secondary btn-sm" disabled>
-                                                        ลงเวลาแล้ว
-                                                    </button>
-                                                @else
-                                                    <a href="{{ route('attendances.form', ['teaching_id' => $teaching->teaching_id]) }}"
-                                                        class="btn btn-outline-primary btn-sm">
-                                                        ลงเวลา
-                                                    </a>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="8" class="text-center">ไม่พบข้อมูลการสอน</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                        @empty
+                            <div class="alert alert-info">
+                                ไม่พบข้อมูลการลงเวลาในช่วงเวลาที่เลือก
+                            </div>
+                        @endforelse
+
+                        <div class="mt-3">
+                            <a href="{{ url()->previous() }}" class="btn btn-secondary">
+                                ย้อนกลับ
+                            </a>
                         </div>
                     </div>
+                    
                 </div>
 
                 <!-- ปุ่มย้อนกลับ -->
-                <div class="mt-3">
-                    <a href="{{ url()->previous() }}" class="btn btn-secondary">
-                        ย้อนกลับ
-                    </a>
-                </div>
+
             </div>
         </div>
     </div>
-    </div>
+
 @endsection
