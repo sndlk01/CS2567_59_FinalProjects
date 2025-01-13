@@ -16,6 +16,10 @@ return new class extends Migration
             $table->string('detail', 255);
             $table->dateTime('start_work');
             $table->integer('duration');
+            $table->char('approve_status')->nullable();
+            $table->char('approve_note')->nullable();
+            $table->dateTime('approve_at', precision: 0)->nullable();
+            $table->integer('approve_user_id')->nullable();
             $table->char('class_type', 1);
             $table->unsignedBigInteger('student_id');
             // $table->unsignedBigInteger('course_id');

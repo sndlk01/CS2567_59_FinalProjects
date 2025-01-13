@@ -16,6 +16,10 @@ class ExtraAttendances extends Model
         'class_type',
         'student_id',
         'class_id',
+        'approve_status',
+        'approve_note',
+        'approve_at',
+        'approve_user_id',
     ];
 
     public function student()
