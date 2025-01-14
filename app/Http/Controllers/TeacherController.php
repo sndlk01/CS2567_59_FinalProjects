@@ -221,7 +221,7 @@ class TeacherController extends Controller
             ));
 
         } catch (\Exception $e) {
-            \Log::error($e->getMessage());
+            Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
@@ -288,12 +288,12 @@ class TeacherController extends Controller
 
             } catch (\Exception $e) {
                 DB::rollBack();
-                \Log::error('Error during approval: ' . $e->getMessage());
+                Log::error('Error during approval: ' . $e->getMessage());
                 return back()->with('error', 'เกิดข้อผิดพลาดในการอนุมัติ: ' . $e->getMessage());
             }
 
         } catch (\Exception $e) {
-            \Log::error($e->getMessage());
+            Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการประมวลผล: ' . $e->getMessage());
         }
     }
