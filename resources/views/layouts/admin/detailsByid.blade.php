@@ -199,6 +199,8 @@
                                         </table>
                                     </div>
                                 </div>
+
+
                             </div>
                         @empty
                             <div class="alert alert-info">
@@ -206,13 +208,44 @@
                             </div>
                         @endforelse
 
+                        <div class="card mt-4">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">สรุปค่าตอบแทน</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>ค่าตอบแทนภาคปกติ
+                                                ({{ number_format($compensation['regularHours'], 2) }} ชั่วโมง × 40
+                                                บาท):</strong>
+                                            {{ number_format($compensation['regularPay'], 2) }} บาท</p>
+                                        <p><strong>ค่าตอบแทนภาคพิเศษ
+                                                ({{ number_format($compensation['specialHours'], 2) }} ชั่วโมง × 50
+                                                บาท):</strong>
+                                            {{ number_format($compensation['specialPay'], 2) }} บาท</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>จำนวนชั่วโมงรวม:</strong>
+                                            {{ number_format($compensation['regularHours'] + $compensation['specialHours'], 2) }}
+                                            ชั่วโมง</p>
+                                        <p><strong>ค่าตอบแทนรวมทั้งสิ้น:</strong>
+                                            {{ number_format($compensation['totalPay'], 2) }} บาท</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mt-3">
+                            <a href="{{ route('layout.exports.pdf', ['id' => $student->id, 'month' => $selectedYearMonth, 'type' => $attendanceType]) }}"
+                                class="btn btn-primary">
+                                Export PDF
+                            </a>
                             <a href="{{ url()->previous() }}" class="btn btn-secondary">
                                 ย้อนกลับ
                             </a>
                         </div>
                     </div>
-                    
+
                 </div>
 
                 <!-- ปุ่มย้อนกลับ -->

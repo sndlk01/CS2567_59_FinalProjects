@@ -9,7 +9,9 @@ use App\Models\Disbursements;
 use App\Models\Teaching;
 use App\Models\Classes;
 use App\Models\ExtraAttendances;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 
 
@@ -48,7 +50,7 @@ class AdminController extends Controller
             ->get();
 
         // Debug ข้อมูล
-        \Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
+        Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
 
         return view('layouts.admin.taUsers', compact('coursesWithTAs'));
     }
@@ -73,32 +75,6 @@ class AdminController extends Controller
         return view('layouts.admin.detailsTa', compact('course'));
     }
 
-
-    // public function showTaProfile($student_id)
-    // {
-    //     $student = Students::with([
-    //         'disbursements',  // ใช้ชื่อ relationship ที่ถูกต้อง
-    //         'courseTas.course.subjects',
-    //         'courseTas.course.teachers',
-    //         'courseTas.course.semesters',
-    //         'courseTas.courseTaClasses.requests' => function ($query) {
-    //             $query->where('status', 'A')
-    //                 ->whereNotNull('approved_at');
-    //         }
-    //     ])->findOrFail($student_id);
-
-    //     // ดูข้อมูลที่แท้จริงใน attributes
-    //     // dd([
-    //     //     'student_exists' => $student !== null,
-    //     //     'student_id' => $student->id,
-    //     //     'raw_disbursements' => $student->disbursements,
-    //     //     'attributes' => $student->disbursements?->getAttributes(),
-    //     //     'relationship_loaded' => $student->relationLoaded('disbursements')
-    //     // ]);
-
-    //     return view('layouts.admin.detailsById', compact('student'));
-    // }
-
     public function downloadDocument($id)
     {
         try {
@@ -112,14 +88,9 @@ class AdminController extends Controller
 
             return Storage::disk('public')->download($disbursement->uploadfile);
         } catch (\Exception $e) {
-            \Log::error('Document download error: ' . $e->getMessage());
+            Log::error('Document download error: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร');
         }
-    }
-
-    public function detailsTa()
-    {
-        return view('layouts.admin.detailsTa');
     }
 
 
@@ -160,43 +131,47 @@ class AdminController extends Controller
 
             $selectedYearMonth = request('month', $start->format('Y-m'));
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
-
-            // Get attendance type filter
-            $attendanceType = request('type', 'all'); // 'all', 'regular', or 'special'
+            $attendanceType = request('type', 'all');
 
             $allAttendances = collect();
+            $regularHours = 0;
+            $specialHours = 0;
 
-            // Get regular attendances if needed
+            // Get regular attendances
             if ($attendanceType === 'all' || $attendanceType === 'regular') {
-                $teachings = Teaching::with(['attendance', 'teacher', 'class'])
+                $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
                     ->where('class_id', 'LIKE', $ta->course_id . '%')
-                    ->whereBetween('start_time', [$start, $end])
+                    ->whereYear('start_time', $selectedDate->year)
+                    ->whereMonth('start_time', $selectedDate->month)
                     ->whereHas('attendance', function ($query) {
                         $query->where('approve_status', 'A');
                     })
-                    ->whereYear('start_time', $selectedDate->year)
-                    ->whereMonth('start_time', $selectedDate->month)
-                    ->get()
-                    ->groupBy(function ($teaching) {
-                        // แยกตาม section
+                    ->get()->groupBy(function ($teaching) {
                         return $teaching->class->section_num;
                     });
 
                 foreach ($teachings as $section => $sectionTeachings) {
                     foreach ($sectionTeachings as $teaching) {
+                        $startTime = \Carbon\Carbon::parse($teaching->start_time);
+                        $endTime = \Carbon\Carbon::parse($teaching->end_time);
+                        $hours = $endTime->diffInMinutes($startTime) / 60;
+                        $regularHours += $hours;
+
                         $allAttendances->push([
                             'type' => 'regular',
                             'section' => $section,
                             'date' => $teaching->start_time,
-                            'data' => $teaching
+                            'data' => $teaching,
+                            'hours' => $hours
                         ]);
                     }
                 }
             }
 
-            // Get extra attendances if needed
+            // Get extra attendances
             if ($attendanceType === 'all' || $attendanceType === 'special') {
-                $extraAttendances = ExtraAttendances::where('student_id', $student_id)
+                $extraAttendances = ExtraAttendances::with(['classes.course.subjects'])
+                    ->where('student_id', $student->id)
                     ->where('approve_status', 'A')
                     ->whereYear('start_work', $selectedDate->year)
                     ->whereMonth('start_work', $selectedDate->month)
@@ -206,17 +181,37 @@ class AdminController extends Controller
                 foreach ($extraAttendances as $classId => $extras) {
                     $class = Classes::find($classId);
                     foreach ($extras as $extra) {
+                        $hours = $extra->duration / 60;
+                        $specialHours += $hours;
+
                         $allAttendances->push([
                             'type' => 'special',
                             'section' => $class ? $class->section_num : 'N/A',
                             'date' => $extra->start_work,
-                            'data' => $extra
+                            'data' => $extra,
+                            'hours' => $hours
                         ]);
                     }
                 }
             }
 
-            // Group by section and sort by date
+            // คำนวณค่าตอบแทน
+            $regularPayRate = 40; // บาทต่อชั่วโมง
+            $specialPayRate = 50; // บาทต่อชั่วโมง
+
+            $regularPay = $regularHours * $regularPayRate;
+            $specialPay = $specialHours * $specialPayRate;
+            $totalPay = $regularPay + $specialPay;
+
+            // เพิ่มข้อมูลการคำนวณเข้าไปใน view
+            $compensation = [
+                'regularHours' => $regularHours,
+                'specialHours' => $specialHours,
+                'regularPay' => $regularPay,
+                'specialPay' => $specialPay,
+                'totalPay' => $totalPay
+            ];
+
             $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
 
             return view('layouts.admin.detailsById', compact(
@@ -225,18 +220,192 @@ class AdminController extends Controller
                 'attendancesBySection',
                 'monthsInSemester',
                 'selectedYearMonth',
-                'attendanceType'
+                'attendanceType',
+                'compensation'  // ส่งข้อมูลการคำนวณไปยัง view
             ));
 
         } catch (\Exception $e) {
-            \Log::error($e->getMessage());
+            Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Display a listing of the resource.
-     */
+    public function exportTaDetailPDF($id)
+    {
+        try {
+            $selectedYearMonth = request('month');
+            $attendanceType = request('type', 'all');
+
+            $ta = CourseTas::with(['student', 'course.semesters'])
+                ->whereHas('student', function ($query) use ($id) {
+                    $query->where('id', $id);
+                })
+                ->first();
+
+            if (!$ta) {
+                return back()->with('error', 'ไม่พบข้อมูลผู้ช่วยสอน');
+            }
+
+            $student = $ta->student;
+            $semester = $ta->course->semesters;
+            $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
+
+            $monthText = $selectedDate->locale('th')->monthName . ' ' . ($selectedDate->year + 543);
+            $year = $selectedDate->year + 543;
+
+            // ตัวแปรสำหรับเก็บชั่วโมงแยกตามประเภท
+            $regularBroadcastHours = 0;  // ชั่วโมงบรรยาย
+            $regularLabHours = 0;        // ชั่วโมงปฏิบัติการ
+            $allAttendances = collect();
+
+            // Get regular attendances
+            if ($attendanceType === 'all' || $attendanceType === 'regular') {
+                $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
+                    ->where('class_id', 'LIKE', $ta->course_id . '%')
+                    ->whereYear('start_time', $selectedDate->year)
+                    ->whereMonth('start_time', $selectedDate->month)
+                    ->whereHas('attendance', function ($query) {
+                        $query->where('approve_status', 'A');
+                    })
+                    ->get()
+                    ->groupBy(function ($teaching) {
+                        return $teaching->class->section_num;
+                    });
+
+                foreach ($teachings as $section => $sectionTeachings) {
+                    foreach ($sectionTeachings as $teaching) {
+                        $startTime = \Carbon\Carbon::parse($teaching->start_time);
+                        $endTime = \Carbon\Carbon::parse($teaching->end_time);
+                        $hours = $endTime->diffInMinutes($startTime) / 60;
+
+                        if ($teaching->class_type === 'L') {
+                            $regularLabHours += $hours;  // เพิ่มชั่วโมงปฏิบัติการ
+                        } else {
+                            $regularBroadcastHours += $hours;  // เพิ่มชั่วโมงบรรยาย
+                        }
+
+                        $allAttendances->push([
+                            'type' => 'regular',
+                            'section' => $section,
+                            'date' => $teaching->start_time,
+                            'data' => $teaching,
+                            'hours' => $hours
+                        ]);
+                    }
+                }
+            }
+
+            $regularBroadcastHours = 0;   // ชั่วโมงบรรยายปกติ
+            $regularLabHours = 0;         // ชั่วโมงปฏิบัติการปกติ
+            $specialTeachingHours = 0;    // ชั่วโมงสอนพิเศษ
+            $allAttendances = collect();
+
+            // Get regular attendances
+            if ($attendanceType === 'all' || $attendanceType === 'regular') {
+                $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
+                    ->where('class_id', 'LIKE', $ta->course_id . '%')
+                    ->whereYear('start_time', $selectedDate->year)
+                    ->whereMonth('start_time', $selectedDate->month)
+                    ->whereHas('attendance', function ($query) {
+                        $query->where('approve_status', 'A');
+                    })
+                    ->get()
+                    ->groupBy(function ($teaching) {
+                        return $teaching->class->section_num;
+                    });
+
+                foreach ($teachings as $section => $sectionTeachings) {
+                    foreach ($sectionTeachings as $teaching) {
+                        $startTime = \Carbon\Carbon::parse($teaching->start_time);
+                        $endTime = \Carbon\Carbon::parse($teaching->end_time);
+                        $hours = $endTime->diffInMinutes($startTime) / 60;
+
+                        if ($teaching->class_type === 'L') {
+                            $regularLabHours += $hours;
+                        } else {
+                            $regularBroadcastHours += $hours;
+                        }
+
+                        $allAttendances->push([
+                            'type' => 'regular',
+                            'section' => $section,
+                            'date' => $teaching->start_time,
+                            'data' => $teaching,
+                            'hours' => $hours
+                        ]);
+                    }
+                }
+            }
+
+            // Get extra/special attendances
+            if ($attendanceType === 'all' || $attendanceType === 'special') {
+                $extraAttendances = ExtraAttendances::with(['classes.course.subjects'])
+                    ->where('student_id', $student->id)
+                    ->where('approve_status', 'A')
+                    ->whereYear('start_work', $selectedDate->year)
+                    ->whereMonth('start_work', $selectedDate->month)
+                    ->get()
+                    ->groupBy('class_id');
+
+                foreach ($extraAttendances as $classId => $extras) {
+                    foreach ($extras as $extra) {
+                        $hours = $extra->duration / 60;
+                        $specialTeachingHours += $hours;  // นับเป็นชั่วโมงพิเศษทั้งหมด
+
+                        $allAttendances->push([
+                            'type' => 'special',
+                            'section' => $extra->classes ? $extra->classes->section_num : 'N/A',
+                            'date' => $extra->start_work,
+                            'data' => $extra,
+                            'hours' => $hours
+                        ]);
+                    }
+                }
+            }
+
+            // คำนวณค่าตอบแทน
+            $regularPay = ($regularBroadcastHours + $regularLabHours) * 40;  // ชั่วโมงปกติ 40 บาท/ชั่วโมง
+            $specialPay = $specialTeachingHours * 50;                        // ชั่วโมงพิเศษ 50 บาท/ชั่วโมง
+            $totalPay = $regularPay + $specialPay;
+
+            $totalPayText = $this->convertNumberToThaiBaht($totalPay);
+
+            $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
+
+            // สร้าง PDF
+            $pdf = PDF::loadView('exports.detailPDF', compact(
+                'student',
+                'semester',
+                'attendancesBySection',
+                'selectedYearMonth',
+                'monthText',
+                'year',
+                'regularBroadcastHours',
+                'regularLabHours',
+                'specialTeachingHours',
+                'regularPay',
+                'specialPay',
+                'totalPay',
+                'totalPayText'
+            ));
+
+            $pdf->setPaper('A4');
+            $fileName = 'TA-Compensation-' . $student->student_id . '-' . $selectedYearMonth . '.pdf';
+
+            return $pdf->download($fileName);
+
+        } catch (\Exception $e) {
+            \Log::error('PDF Export Error: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการสร้าง PDF: ' . $e->getMessage());
+        }
+    }
+
+    private function convertNumberToThaiBaht($number)
+    {
+        $numberText = number_format($number, 2, '.', '');
+        $textBaht = \App\Helpers\ThaiNumberHelper::convertToText($numberText);
+        return $textBaht . 'ถ้วน';
+    }
     public function index()
     {
         $announces = Announce::latest()->paginate(5);
@@ -285,9 +454,6 @@ class AdminController extends Controller
         return view('layouts.admin.edit', compact('announce'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Announce $announce)
     {
         $request->validate([
@@ -312,5 +478,7 @@ class AdminController extends Controller
             ->route('announces.index')
             ->with('success', 'announce deleted successfully');
     }
+
+
 
 }

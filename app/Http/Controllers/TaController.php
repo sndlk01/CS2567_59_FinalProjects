@@ -531,7 +531,8 @@ class TaController extends Controller
                     ],
                     'attendance' => $teaching->attendance ? (object) [
                         'status' => $teaching->attendance->status,
-                        'note' => $teaching->attendance->note ?? ''
+                        'note' => $teaching->attendance->note ?? '',
+                        'approve_status' => $teaching->attendance->approve_status ?? null // เพิ่มบรรทัดนี้
                     ] : null,
                     'is_extra_attendance' => false
                 ];
@@ -571,7 +572,8 @@ class TaController extends Controller
                         ],
                         'attendance' => (object) [
                             'status' => 'เข้าปฏิบัติการสอน',
-                            'note' => $attendance->detail
+                            'note' => $attendance->detail,
+                            'approve_status' => $attendance->approve_status ?? null // เพิ่มบรรทัดนี้
                         ],
                         'is_extra_attendance' => true
                     ];
@@ -619,6 +621,81 @@ class TaController extends Controller
         }
     }
 
+    // public function submitAttendance(Request $request, $teaching_id)
+    // {
+    //     try {
+    //         DB::beginTransaction();
+
+    //         // Validate request
+    //         $request->validate([
+    //             'status' => 'required|in:เข้าปฏิบัติการสอน,ลา',
+    //             'note' => 'required|string|max:255',
+    //         ], [
+    //             'status.required' => 'กรุณาเลือกสถานะการเข้าสอน',
+    //             'note.required' => 'กรุณากรอกงานที่ปฏิบัติ',
+    //             'note.max' => 'งานที่ปฏิบัติต้องไม่เกิน 255 ตัวอักษร'
+    //         ]);
+
+    //         $user = Auth::user();
+    //         $student = Students::where('user_id', $user->id)->firstOrFail();
+    //         $teaching = Teaching::findOrFail($teaching_id);
+
+    //         // Check if month is already approved
+    //         $selectedDate = \Carbon\Carbon::parse($teaching->start_time);
+
+    //         $isMonthApproved = Attendances::where('student_id', $student->id)
+    //             ->whereYear('created_at', $selectedDate->year)
+    //             ->whereMonth('created_at', $selectedDate->month)
+    //             ->where('approve_status', 'a')
+    //             ->exists();
+
+    //         if ($isMonthApproved) {
+    //             return redirect()
+    //                 ->back()
+    //                 ->with('error', 'ไม่สามารถลงเวลาได้เนื่องจากการลงเวลาของเดือนนี้ได้รับการอนุมัติแล้ว');
+    //         }
+
+    //         // ตรวจสอบว่ามีการลงเวลาไปแล้วหรือไม่
+    //         if ($teaching->attendance) {
+    //             return redirect()
+    //                 ->back()
+    //                 ->with('error', 'คุณได้ลงเวลาการสอนไปแล้ว');
+    //         }
+
+    //         // สร้าง attendance record
+    //         Attendances::create([
+    //             'status' => $request->status,
+    //             'note' => $request->note,
+    //             'teaching_id' => $teaching_id,
+    //             'user_id' => $user->id,
+    //             'student_id' => $student->id,
+    //             'approve_at' => null,
+    //             'approve_user_id' => null
+    //         ]);
+
+    //         DB::commit();
+
+    //         // เก็บค่าเดือนที่ส่งมาจาก form
+    //         $selectedMonth = $request->input('selected_month');
+
+    //         // redirect กลับไปยังหน้า teaching พร้อมกับส่งค่าเดือนที่เลือกไว้
+    //         return redirect()
+    //             ->route('layout.ta.teaching', [
+    //                 'id' => $teaching->class_id,
+    //                 'month' => $selectedMonth
+    //             ])
+    //             ->with('success', 'บันทึกการลงเวลาสำเร็จ');
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Error in submitAttendance: ' . $e->getMessage());
+    //         return redirect()
+    //             ->back()
+    //             ->withInput()
+    //             ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+    //     }
+    // }
+
+
     public function submitAttendance(Request $request, $teaching_id)
     {
         try {
@@ -637,6 +714,22 @@ class TaController extends Controller
             $user = Auth::user();
             $student = Students::where('user_id', $user->id)->firstOrFail();
             $teaching = Teaching::findOrFail($teaching_id);
+
+            // 1. Check if month is already approved
+            $selectedDate = \Carbon\Carbon::parse($teaching->start_time);
+
+            $isMonthApproved = Attendances::where('student_id', $student->id)
+                ->whereYear('created_at', $selectedDate->year)
+                ->whereMonth('created_at', $selectedDate->month)
+                ->where('approve_status', 'a')
+                ->exists();
+
+            // 2. เพิ่มเงื่อนไขนี้เพื่อไม่ให้ลงเวลาในเดือนที่ถูก approve แล้ว
+            if ($isMonthApproved) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'ไม่สามารถลงเวลาได้เนื่องจากการลงเวลาของเดือนนี้ได้รับการอนุมัติแล้ว');
+            }
 
             // ตรวจสอบว่ามีการลงเวลาไปแล้วหรือไม่
             if ($teaching->attendance) {
@@ -658,7 +751,6 @@ class TaController extends Controller
 
             DB::commit();
 
-            // เก็บค่าเดือนที่ส่งมาจาก form
             $selectedMonth = $request->input('selected_month');
 
             // redirect กลับไปยังหน้า teaching พร้อมกับส่งค่าเดือนที่เลือกไว้
@@ -761,10 +853,79 @@ class TaController extends Controller
         }
     }
 
+    // public function storeExtraAttendance(Request $request)
+    // {
+    //     try {
+    //         // 1. Validate request
+    //         $request->validate([
+    //             'start_work' => 'required|date',
+    //             'class_type' => 'required|string|in:L,C',
+    //             'detail' => 'required|string|max:255',
+    //             'duration' => 'required|integer|min:1',
+    //             'student_id' => 'required|exists:students,id',
+    //             'class_id' => 'required|exists:classes,class_id',
+    //         ], [
+    //             'start_work.required' => 'กรุณาระบุวันที่ปฏิบัติงาน',
+    //             'class_type.required' => 'กรุณาเลือกประเภทรายวิชา',
+    //             'detail.required' => 'กรุณากรอกรายละเอียดการปฏิบัติงาน',
+    //             'duration.required' => 'กรุณาระบุระยะเวลาการปฏิบัติงาน'
+    //         ]);
+
+    //         DB::beginTransaction();
+
+    //         // 2. Check if month is already approved
+    //         $selectedDate = \Carbon\Carbon::parse($request->start_work);
+
+    //         $isMonthApproved = Attendances::where('student_id', $request->student_id)
+    //             ->whereYear('created_at', $selectedDate->year)
+    //             ->whereMonth('created_at', $selectedDate->month)
+    //             ->where('approve_status', 'a')
+    //             ->exists();
+
+    //         if ($isMonthApproved) {
+    //             return redirect()
+    //                 ->back()
+    //                 ->with('error', 'ไม่สามารถลงเวลาเพิ่มเติมได้เนื่องจากการลงเวลาของเดือนนี้ได้รับการอนุมัติแล้ว');
+    //         }
+
+    //         // 3. Create extra attendance record
+    //         $extraAttendance = ExtraAttendances::create([
+    //             'start_work' => $request->start_work,
+    //             'class_type' => $request->class_type,
+    //             'detail' => $request->detail,
+    //             'duration' => $request->duration,
+    //             'student_id' => $request->student_id,
+    //             'class_id' => $request->class_id,
+    //             'approve_status' => null,
+    //             'approve_at' => null,
+    //             'approve_user_id' => null,
+    //             'approve_note' => null
+    //         ]);
+
+    //         DB::commit();
+
+    //         // 4. Redirect back with success message
+    //         return redirect()
+    //             ->route('layout.ta.teaching', [
+    //                 'id' => $request->class_id,
+    //                 'month' => $request->input('selected_month')
+    //             ])
+    //             ->with('success', 'บันทึกการลงเวลาเพิ่มเติมสำเร็จ');
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Error in storeExtraAttendance: ' . $e->getMessage());
+    //         return redirect()
+    //             ->back()
+    //             ->withInput()
+    //             ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
+    //     }
+    // }
+
+
     public function storeExtraAttendance(Request $request)
     {
         try {
-            // 1. Validate the input
+            // 1. Validate request
             $request->validate([
                 'start_work' => 'required|date',
                 'class_type' => 'required|string|in:L,C',
@@ -772,11 +933,32 @@ class TaController extends Controller
                 'duration' => 'required|integer|min:1',
                 'student_id' => 'required|exists:students,id',
                 'class_id' => 'required|exists:classes,class_id',
+            ], [
+                'start_work.required' => 'กรุณาระบุวันที่ปฏิบัติงาน',
+                'class_type.required' => 'กรุณาเลือกประเภทรายวิชา',
+                'detail.required' => 'กรุณากรอกรายละเอียดการปฏิบัติงาน',
+                'duration.required' => 'กรุณาระบุระยะเวลาการปฏิบัติงาน'
             ]);
 
             DB::beginTransaction();
 
-            // 2. Create the extra attendance record
+            // 2. Check if month is already approved
+            $selectedDate = \Carbon\Carbon::parse($request->start_work);
+
+            $isMonthApproved = Attendances::where('student_id', $request->student_id)
+                ->whereYear('created_at', $selectedDate->year)
+                ->whereMonth('created_at', $selectedDate->month)
+                ->where('approve_status', 'a')
+                ->exists();
+
+            // 3. เพิ่มเงื่อนไขนี้เพื่อไม่ให้ลงเวลาเพิ่มในเดือนที่ถูก approve แล้ว
+            if ($isMonthApproved) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'ไม่สามารถลงเวลาเพิ่มเติมได้เนื่องจากการลงเวลาของเดือนนี้ได้รับการอนุมัติแล้ว');
+            }
+
+            // 4. Create extra attendance record
             $extraAttendance = ExtraAttendances::create([
                 'start_work' => $request->start_work,
                 'class_type' => $request->class_type,
@@ -784,19 +966,21 @@ class TaController extends Controller
                 'duration' => $request->duration,
                 'student_id' => $request->student_id,
                 'class_id' => $request->class_id,
+                'approve_status' => null,
+                'approve_at' => null,
+                'approve_user_id' => null,
+                'approve_note' => null
             ]);
 
             DB::commit();
 
-            // 3. Get selected month from request or use the start_work month
-            $selectedMonth = $request->input('selected_month') ??
-                \Carbon\Carbon::parse($request->start_work)->format('M');
-
-            // 4. Redirect back with selected month parameter
-            return redirect()->route('layout.ta.teaching', [
-                'id' => $request->class_id,
-                'month' => $selectedMonth
-            ])->with('success', 'บันทึกการลงเวลาเพิ่มเติมสำเร็จ');
+            // 5. Redirect back with success message
+            return redirect()
+                ->route('layout.ta.teaching', [
+                    'id' => $request->class_id,
+                    'month' => $request->input('selected_month')
+                ])
+                ->with('success', 'บันทึกการลงเวลาเพิ่มเติมสำเร็จ');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in storeExtraAttendance: ' . $e->getMessage());
@@ -828,17 +1012,27 @@ class TaController extends Controller
         try {
             DB::beginTransaction();
 
+            $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
+
+            // Check if attendance is already approved
+            if ($teaching->attendance && $teaching->attendance->approve_status === 'a') {
+                return redirect()
+                    ->back()
+                    ->with('error', 'ไม่สามารถแก้ไขการลงเวลาได้เนื่องจากได้รับการอนุมัติแล้ว');
+            }
+
+            // Validate request
             $request->validate([
                 'status' => 'required|in:เข้าปฏิบัติการสอน,ลา',
                 'note' => 'required|string|max:255',
+            ], [
+                'status.required' => 'กรุณาเลือกสถานะการเข้าสอน',
+                'status.in' => 'สถานะการเข้าสอนไม่ถูกต้อง',
+                'note.required' => 'กรุณากรอกงานที่ปฏิบัติ',
+                'note.max' => 'งานที่ปฏิบัติต้องไม่เกิน 255 ตัวอักษร'
             ]);
 
-            $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
-
-            if (!$teaching->attendance) {
-                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลา');
-            }
-
+            // Update attendance
             $teaching->attendance->update([
                 'status' => $request->status,
                 'note' => $request->note,
@@ -855,7 +1049,9 @@ class TaController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in updateAttendance: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
+            return redirect()
+                ->back()
+                ->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
         }
     }
 
@@ -866,10 +1062,21 @@ class TaController extends Controller
 
             $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
 
-            if (!$teaching->attendance) {
-                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลา');
+            // Check if attendance is already approved
+            if ($teaching->attendance && $teaching->attendance->approve_status === 'a') {
+                return redirect()
+                    ->back()
+                    ->with('error', 'ไม่สามารถลบการลงเวลาได้เนื่องจากได้รับการอนุมัติแล้ว');
             }
 
+            // Check if attendance exists
+            if (!$teaching->attendance) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'ไม่พบข้อมูลการลงเวลา');
+            }
+
+            // Delete attendance
             $teaching->attendance->delete();
 
             DB::commit();
@@ -880,7 +1087,9 @@ class TaController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in deleteAttendance: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการลบข้อมูล');
+            return redirect()
+                ->back()
+                ->with('error', 'เกิดข้อผิดพลาดในการลบข้อมูล');
         }
     }
 
