@@ -53,11 +53,30 @@ class RegisterController extends Controller
         return Validator::make($data, [
             'prefix' => ['required', 'string', 'max:255'],
             'name' => ['required', 'string', 'max:255'],
-            'card_id' => ['required', 'string', 'max:255','unique:users'],
-            'phone' => ['required', 'string', 'max:255','unique:users'],
-            'student_id'=> ['required', 'string','max:11','unique:users'],
+            'card_id' => ['required', 'string', 'max:13', 'unique:users'],
+            'phone' => ['required', 'string', 'max:10', 'unique:users'],
+            'student_id' => ['required', 'string', 'max:11', 'unique:users'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            // ข้อความ error ภาษาไทย
+            'required' => 'กรุณากรอก:attribute',
+            'max' => ':attribute ต้องไม่เกิน :max ตัวอักษร',
+            'min' => ':attribute ต้องมีอย่างน้อย :min ตัวอักษร',
+            'unique' => ':attribute นี้ถูกใช้งานแล้ว',
+            'email' => 'รูปแบบอีเมลไม่ถูกต้อง',
+            'confirmed' => 'การยืนยันรหัสผ่านไม่ตรงกัน',
+
+            // กำหนดชื่อฟิลด์ภาษาไทย
+            'attributes' => [
+                'prefix' => 'คำนำหน้า',
+                'name' => 'ชื่อ-นามสกุล',
+                'card_id' => 'รหัสบัตรประชาชน',
+                'phone' => 'หมายเลขโทรศัพท์',
+                'student_id' => 'รหัสนักศึกษา',
+                'email' => 'อีเมล',
+                'password' => 'รหัสผ่าน',
+            ]
         ]);
     }
 
