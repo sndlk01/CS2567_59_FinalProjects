@@ -22,18 +22,24 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
 
+        
+
         $this->call(CreateUsersSeeder::class);
-        $this->call(EmployeeTableSeeder::class);
+        // $this->call(EmployeeTableSeeder::class);
         $this->call(TeachersTableSeeder::class);
-        $this->call(CurriculumsTableSeeder::class);
-        $this->call(MajorTableSeeder::class);
-        $this->call(SubjectsSeeder::class);
-        $this->call(SemestersTableSeeder::class);
-        $this->call(ClassTypeTableSeeder::class);
-        $this->call(CurriculumsSubjectsSeeder::class);
-        $this->call(CoursesSeeder::class);
-        $this->call(ClassesSeeder::class);
-        $this->call(TeachingSeeder::class);
-        $this->call(AnnouncesSeeder::class);
+        $this->call([
+            CurriculumsTableSeeder::class,
+            MajorTableSeeder::class,
+        ]);
+        // $this->call(CurriculumsTableSeeder::class);
+        // $this->call(MajorTableSeeder::class);
+        // $this->call(SubjectsSeeder::class);
+        // $this->call(SemestersTableSeeder::class);
+        // $this->call(ClassTypeTableSeeder::class);
+        // $this->call(CurriculumsSubjectsSeeder::class);
+        // $this->call(CoursesSeeder::class);
+        // $this->call(ClassesSeeder::class);
+        // $this->call(TeachingSeeder::class);
+        // $this->call(AnnouncesSeeder::class);
     }
 }

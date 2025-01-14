@@ -17,7 +17,19 @@ class DisbursementsController extends Controller
 
     public function disbursements()
     {
-        return view('layouts.ta.disbursements');
+        try {
+            $user = Auth::user();
+            $student = Students::where('user_id', $user->id)->first();
+            $disbursement = null;
+
+            if ($student) {
+                $disbursement = Disbursements::where('student_id', $student->id)->first();
+            }
+
+            return view('layouts.ta.disbursements', compact('disbursement'));
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
+        }
     }
 
     public function uploads(Request $request)
@@ -38,24 +50,58 @@ class DisbursementsController extends Controller
             ]);
 
             $disbursement = Disbursements::firstOrNew(['student_id' => $student->id]);
-            
+
+            // Delete old file if exists
+            if ($disbursement->uploadfile && Storage::disk('public')->exists($disbursement->uploadfile)) {
+                Storage::disk('public')->delete($disbursement->uploadfile);
+            }
+
             if ($request->hasFile('uploadfile')) {
-                $path = $request->file('uploadfile')->store('assets/fileUploads', 'public');
+                $file = $request->file('uploadfile');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $path = $file->storeAs('assets/fileUploads', $fileName, 'public');
                 $disbursement->uploadfile = $path;
+                // $disbursement->original_filename = $file->getClientOriginalName(); // Add this if you have the column
             }
 
             $disbursement->bookbank_id = $request->bookbank_id;
             $disbursement->bank_name = $request->bank_name;
             $disbursement->student_id = $student->id;
             $disbursement->applicant_type = $request->applicant_type;
-            
+
             $disbursement->save();
 
-            return redirect()->back()->with('success', 'อัปโหลดเอกสารเรียบร้อยแล้ว');
+            return redirect()->route('layout.ta.disbursements')->with('success', 'อัปโหลดเอกสารเรียบร้อยแล้ว');
 
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
         }
-    
+    }
+
+    public function downloadDocument($id)
+    {
+        try {
+            // ตรวจสอบสิทธิ์ user
+            $user = Auth::user();
+            $student = Students::where('user_id', $user->id)->first();
+            $disbursement = Disbursements::findOrFail($id);
+
+            // ตรวจสอบว่าเป็นเจ้าของเอกสาร
+            if (!$student || $disbursement->student_id !== $student->id) {
+                return redirect()->back()->with('error', 'ไม่มีสิทธิ์เข้าถึงเอกสารนี้');
+            }
+
+            // ตรวจสอบว่าไฟล์มีอยู่จริง
+            if (!Storage::disk('public')->exists($disbursement->uploadfile)) {
+                return back()->with('error', 'ไม่พบไฟล์เอกสาร');
+            }
+
+            // ดาวน์โหลดไฟล์
+            return Storage::disk('public')->download($disbursement->uploadfile);
+
+        } catch (\Exception $e) {
+            \Log::error('Document download error: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร');
+        }
     }
 }

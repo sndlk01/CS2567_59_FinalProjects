@@ -15,12 +15,15 @@ return new class extends Migration
             $table->string('subject_id', 10)->primary();
             $table->string('name_th', 1024); 
             $table->string('name_en', 1024); 
-            $table->integer('credits'); 
-            $table->string('weight', 20); 
-            $table->string('detail', 1024); 
-            $table->foreignId('cur_id')->constrained('curriculums')->onDelete('cascade'); 
+            $table->integer('credit'); 
+            $table->string('weight', 20)->nullable();
+            $table->string('detail', 1024)->nullable();
+            $table->unsignedBigInteger('cur_id',); 
             $table->char('status', 1);
             $table->timestamps(); 
+
+            $table->foreign('cur_id')->references('cur_id')->on('curriculums');
+
         });
     }
 

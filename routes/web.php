@@ -12,14 +12,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ApiController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-
-
-// Route::resource('ta',RequestController::class);
-// Route::resource('admin',AdminController::class);
-
-// Route::get('/', function () {
-//     return view('welcome');
-// });
+use App\Http\Controllers\CourseController;
 
 Auth::routes();
 
@@ -34,15 +27,14 @@ Route::get('/auth/google/call-back', [GoogleAuthController::class, 'callbackGoog
 Route::get('/complete-profile', [ProfileController::class, 'showCompleteProfileForm'])->name('complete.profile');
 Route::post('/complete-profile', [ProfileController::class, 'saveCompleteProfile'])->name('save.profile');
 
-
-// Route::get('admin/home', [HomeController::class, 'adminHome'])->name('admin.home')->middleware('admin.home');
-
 //Ta Routes List
 Route::middleware(['auth', 'user-access:user'])->group(function () {
 
     Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/home', [TaController::class, 'showAnnounces'])->name('home');
     Route::get('/request', [TaController::class, 'request'])->name('layout.ta.request');
+    Route::put('/requests/{studentId}', [RequestsController::class, 'update'])->name('requests.update');
+    Route::delete('/requests/{studentId}', [RequestsController::class, 'destroy'])->name('requests.destroy');
     Route::post('/request', [TaController::class, 'apply'])->name('ta.apply');
     Route::get('/ta/get-sections/{course_id}', [TaController::class, 'getSections'])->name('ta.getSections');
     Route::get('/statusrequest', [RequestsController::class, 'showTARequests'])->name('layouts.ta.statusRequest');
@@ -50,20 +42,35 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     // Route::get('/disbursements', [TaController::class, 'disbursements'])->name('layout.ta.disbursements');
     Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layout.ta.disbursements');
     Route::post('/disbursements', [DisbursementsController::class, 'uploads'])->name('layout.ta.disbursements');
+    Route::get('/ta/documents/download/{id}', [DisbursementsController::class, 'downloadDocument'])->name('layout.ta.download-document');
 
-    // Route::post('/apply-courseta', [TaController::class, 'applyCourseTa'])->name('apply.ta');
-    Route::get('/tasubject', [TaController::class, 'taSubject'])->name('layout.ta.taSubject');
     Route::get('/taSubject', [TaController::class, 'showCourseTas'])->name('ta.showCourseTas');
-    Route::get('/attendances', [TaController::class, 'attendances'])->name('layout.ta.attendances');
-    // Route::get('/attendances/{id}', [TaController::class, 'showSubjectDetail'])->name('layout.ta.attendances');
-    // Route::get('/course_ta/{id}/class/{classId?}', [TaController::class, 'showSubjectDetail']);
     Route::get('/course_ta/{id}/class/{classId?}', [TaController::class, 'showSubjectDetail'])->name('course_ta.show');
+
+    Route::get('/attendances', [TaController::class, 'attendances'])->name('layout.ta.attendances');
+
     // Route สำหรับแสดงข้อมูลการสอน
-    Route::get('/teaching/{id}', [TaController::class, 'showTeachingData'])->name('layout.ta.teaching');
+    Route::get('/teaching/{id?}', action: [TaController::class, 'showTeachingData'])->name('layout.ta.teaching');
+
     // Route to display the attendance form for the selected teaching session
     Route::get('/attendances/{teaching_id}', [TaController::class, 'showAttendanceForm'])->name('attendances.form');
     // Route to handle attendance form submission
     Route::post('/attendances/{teaching_id}', [TaController::class, 'submitAttendance'])->name('attendances.submit');
+
+    Route::get('/ta/profile', [TaController::class, 'edit'])->name('ta.profile');
+    Route::put('/ta/profile/update', [TaController::class, 'update'])->name('ta.profile.update');
+
+    Route::post('/extra-attendance', [TaController::class, 'storeExtraAttendance'])->name('extra-attendance.store');
+
+    // For regular attendance
+    Route::get('/attendances/{teaching_id}/edit', [TaController::class, 'editAttendance'])->name('attendances.edit');
+    Route::put('/attendances/{teaching_id}', [TaController::class, 'updateAttendance'])->name('attendances.update');
+    Route::delete('/attendances/{teaching_id}', [TaController::class, 'deleteAttendance'])->name('attendances.delete');
+
+    // For extra attendance
+    Route::get('/extra-attendance/{id}/edit', [TaController::class, 'editExtraAttendance'])->name('extra-attendance.edit');
+    Route::put('/extra-attendance/{id}', [TaController::class, 'updateExtraAttendance'])->name('extra-attendance.update');
+    Route::delete('/extra-attendance/{id}', [TaController::class, 'deleteExtraAttendance'])->name('extra-attendance.delete');
 });
 
 //Admin Routes List
@@ -79,6 +86,12 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
     Route::get('/admin/detailsta', [AdminController::class, 'detailsTa'])->name('layout.admin.detailsTa');
     Route::get('/admin/detailsta/id', [AdminController::class, 'detailsByid'])->name('layout.admin.detailsByid');
     Route::get('/fetchdata', [ApiController::class, 'fetchData']);
+    Route::get('/admin/detailsta/{course_id}', [AdminController::class, 'showTaDetails'])->name('layout.admin.detailsTa');
+    Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
+    Route::get('/layout/ta/download-document/{id}', [AdminController::class, 'downloadDocument'])
+        ->name('layout.ta.download-document');
+    // Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
+
 });
 
 //Teacher Routes List
@@ -89,7 +102,10 @@ Route::middleware(['auth', 'user-access:teacher'])->group(function () {
     Route::post('/teacherreq', [TeacherController::class, 'updateTARequestStatus'])->name('teacher.home');
     Route::get('/subject', [TeacherController::class, 'subjectTeacher'])->name('layout.teacher.subject');
     Route::get('/subject/subjectDetail', [TeacherController::class, 'subjectDetail'])->name('subjectDetail');
-    Route::get('/subject/subjectDetail/taDetail', [TeacherController::class, 'taDetail'])->name('taDetail');
+    Route::get('/teacher/subjectDetail/{course_id}', [TeacherController::class, 'subjectDetail']);
+    Route::get('/subject/subjectDetail/taDetail/{student_id}', [TeacherController::class, 'taDetail'])->name('teacher.taDetail');
+    Route::post('/teacher/approve-month/{ta_id}', [TeacherController::class, 'approveMonthlyAttendance'])
+        ->name('teacher.approve-month');
 });
 
 Route::fallback(function () {

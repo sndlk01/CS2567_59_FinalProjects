@@ -10,18 +10,20 @@ class Classes extends Model
     use HasFactory;
 
     protected $table = 'classes';
+    protected $primaryKey = 'class_id';
 
     protected $fillable = [
+        'class_id',
         'section_num',
         'title',
-        'class_type_id',
         'open_num',
         'enrolled_num',
         'available_num',
-        'teachers_id',
-        'courses_id',
-        'semesters_id',
+        'teacher_id',
+        'course_id',
+        'semester_id',
         'major_id',
+        'status'
     ];
 
 

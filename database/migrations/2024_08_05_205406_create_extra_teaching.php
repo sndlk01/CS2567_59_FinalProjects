@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('extra_teaching', function (Blueprint $table) {
-            $table->id();
+            $table->id('extra_class_id');
             $table->string('title', length: 1024);
             $table->string('detail', length: 1024);
             $table->char('opt_status');
@@ -26,9 +26,9 @@ return new class extends Migration
             $table->unsignedBigInteger('teaching_id');
             $table->unsignedBigInteger('class_id');
 
-            $table->foreign('teacher_id')->references('id')->on('teachers')->onDelete('cascade');
-            $table->foreign('teaching_id')->references('id')->on('teaching')->onDelete('cascade');
-            $table->foreign('class_id')->references('id')->on('classes')->onDelete('cascade');
+            $table->foreign('teacher_id')->references('teacher_id')->on('teachers')->onDelete('cascade');
+            $table->foreign('teaching_id')->references('teaching_id')->on('teaching')->onDelete('cascade');
+            $table->foreign('class_id')->references('class_id')->on('classes')->onDelete('cascade');
             $table->timestamps();
         });
     }

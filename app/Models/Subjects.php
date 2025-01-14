@@ -28,7 +28,7 @@ class Subjects extends Model
         'subject_id',
         'name_th',
         'name_en',
-        'credits',
+        'credit',
         'weight',
         'detail',
         'cur_id',
@@ -40,7 +40,7 @@ class Subjects extends Model
      */
     public function curriculums()
     {
-        return $this->belongsTo(Curriculums::class);
+        return $this->belongsTo(Curriculums::class,'cur_id','cur_id');
     }
 
     public function curriculums_subjects()

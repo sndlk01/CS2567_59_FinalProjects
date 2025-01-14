@@ -9,15 +9,18 @@ class Courses extends Model
 {
     use HasFactory;
 
-    protected $table = 'courses';
+    protected $primaryKey = 'course_id';
+    public $incrementing = false; // ถ้า course_id เป็น string
+    protected $keyType = 'string'; // ถ้า course_id เป็น string
 
     protected $fillable = [
-        'status',
+        'course_id',
         'subject_id',
+        'semester_id',
         'owner_teacher_id',
-        'semesters_id',
         'major_id',
         'cur_id',
+        'status'
     ];
 
     public function subjects()
@@ -32,7 +35,7 @@ class Courses extends Model
 
     public function semesters()
     {
-        return $this->belongsTo(Semesters::class, 'semesters_id');
+        return $this->belongsTo(Semesters::class, 'semester_id');
     }
 
     public function major()
@@ -53,7 +56,7 @@ class Courses extends Model
 
     public function course_tas() 
     {
-        return $this->hasMany(CourseTas::class , 'course_id', 'id');
+        return $this->hasMany(CourseTas::class , 'course_id', 'course_id');
     }
 
     public function course_teacher() 

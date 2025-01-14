@@ -13,23 +13,23 @@ class ExtraAttendances extends Model
         'detail',
         'start_work',
         'duration',
-        'class_type_id',
+        'class_type',
         'student_id',
-        'course_id',
+        'class_id',
+        'approve_status',
+        'approve_note',
+        'approve_at',
+        'approve_user_id',
     ];
-
-    public function class_type()
-    {
-        return $this->hasOne(ExtraAttendances::class);
-    }
 
     public function student()
     {
         return $this->hasOne(Students::class);
     }
 
-    public function courses()
+    public function classes()
     {
-        return $this->hasOne(Courses::class);
+        return $this->belongsTo(Classes::class, 'class_id', 'class_id');
     }
+    
 }

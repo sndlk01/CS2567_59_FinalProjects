@@ -16,7 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('cur_id');
             $table->string('subject_id');
             
-            $table->foreign('cur_id')->references('id')->on('curriculums');
+            $table->foreign('cur_id')->references('cur_id')->on('curriculums');
             $table->foreign('subject_id')->references('subject_id')->on('subjects');
             $table->timestamps();
         });

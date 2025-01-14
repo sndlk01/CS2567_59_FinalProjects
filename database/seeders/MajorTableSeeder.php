@@ -8,90 +8,33 @@ use App\Models\Curriculums;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use App\Services\TDBMApiService;
+use Carbon\Carbon;
+
 
 class MajorTableSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
+    public function run()
     {
-        $curriculums = Curriculums::first();
+        $apiService = new TDBMApiService();
+        $majors = $apiService->getMajors();
 
-        $majors = [
-            [
-                'name_th' => 'ปริญญาตรี ภาคปกติ',
-                'name_en' => 'Bachelor`s degree, Normal program',
-                'major_type' => 'N',
-                'cur_id' => 1,
-                'status' => 'A'
-            ],
-            [
-                'name_th' => 'ปริญญาตรี ภาคพิเศษ',
-                'name_en' => 'Bachelor`s degree, Special program',
-                'major_type' => 'S',
-                'cur_id' => 1,
-                'status' => 'A'
-            ],
-            [
-                'name_th' => 'ปริญญาตรี ภาคปกติ',
-                'name_en' => 'Bachelor`s degree, Normal program',
-                'major_type' => 'N',
-                'cur_id' => 2,
-                'status' => 'A'
-            ],
-            [
-                'name_th' => 'ปริญญาตรี ภาคพิเศษ',
-                'name_en' => 'Bachelor`s degree, Special program',
-                'major_type' => 'S',
-                'cur_id' => 2,
-                'status' => 'A'
-            ],
-            [
-                'name_th' => 'ปริญญาตรี ภาคปกติ',
-                'name_en' => 'Bachelor`s degree, Normal program',
-                'major_type' => 'N',
-                'cur_id' => 3,
-                'status' => 'A'
-            ],
-            [
-                'name_th' => 'ปริญญาตรี ภาคพิเศษ',
-                'name_en' => 'Bachelor`s degree, Special program',
-                'major_type' => 'S',
-                'cur_id' => 3,
-                'status' => 'A'
-            ],[
-                'name_th' => 'ปริญญาตรี ภาคปกติ',
-                'name_en' => 'Bachelor`s degree, Normal program',
-                'major_type' => 'N',
-                'cur_id' => 4,
-                'status' => 'A'
-            ],
-            [
-                'name_th' => 'ปริญญาตรี ภาคพิเศษ',
-                'name_en' => 'Bachelor`s degree, Special program',
-                'major_type' => 'S',
-                'cur_id' => 4,
-                'status' => 'A'
-            ],
-            [
-                'name_th' => 'ปริญญาตรี ภาคปกติ',
-                'name_en' => 'Bachelor`s degree, Normal program',
-                'major_type' => 'N',
-                'cur_id' => 5,
-                'status' => 'A'
-            ],
-            [
-                'name_th' => 'ปริญญาตรี ภาคพิเศษ',
-                'name_en' => 'Bachelor`s degree, Special program',
-                'major_type' => 'S',
-                'cur_id' => 5,
-                'status' => 'A'
-            ],
-        ];
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        DB::table('major')->delete(); // เปลี่ยนจาก majors เป็น major ตาม migration
 
-        foreach ($majors as $key => $value) {
-            Major::create($value);
+        foreach ($majors as $major) {
+            DB::table('major')->insert([  // เปลี่ยนจาก majors เป็น major
+                'major_id' => $major['major_id'],
+                'name_th' => $major['name_th'],
+                'name_en' => $major['name_en'],
+                'major_type' => $major['major_type'],
+                'cur_id' => $major['cur_id'],
+                'status' => $major['status'],
+                'created_at' => $major['created_at'] ?? Carbon::now(),
+                'updated_at' => $major['updated_at'] ?? Carbon::now(),
+            ]);
         }
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
     }
 }

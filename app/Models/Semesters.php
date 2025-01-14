@@ -7,29 +7,25 @@ use Illuminate\Database\Eloquent\Model;
 
 class Semesters extends Model
 {
-    use HasFactory;
-
-    /**
-
-     *
-     * @var array
-     */
     protected $table = 'semesters';
+    protected $primaryKey = 'semester_id';
+
     protected $fillable = [
+        'semester_id',
         'year',
-        'semesters',
+        'semesters', // make sure this is included
         'start_date',
         'end_date'
     ];
 
     public function courses()
     {
-        return $this->belongsTo(Courses::class, 'semesters_id');
+        return $this->hasMany(Courses::class, 'semester_id');
     }
 
     public function classes()
     {
         return $this->belongsTo(Classes::class);
     }
-    
+
 }

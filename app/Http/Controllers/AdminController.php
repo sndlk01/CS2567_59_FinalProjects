@@ -3,7 +3,14 @@
 namespace App\Http\Controllers;
 use App\Models\Announce;
 use App\Models\Courses;
-use App\Models\course_tas;
+use App\Models\Students;
+use App\Models\CourseTas;
+use App\Models\Disbursements;
+use App\Models\Teaching;
+use App\Models\Classes;
+use App\Models\ExtraAttendances;
+use Illuminate\Support\Facades\Storage;
+
 
 
 use Illuminate\Http\Request;
@@ -22,66 +29,210 @@ class AdminController extends Controller
 
 
     /// ADMIN ROLE
-    //  /**
-    //  * Show the application dashboard.
-    //  *
-    //  * @return \Illuminate\Contracts\Support\Renderable
-    //  */
-    // public function announce()
-    // {
-    //     return view('layouts.admin.announce');
-    // }
 
-    /**
-     * Show the application dashboard.
-     *
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
     public function taUsers()
     {
-
-        $coursesWithTAs = Courses::whereHas('course_tas', function($query) {
-            $query->whereNotNull('approved_at');
+        $coursesWithTAs = Courses::whereHas('course_tas.courseTaClasses.requests', function ($query) {
+            $query->where('status', 'A')  // เช็คสถานะว่าอนุมัติ
+                ->whereNotNull('approved_at');  // และมีวันที่อนุมัติ
         })
-        ->with(['subjects', 'teachers', 'course_tas' => function($query) {
-            $query->whereNotNull('approved_at');
-        }])
-        ->get();
+            ->with([
+                'subjects',  // ข้อมูลวิชา
+                'teachers',  // ข้อมูลอาจารย์
+                'course_tas.student',  // ข้อมูลนักศึกษา TA
+                'course_tas.courseTaClasses.requests' => function ($query) {
+                    $query->where('status', 'A')
+                        ->whereNotNull('approved_at');
+                }
+            ])
+            ->get();
 
-    return view('layouts.admin.taUsers', compact('coursesWithTAs'));
+        // Debug ข้อมูล
+        \Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
 
+        return view('layouts.admin.taUsers', compact('coursesWithTAs'));
     }
-    
-    public function showTADetails($courseId)
+
+
+
+    public function showTaDetails($course_id)
     {
-        $course = Courses::with(['subjects', 'teachers', 'course_tas.student'])
-            ->findOrFail($courseId);
+        $course = Courses::with([
+            'subjects',
+            'teachers',
+            'semesters',
+            'course_tas.student',
+            'course_tas.courseTaClasses.requests' => function ($query) {
+                $query->where('status', 'A')
+                    ->whereNotNull('approved_at');
+            }
+        ])
+            ->where('course_id', $course_id)
+            ->firstOrFail();
 
-        return view('admin.course_ta_details', compact('course'));
+        return view('layouts.admin.detailsTa', compact('course'));
     }
 
-    /**
-     * Show the application dashboard.
-     *
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
+
+    // public function showTaProfile($student_id)
+    // {
+    //     $student = Students::with([
+    //         'disbursements',  // ใช้ชื่อ relationship ที่ถูกต้อง
+    //         'courseTas.course.subjects',
+    //         'courseTas.course.teachers',
+    //         'courseTas.course.semesters',
+    //         'courseTas.courseTaClasses.requests' => function ($query) {
+    //             $query->where('status', 'A')
+    //                 ->whereNotNull('approved_at');
+    //         }
+    //     ])->findOrFail($student_id);
+
+    //     // ดูข้อมูลที่แท้จริงใน attributes
+    //     // dd([
+    //     //     'student_exists' => $student !== null,
+    //     //     'student_id' => $student->id,
+    //     //     'raw_disbursements' => $student->disbursements,
+    //     //     'attributes' => $student->disbursements?->getAttributes(),
+    //     //     'relationship_loaded' => $student->relationLoaded('disbursements')
+    //     // ]);
+
+    //     return view('layouts.admin.detailsById', compact('student'));
+    // }
+
+    public function downloadDocument($id)
+    {
+        try {
+            $disbursement = Disbursements::findOrFail($id);
+
+            // ตรวจสอบว่าไฟล์มีอยู่จริง
+            // $filePath = storage_path('public' . $disbursement->file_path);
+            if (!Storage::exists('public' . $disbursement->file_path)) {
+                return back()->with('error', 'ไม่พบไฟล์เอกสาร');
+            }
+
+            return Storage::disk('public')->download($disbursement->uploadfile);
+        } catch (\Exception $e) {
+            \Log::error('Document download error: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร');
+        }
+    }
+
     public function detailsTa()
     {
         return view('layouts.admin.detailsTa');
     }
 
-    /**
-     * Show the application dashboard.
-     *
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
-    public function detailsByid()
+
+    public function taDetail($student_id)
     {
-        return view('layouts.admin.detailsByid');
+        try {
+            $ta = CourseTas::with(['student', 'course.semesters'])
+                ->where('student_id', $student_id)
+                ->firstOrFail();
+
+            $student = $ta->student;
+            $semester = $ta->course->semesters;
+
+            $start = \Carbon\Carbon::parse($semester->start_date)->startOfDay();
+            $end = \Carbon\Carbon::parse($semester->end_date)->endOfDay();
+
+            if (!\Carbon\Carbon::now()->between($start, $end)) {
+                return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
+            }
+
+            // สร้างรายการเดือน
+            $monthsInSemester = [];
+            if ($start->year === $end->year) {
+                for ($m = $start->month; $m <= $end->month; $m++) {
+                    $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
+                    $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
+                }
+            } else {
+                for ($m = $start->month; $m <= 12; $m++) {
+                    $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
+                    $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
+                }
+                for ($m = 1; $m <= $end->month; $m++) {
+                    $date = \Carbon\Carbon::createFromDate($end->year, $m, 1);
+                    $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
+                }
+            }
+
+            $selectedYearMonth = request('month', $start->format('Y-m'));
+            $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
+
+            // Get attendance type filter
+            $attendanceType = request('type', 'all'); // 'all', 'regular', or 'special'
+
+            $allAttendances = collect();
+
+            // Get regular attendances if needed
+            if ($attendanceType === 'all' || $attendanceType === 'regular') {
+                $teachings = Teaching::with(['attendance', 'teacher', 'class'])
+                    ->where('class_id', 'LIKE', $ta->course_id . '%')
+                    ->whereBetween('start_time', [$start, $end])
+                    ->whereHas('attendance', function ($query) {
+                        $query->where('approve_status', 'A');
+                    })
+                    ->whereYear('start_time', $selectedDate->year)
+                    ->whereMonth('start_time', $selectedDate->month)
+                    ->get()
+                    ->groupBy(function ($teaching) {
+                        // แยกตาม section
+                        return $teaching->class->section_num;
+                    });
+
+                foreach ($teachings as $section => $sectionTeachings) {
+                    foreach ($sectionTeachings as $teaching) {
+                        $allAttendances->push([
+                            'type' => 'regular',
+                            'section' => $section,
+                            'date' => $teaching->start_time,
+                            'data' => $teaching
+                        ]);
+                    }
+                }
+            }
+
+            // Get extra attendances if needed
+            if ($attendanceType === 'all' || $attendanceType === 'special') {
+                $extraAttendances = ExtraAttendances::where('student_id', $student_id)
+                    ->where('approve_status', 'A')
+                    ->whereYear('start_work', $selectedDate->year)
+                    ->whereMonth('start_work', $selectedDate->month)
+                    ->get()
+                    ->groupBy('class_id');
+
+                foreach ($extraAttendances as $classId => $extras) {
+                    $class = Classes::find($classId);
+                    foreach ($extras as $extra) {
+                        $allAttendances->push([
+                            'type' => 'special',
+                            'section' => $class ? $class->section_num : 'N/A',
+                            'date' => $extra->start_work,
+                            'data' => $extra
+                        ]);
+                    }
+                }
+            }
+
+            // Group by section and sort by date
+            $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
+
+            return view('layouts.admin.detailsById', compact(
+                'student',
+                'semester',
+                'attendancesBySection',
+                'monthsInSemester',
+                'selectedYearMonth',
+                'attendanceType'
+            ));
+
+        } catch (\Exception $e) {
+            \Log::error($e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
+        }
     }
-
-
-
 
     /**
      * Display a listing of the resource.
@@ -89,7 +240,7 @@ class AdminController extends Controller
     public function index()
     {
         $announces = Announce::latest()->paginate(5);
-        return view('layouts.admin.index',compact('announces'))
+        return view('layouts.admin.index', compact('announces'))
             ->with('i', (request()->input('page', 1) - 1) * 5);
     }
 
@@ -115,7 +266,7 @@ class AdminController extends Controller
 
         return redirect()
             ->route('announces.index')
-            ->with('success','announce created successfully.');
+            ->with('success', 'announce created successfully.');
     }
 
     /**
@@ -123,7 +274,7 @@ class AdminController extends Controller
      */
     public function show(Announce $announce)
     {
-        return view('layouts.admin.show',compact('announce'));
+        return view('layouts.admin.show', compact('announce'));
     }
 
     /**
@@ -131,7 +282,7 @@ class AdminController extends Controller
      */
     public function edit(Announce $announce)
     {
-        return view('layouts.admin.edit',compact('announce'));
+        return view('layouts.admin.edit', compact('announce'));
     }
 
     /**
@@ -148,7 +299,7 @@ class AdminController extends Controller
 
         return redirect()
             ->route('announces.index')
-            ->with('success','announce updated successfully');
+            ->with('success', 'announce updated successfully');
     }
 
     /**
@@ -159,7 +310,7 @@ class AdminController extends Controller
         $announce->delete();
         return redirect()
             ->route('announces.index')
-            ->with('success','announce deleted successfully');
+            ->with('success', 'announce deleted successfully');
     }
 
 }

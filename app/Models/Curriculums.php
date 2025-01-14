@@ -15,6 +15,8 @@ class Curriculums extends Model
      * @var array
      */
     protected $table = 'curriculums';
+    protected $primaryKey = 'cur_id';  // เปลี่ยนจาก id เป็น cur_id
+
     protected $fillable = [
         'name_th',
         'name_en',

@@ -27,7 +27,8 @@ class Students extends Model
 
     public function disbursements()
     {
-        return $this->hasOne(Disbursements::class);
+        return $this->hasOne(Disbursements::class, 'student_id', 'id');
+
     }
     public function users()
     {
@@ -44,8 +45,8 @@ class Students extends Model
         return $this->hasMany(Students::class);
     }
 
-    public function course_tas()
+    public function courseTas() 
     {
-        return $this->hasMany(Students::class);
+        return $this->hasMany(CourseTas::class, 'student_id', 'id');
     }
 }

@@ -32,7 +32,7 @@
                                             <div class="col-mb-3">
                                                 <input id="email_or_student_id" type="text"
                                                     class="form-control @error('email_or_student_id') is-invalid @enderror"
-                                                    name="email_or_student_id" placeholder="Email or Student ID"
+                                                    name="email_or_student_id" placeholder="อีเมลหรือรหัสนักศึกษา"
                                                     value="{{ old('email_or_student_id') }}" required autocomplete="email"
                                                     autofocus>
 
@@ -51,7 +51,7 @@
                                                 <input type="password"
                                                     class="form-control @error('password') is-invalid @enderror"
                                                     name="password" required autocomplete="current-password"
-                                                    placeholder="Password" style="padding: 0.6rem;">
+                                                    placeholder="รหัสผ่าน" style="padding: 0.6rem;">
                                                 @error('password')
                                                     <span class="invalid-feedback" role="alert">
                                                         <strong>{{ $message }}</strong>
@@ -100,4 +100,10 @@
             </div>
         </div>
     </section>
+
+    <style>
+        .container {
+            font-family: "Noto Sans Thai", sans-serif;
+        }
+    </style>
 @endsection

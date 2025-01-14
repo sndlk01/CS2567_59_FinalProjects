@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('attendances', function (Blueprint $table) {
             $table->id();
             $table->char('status');
+            $table->char('approve_status')->nullable();
+            $table->char('approve_note')->nullable();
             $table->dateTime('approve_at', precision: 0)->nullable();
             $table->integer('approve_user_id')->nullable();
             $table->string('note');
@@ -22,7 +24,7 @@ return new class extends Migration
             $table->unsignedBigInteger('student_id');
 
             $table->foreign('user_id')->references('id')->on('users');
-            $table->foreign('teaching_id')->references('id')->on('teaching')->onDelete('cascade');
+            $table->foreign('teaching_id')->references('teaching_id')->on('teaching')->onDelete('cascade');
             $table->foreign('student_id')->references('id')->on('students')->onDelete('cascade');
             $table->timestamps();
         });

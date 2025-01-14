@@ -11,11 +11,14 @@ class Attendances extends Model
 
     protected $fillable = [
         'status',
+        'approve_status',
         'approve_at',
+        'approve_note',
         'note',
         'user_id',
         'teaching_id',
         'student_id',
+        'approve_user_id',
     ];
 
     public function user()
