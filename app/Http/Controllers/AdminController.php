@@ -11,6 +11,7 @@ use App\Models\Classes;
 use App\Models\ExtraAttendances;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 
 
@@ -49,7 +50,7 @@ class AdminController extends Controller
             ->get();
 
         // Debug ข้อมูล
-        \Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
+        Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
 
         return view('layouts.admin.taUsers', compact('coursesWithTAs'));
     }
@@ -87,7 +88,7 @@ class AdminController extends Controller
 
             return Storage::disk('public')->download($disbursement->uploadfile);
         } catch (\Exception $e) {
-            \Log::error('Document download error: ' . $e->getMessage());
+            Log::error('Document download error: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร');
         }
     }
@@ -224,7 +225,7 @@ class AdminController extends Controller
             ));
 
         } catch (\Exception $e) {
-            \Log::error($e->getMessage());
+            Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
