@@ -138,16 +138,14 @@ class AdminController extends Controller
 
             // Get regular attendances
             if ($attendanceType === 'all' || $attendanceType === 'regular') {
-                $teachings = Teaching::with(['attendance', 'teacher', 'class'])
+                $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
                     ->where('class_id', 'LIKE', $ta->course_id . '%')
-                    ->whereBetween('start_time', [$start, $end])
+                    ->whereYear('start_time', $selectedDate->year)
+                    ->whereMonth('start_time', $selectedDate->month)
                     ->whereHas('attendance', function ($query) {
                         $query->where('approve_status', 'A');
                     })
-                    ->whereYear('start_time', $selectedDate->year)
-                    ->whereMonth('start_time', $selectedDate->month)
-                    ->get()
-                    ->groupBy(function ($teaching) {
+                    ->get()->groupBy(function ($teaching) {
                         return $teaching->class->section_num;
                     });
 
@@ -171,7 +169,8 @@ class AdminController extends Controller
 
             // Get extra attendances
             if ($attendanceType === 'all' || $attendanceType === 'special') {
-                $extraAttendances = ExtraAttendances::where('student_id', $student->id)
+                $extraAttendances = ExtraAttendances::with(['classes.course.subjects'])
+                    ->where('student_id', $student->id)
                     ->where('approve_status', 'A')
                     ->whereYear('start_work', $selectedDate->year)
                     ->whereMonth('start_work', $selectedDate->month)
@@ -250,55 +249,124 @@ class AdminController extends Controller
             $semester = $ta->course->semesters;
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
 
-            // Format month text in Thai
             $monthText = $selectedDate->locale('th')->monthName . ' ' . ($selectedDate->year + 543);
             $year = $selectedDate->year + 543;
 
-            $regularHours = 0;
-            $specialHours = 0;
+            // ตัวแปรสำหรับเก็บชั่วโมงแยกตามประเภท
+            $regularBroadcastHours = 0;  // ชั่วโมงบรรยาย
+            $regularLabHours = 0;        // ชั่วโมงปฏิบัติการ
             $allAttendances = collect();
 
             // Get regular attendances
-            $teachings = Teaching::with(['attendance', 'teacher', 'class'])
-                ->where('class_id', 'LIKE', $ta->course_id . '%')
-                ->whereYear('start_time', $selectedDate->year)
-                ->whereMonth('start_time', $selectedDate->month)
-                ->whereHas('attendance', function ($query) {
-                    $query->where('approve_status', 'A');
-                })
-                ->get()
-                ->groupBy(function ($teaching) {
-                    return $teaching->class->section_num;
-                });
+            if ($attendanceType === 'all' || $attendanceType === 'regular') {
+                $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
+                    ->where('class_id', 'LIKE', $ta->course_id . '%')
+                    ->whereYear('start_time', $selectedDate->year)
+                    ->whereMonth('start_time', $selectedDate->month)
+                    ->whereHas('attendance', function ($query) {
+                        $query->where('approve_status', 'A');
+                    })
+                    ->get()
+                    ->groupBy(function ($teaching) {
+                        return $teaching->class->section_num;
+                    });
 
-            foreach ($teachings as $section => $sectionTeachings) {
-                foreach ($sectionTeachings as $teaching) {
-                    $startTime = \Carbon\Carbon::parse($teaching->start_time);
-                    $endTime = \Carbon\Carbon::parse($teaching->end_time);
-                    $hours = $endTime->diffInMinutes($startTime) / 60;
+                foreach ($teachings as $section => $sectionTeachings) {
+                    foreach ($sectionTeachings as $teaching) {
+                        $startTime = \Carbon\Carbon::parse($teaching->start_time);
+                        $endTime = \Carbon\Carbon::parse($teaching->end_time);
+                        $hours = $endTime->diffInMinutes($startTime) / 60;
 
-                    if ($teaching->class_type === 'L') {
-                        $specialHours += $hours;
-                    } else {
-                        $regularHours += $hours;
+                        if ($teaching->class_type === 'L') {
+                            $regularLabHours += $hours;  // เพิ่มชั่วโมงปฏิบัติการ
+                        } else {
+                            $regularBroadcastHours += $hours;  // เพิ่มชั่วโมงบรรยาย
+                        }
+
+                        $allAttendances->push([
+                            'type' => 'regular',
+                            'section' => $section,
+                            'date' => $teaching->start_time,
+                            'data' => $teaching,
+                            'hours' => $hours
+                        ]);
                     }
-
-                    $allAttendances->push([
-                        'type' => 'regular',
-                        'section' => $section,
-                        'date' => $teaching->start_time,
-                        'data' => $teaching,
-                        'hours' => $hours
-                    ]);
                 }
             }
 
-            // Calculate compensation
-            $regularPay = $regularHours * 40;  // 40 บาท/ชั่วโมง
-            $specialPay = $specialHours * 50;  // 50 บาท/ชั่วโมง
+            $regularBroadcastHours = 0;   // ชั่วโมงบรรยายปกติ
+            $regularLabHours = 0;         // ชั่วโมงปฏิบัติการปกติ
+            $specialTeachingHours = 0;    // ชั่วโมงสอนพิเศษ
+            $allAttendances = collect();
+
+            // Get regular attendances
+            if ($attendanceType === 'all' || $attendanceType === 'regular') {
+                $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
+                    ->where('class_id', 'LIKE', $ta->course_id . '%')
+                    ->whereYear('start_time', $selectedDate->year)
+                    ->whereMonth('start_time', $selectedDate->month)
+                    ->whereHas('attendance', function ($query) {
+                        $query->where('approve_status', 'A');
+                    })
+                    ->get()
+                    ->groupBy(function ($teaching) {
+                        return $teaching->class->section_num;
+                    });
+
+                foreach ($teachings as $section => $sectionTeachings) {
+                    foreach ($sectionTeachings as $teaching) {
+                        $startTime = \Carbon\Carbon::parse($teaching->start_time);
+                        $endTime = \Carbon\Carbon::parse($teaching->end_time);
+                        $hours = $endTime->diffInMinutes($startTime) / 60;
+
+                        if ($teaching->class_type === 'L') {
+                            $regularLabHours += $hours;
+                        } else {
+                            $regularBroadcastHours += $hours;
+                        }
+
+                        $allAttendances->push([
+                            'type' => 'regular',
+                            'section' => $section,
+                            'date' => $teaching->start_time,
+                            'data' => $teaching,
+                            'hours' => $hours
+                        ]);
+                    }
+                }
+            }
+
+            // Get extra/special attendances
+            if ($attendanceType === 'all' || $attendanceType === 'special') {
+                $extraAttendances = ExtraAttendances::with(['classes.course.subjects'])
+                    ->where('student_id', $student->id)
+                    ->where('approve_status', 'A')
+                    ->whereYear('start_work', $selectedDate->year)
+                    ->whereMonth('start_work', $selectedDate->month)
+                    ->get()
+                    ->groupBy('class_id');
+
+                foreach ($extraAttendances as $classId => $extras) {
+                    foreach ($extras as $extra) {
+                        $hours = $extra->duration / 60;
+                        $specialTeachingHours += $hours;  // นับเป็นชั่วโมงพิเศษทั้งหมด
+
+                        $allAttendances->push([
+                            'type' => 'special',
+                            'section' => $extra->classes ? $extra->classes->section_num : 'N/A',
+                            'date' => $extra->start_work,
+                            'data' => $extra,
+                            'hours' => $hours
+                        ]);
+                    }
+                }
+            }
+
+            // คำนวณค่าตอบแทน
+            $regularPay = ($regularBroadcastHours + $regularLabHours) * 40;  // ชั่วโมงปกติ 40 บาท/ชั่วโมง
+            $specialPay = $specialTeachingHours * 50;                        // ชั่วโมงพิเศษ 50 บาท/ชั่วโมง
             $totalPay = $regularPay + $specialPay;
 
-            // Convert total pay to Thai text
             $totalPayText = $this->convertNumberToThaiBaht($totalPay);
 
             $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
@@ -311,8 +379,9 @@ class AdminController extends Controller
                 'selectedYearMonth',
                 'monthText',
                 'year',
-                'regularHours',
-                'specialHours',
+                'regularBroadcastHours',
+                'regularLabHours',
+                'specialTeachingHours',
                 'regularPay',
                 'specialPay',
                 'totalPay',

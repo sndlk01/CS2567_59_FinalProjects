@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <style>
         @font-face {
             font-family: 'THSarabunNew';
@@ -52,7 +53,8 @@
             font-family: 'THSarabunNew', sans-serif !important;
         }
 
-        strong, b {
+        strong,
+        b {
             font-family: 'THSarabunNew', sans-serif !important;
             font-weight: bold;
         }
@@ -69,7 +71,9 @@
             margin: 10px 0;
         }
 
-        table, th, td {
+        table,
+        th,
+        td {
             border: 1px solid black;
             padding: 5px;
         }
@@ -125,31 +129,40 @@
         .clear {
             clear: both;
         }
+
+        .no-border {
+            border: none !important;
+        }
+
+        .no-border td {
+            border: none !important;
+        }
     </style>
 </head>
+
 <body>
     <div class="center">
         <h2>แบบใบเบิกค่าตอบแทนผู้ช่วยสอนและผู้ช่วยปฏิบัติงาน</h2>
         <h3>วิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น</h3>
-        <div style="margin: 10px 0;">
+        {{-- <div style="margin: 10px 0;">
             ภาคการศึกษา
             (<span class="checkbox">{{ $semester == 'ต้น' ? '/' : ' ' }}</span>) ต้น
             (<span class="checkbox">{{ $semester == 'ปลาย' ? '/' : ' ' }}</span>) ปลาย
             (<span class="checkbox">{{ $semester == 'ฤดูร้อน' ? '/' : ' ' }}</span>) ฤดูร้อน
             ปีการศึกษา {{ $year }}
-        </div>
+        </div> --}}
         <div style="margin-bottom: 15px;">
             ประจำเดือน {{ $monthText }}
         </div>
     </div>
 
-    <div style="margin-bottom: 15px;">
+    {{-- <div style="margin-bottom: 15px;">
         รายวิชาระดับ
         (<span class="checkbox">/</span>) ปริญญาตรี
         (<span class="checkbox"> </span>) บัณฑิตศึกษา<br>
         (<span class="checkbox"> </span>) ภาคปกติ
         (<span class="checkbox">/</span>) โครงการพิเศษ
-    </div>
+    </div> --}}
 
     <table>
         <thead>
@@ -170,8 +183,8 @@
         </thead>
         <tbody>
             @php $no = 1; @endphp
-            @foreach($attendancesBySection as $section => $attendances)
-                @foreach($attendances as $attendance)
+            @foreach ($attendancesBySection as $section => $attendances)
+                @foreach ($attendances as $attendance)
                     <tr>
                         <td style="text-align: center;">{{ $no++ }}</td>
                         <td>{{ $student->name }}</td>
@@ -180,34 +193,76 @@
                             {{ \Carbon\Carbon::parse($attendance['type'] === 'regular' ? $attendance['data']->start_time : $attendance['data']->start_work)->format('d-m-y') }}
                         </td>
                         <td style="text-align: center;">
-                            {{ $attendance['type'] === 'regular' ? $attendance['data']->class->course_code : $attendance['data']->class_id }}
+                            @if ($attendance['type'] === 'regular')
+                                {{ $attendance['data']->class->course->subjects->subject_id ?? 'N/A' }}
+                            @else
+                                {{ $attendance['data']->classes->course->subjects->subject_id ?? ($attendance['data']->class_id ?? 'N/A') }}
+                            @endif
                         </td>
                         <td style="text-align: center;">
-                            {{ $attendance['type'] === 'regular' && $attendance['data']->class_type !== 'L' ? number_format($attendance['hours'], 2) : '-' }}
+                            @if ($attendance['type'] === 'regular')
+                                {{ $attendance['data']->class_type !== 'L' ? number_format($attendance['hours'], 2) : '-' }}
+                            @else
+                                {{ $attendance['data']->class_type !== 'L' ? number_format($attendance['hours'], 2) : '-' }}
+                            @endif
                         </td>
                         <td style="text-align: center;">
-                            {{ $attendance['type'] === 'regular' && $attendance['data']->class_type === 'L' ? number_format($attendance['hours'], 2) : '-' }}
+                            @if ($attendance['type'] === 'regular')
+                                {{ $attendance['data']->class_type === 'L' ? number_format($attendance['hours'], 2) : '-' }}
+                            @else
+                                {{ $attendance['data']->class_type === 'L' ? number_format($attendance['hours'], 2) : '-' }}
+                            @endif
                         </td>
-                        <td>{{ $attendance['type'] === 'regular' ? $attendance['data']->attendance->note ?? 'ช่วยตรวจงาน / เช็คชื่อ' : $attendance['data']->detail ?? '-' }}</td>
+                        <td>
+                            @if ($attendance['type'] === 'regular')
+                                {{ $attendance['data']->attendance->note ?? 'ช่วยตรวจงาน / เช็คชื่อ' }}
+                            @else
+                                {{ $attendance['data']->detail ?? '-' }}
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
             @endforeach
             <tr>
                 <td colspan="5" style="text-align: center;"><strong>รวมเวลาที่สอน</strong></td>
-                <td style="text-align: center;">{{ number_format($regularHours, 2) }}</td>
-                <td style="text-align: center;">{{ number_format($specialHours, 2) }}</td>
+                <td style="text-align: center;">{{ number_format($regularBroadcastHours + $regularLabHours, 2) }}</td>
+                <td style="text-align: center;">{{ number_format($specialTeachingHours, 2) }}</td>
                 <td></td>
             </tr>
         </tbody>
     </table>
 
-    <div class="total-section">
-        <p><strong>จำนวนเงินที่ขอเบิก</strong></p>
-        <p>- ปริญญาตรี (ภาคปกติ) {{ number_format($regularHours, 2) }} ชั่วโมง อัตราชั่วโมงละ 40.00 บาท เป็นเงิน {{ number_format($regularPay, 2) }} บาท</p>
-        <p>- ปริญญาตรี (โครงการพิเศษ) {{ number_format($specialHours, 2) }} ชั่วโมง อัตราชั่วโมงละ 50.00 บาท เป็นเงิน {{ number_format($specialPay, 2) }} บาท</p>
-        <p>- ปริญญาโท/เอก (เหมาจ่าย) เป็นเงิน - บาท</p>
-        <p><strong>รวมเป็นเงินทั้งสิ้น {{ number_format($totalPay, 2) }} บาท</strong></p>
-        <p>= {{ $totalPayText }} =</p>
+    <!-- ส่วนตาราง no-border สำหรับแสดงรายละเอียดค่าตอบแทน -->
+    <div class="mb-4">
+        <table class="table no-border">
+            <tbody>
+                <tr>
+                    <td>- ปริญญาตรี (ภาคปกติ)</td>
+                    <td class="text-end">{{ number_format($regularBroadcastHours + $regularLabHours, 2) }}</td>
+                    <td>ชั่วโมง</td>
+                    <td>อัตราชั่วโมงละ</td>
+                    <td class="text-end">40.00</td>
+                    <td>บาท</td>
+                    <td>เป็นเงิน</td>
+                    <td class="text-end">{{ number_format($regularPay, 2) }}</td>
+                </tr>
+                <tr>
+                    <td>- ปริญญาตรี (โครงการพิเศษ)</td>
+                    <td class="text-end">{{ number_format($specialTeachingHours, 2) }}</td>
+                    <td>ชั่วโมง</td>
+                    <td>อัตราชั่วโมงละ</td>
+                    <td class="text-end">50.00</td>
+                    <td>บาท</td>
+                    <td>เป็นเงิน</td>
+                    <td class="text-end">{{ number_format($specialPay, 2) }}</td>
+                </tr>
+                <tr>
+                    <td colspan="6">รวมเป็นเงินทั้งสิ้น</td>
+                    <td class="text-end">{{ number_format($totalPay, 2) }} บาท</td>
+                    <td>= {{ $totalPayText }} =</td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 
     <div class="signature-section">
@@ -236,4 +291,5 @@
         <p>หมายเหตุ : ขอเบิกจ่ายเพียง {{ number_format($totalPay, 2) }} บาท</p>
     </div>
 </body>
+
 </html>
