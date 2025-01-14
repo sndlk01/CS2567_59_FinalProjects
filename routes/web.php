@@ -90,6 +90,8 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
     Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
     Route::get('/layout/ta/download-document/{id}', [AdminController::class, 'downloadDocument'])
         ->name('layout.ta.download-document');
+
+    Route::get('/ta/export-pdf/{id}', [AdminController::class, 'exportTaDetailPDF'])->name('layout.exports.pdf');
     // Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
 
 });
