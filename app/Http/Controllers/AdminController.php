@@ -453,9 +453,6 @@ class AdminController extends Controller
         return view('layouts.admin.edit', compact('announce'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Announce $announce)
     {
         $request->validate([
