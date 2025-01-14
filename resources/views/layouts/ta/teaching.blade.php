@@ -1,5 +1,8 @@
-@extends('layouts.taLayout')
+@php
+    use App\Models\Attendances;
+@endphp
 
+@extends('layouts.taLayout')
 @section('title', 'teaching')
 @section('break', 'ตารางรายวิชา')
 
@@ -88,40 +91,76 @@
                                         </td>
                                         <td>{{ $teaching->attendance->note ?? '-' }}</td>
                                         <td>
-                                        <td>
                                             @if ($teaching->attendance || $teaching->is_extra_attendance)
                                                 <div class="btn-group">
-                                                    @if ($teaching->is_extra_attendance)
-                                                        <!-- Extra attendance edit/delete -->
-                                                        <a href="{{ route('extra-attendance.edit', ['id' => substr($teaching->id, 6), 'selected_month' => $selectedMonth]) }}"
-                                                            class="btn btn-warning btn-sm">
-                                                            <i class="bi bi-pencil-square"></i>
-                                                        </a>
-                                                        <button type="button" class="btn btn-danger btn-sm"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#deleteExtraModal{{ substr($teaching->id, 6) }}">
-                                                            <i class="bi bi-trash"></i>
-                                                        </button>
-                                                    @else
-                                                        <!-- Regular attendance edit/delete -->
-                                                        <a href="{{ route('attendances.edit', ['teaching_id' => $teaching->id, 'selected_month' => $selectedMonth]) }}"
-                                                            class="btn btn-warning btn-sm">
-                                                            <i class="bi bi-pencil-square"></i>
-                                                        </a>
-                                                        <button type="button" class="btn btn-danger btn-sm"
-                                                            data-bs-toggle="modal"
-                                                            data-bs-target="#deleteModal{{ $teaching->id }}">
-                                                            <i class="bi bi-trash"></i>
-                                                        </button>
+                                                    @php
+                                                        $isApproved = false;
+                                                        if ($teaching->attendance) {
+                                                            if ($teaching->is_extra_attendance) {
+                                                                $isApproved =
+                                                                    isset($teaching->attendance->approve_status) &&
+                                                                    $teaching->attendance->approve_status === 'a';
+                                                            } else {
+                                                                $isApproved =
+                                                                    isset($teaching->attendance->approve_status) &&
+                                                                    $teaching->attendance->approve_status === 'a';
+                                                            }
+                                                        }
+                                                    @endphp
+
+                                                    @if (!$isApproved)
+                                                        @if ($teaching->is_extra_attendance)
+                                                            <a href="{{ route('extra-attendance.edit', ['id' => substr($teaching->id, 6), 'selected_month' => $selectedMonth]) }}"
+                                                                class="btn btn-warning btn-sm">
+                                                                <i class="bi bi-pencil-square"></i>
+                                                            </a>
+                                                            <button type="button" class="btn btn-danger btn-sm"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#deleteExtraModal{{ substr($teaching->id, 6) }}">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        @else
+                                                            <a href="{{ route('attendances.edit', ['teaching_id' => $teaching->id, 'selected_month' => $selectedMonth]) }}"
+                                                                class="btn btn-warning btn-sm">
+                                                                <i class="bi bi-pencil-square"></i>
+                                                            </a>
+                                                            <button type="button" class="btn btn-danger btn-sm"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#deleteModal{{ $teaching->id }}">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        @endif
                                                     @endif
                                                 </div>
                                             @else
-                                                <a href="{{ route('attendances.form', ['teaching_id' => $teaching->id, 'selected_month' => $selectedMonth]) }}"
-                                                    class="btn btn-outline-primary btn-sm">
-                                                    ลงเวลา
-                                                </a>
+                                                @php
+                                                    // ตรวจสอบว่าเดือนนี้ได้รับการอนุมัติแล้วหรือไม่
+                                                    $selectedDate = \Carbon\Carbon::parse($teaching->start_time);
+                                                    $isMonthApproved = Attendances::where(
+                                                        'student_id',
+                                                        Auth::user()->student->id,
+                                                    )
+                                                        ->whereYear('created_at', $selectedDate->year)
+                                                        ->whereMonth('created_at', $selectedDate->month)
+                                                        ->where('approve_status', 'a')
+                                                        ->exists();
+                                                @endphp
+
+                                                @if (
+                                                    !$isMonthApproved &&
+                                                        (!$teaching->attendance ||
+                                                            (isset($teaching->attendance->approve_status) && $teaching->attendance->approve_status !== 'a')))
+                                                    <a href="{{ route('attendances.form', ['teaching_id' => $teaching->id, 'selected_month' => $selectedMonth]) }}"
+                                                        class="btn btn-outline-primary btn-sm">
+                                                        ลงเวลา
+                                                    </a>
+                                                @else
+                                                    <a href="#" class="btn btn-outline-secondary btn-sm disabled"
+                                                        aria-disabled="true">
+                                                        ลงเวลา
+                                                    </a>
+                                                @endif
                                             @endif
-                                        </td>
                                         </td>
                                     </tr>
                                 @empty
