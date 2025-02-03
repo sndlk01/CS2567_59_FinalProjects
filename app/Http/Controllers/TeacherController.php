@@ -9,8 +9,10 @@ use App\Models\Attendances;
 use App\Models\ExtraAttendances;
 use Illuminate\Http\Request;
 use App\Models\CourseTas;
+use App\Models\Classes;
 use App\Models\Requests;
 use App\Models\Teaching;
+use App\Models\TeacherRequest;
 use App\Models\CourseTaClasses;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -32,12 +34,48 @@ class TeacherController extends Controller
     }
 
 
-    /// TA ROLE
-    /**
-     * Show the application dashboard.
-     *
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
+    public function index()
+    {
+        $requests = TeacherRequest::with(['class.course.subject', 'details'])->get();
+        return view('layouts.teacher.teacher-requests', compact('requests'));
+    }
+
+    public function create()
+    {
+        $classes = Classes::where('teacher_id', auth()->user()->teacher->teacher_id)->get();
+        return view('layouts.teacher.teacher-requests', compact('classes'));
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'class_id' => 'required',
+            'payment_type' => 'required|in:lecture,lab,both',
+            'details' => 'required|array|min:1',
+            'details.*.student_code' => 'required|string|max:11',
+            'details.*.name' => 'required|string|max:255',
+            'details.*.phone' => 'required|string|max:11',
+            'details.*.education_level' => 'required|in:bachelor,master',
+            'details.*.total_hours_per_week' => 'required|integer',
+            'details.*.lecture_hours' => 'required|integer',
+            'details.*.lab_hours' => 'required|integer',
+        ]);
+
+        $teacherRequest = TeacherRequest::create([
+            'class_id' => $request->class_id,
+            'teacher_id' => auth()->user()->teacher->teacher_id,
+            'payment_type' => $request->payment_type,
+            'status' => 'P' // Pending
+        ]);
+
+        foreach ($request->details as $detail) {
+            $teacherRequest->details()->create($detail);
+        }
+
+        return redirect()->route('request.index');
+    }
+
+
     public function subject()
     {
         $subjects = Subjects::all();

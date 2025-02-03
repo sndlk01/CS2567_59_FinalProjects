@@ -108,6 +108,10 @@ Route::middleware(['auth', 'user-access:teacher'])->group(function () {
     Route::get('/subject/subjectDetail/taDetail/{student_id}', [TeacherController::class, 'taDetail'])->name('teacher.taDetail');
     Route::post('/teacher/approve-month/{ta_id}', [TeacherController::class, 'approveMonthlyAttendance'])
         ->name('teacher.approve-month');
+
+    Route::get('/request', [TeacherController::class, 'index'])->name('request.index');
+    Route::get('/request/create', [TeacherController::class, 'create'])->name('request.create');
+    Route::post('/request', [TeacherController::class, 'store'])->name('request.store');
 });
 
 Route::fallback(function () {
