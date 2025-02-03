@@ -42,7 +42,6 @@
                                             <td>{{ $courseTaClass->courseTa->course->curriculums->name_th }}</td>
                                             <td>{{ $courseTaClass->class->section_num }}</td>
                                             <td>
-                                                {{-- <a href="{{ route('layout.ta.attendances', ['id' => $courseTaClass->courseTa->id]) }}">รายละเอียดวิชา</a> --}}
                                                 <a
                                                     href="{{ route('course_ta.show', ['id' => $courseTaClass->course_ta_id, 'classId' => $courseTaClass->class_id]) }}">
                                                     รายละเอียดวิชา
