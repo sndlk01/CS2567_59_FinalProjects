@@ -102,8 +102,6 @@ class TaController extends Controller
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
-
-
     public function showAnnounces()
     {
         $announces = Announce::orderBy('created_at', 'desc')->get();
@@ -558,7 +556,7 @@ class TaController extends Controller
                     return (object) [
                         'id' => 'extra_' . $attendance->id,
                         'start_time' => $attendance->start_work,
-                        'end_time' => \Carbon\Carbon::parse($attendance->start_work)
+                        'end_time' => \Carbon\Carbon::parse($attendance->start_work)    
                             ->addMinutes($attendance->duration),
                         'duration' => $attendance->duration,
                         'class_type' => $attendance->class_type,
@@ -695,6 +693,7 @@ class TaController extends Controller
         }
     }
 
+    // Edit Profile
     public function edit()
     {
         $user = Auth::user();
@@ -707,6 +706,7 @@ class TaController extends Controller
         return view('layouts.ta.profile', compact('user', 'student'));
     }
 
+    // Update Profile
     public function update(Request $request)
     {
         // 1. Validate request
