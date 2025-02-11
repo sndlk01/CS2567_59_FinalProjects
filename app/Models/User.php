@@ -54,7 +54,7 @@ class User extends Authenticatable
     protected function type(): Attribute
     {
         return new Attribute(
-            get: fn ($value) => ["user", "admin", "teacher"][$value],
+            get: fn($value) => ["user", "admin", "teacher"][$value],
         );
     }
 
@@ -76,5 +76,10 @@ class User extends Authenticatable
     public function attendences()
     {
         return $this->hasMany(Attendances::class);
+    }
+
+    public function teacher()
+    {
+        return $this->hasOne(Teachers::class, 'user_id');
     }
 }

@@ -12,18 +12,15 @@ return new class extends Migration {
     {
         Schema::create('teacher_requests_detail', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('teacher_request_id')->constrained('teacher_requests')->onDelete('cascade');
-            $table->string('student_code', 11);
-            $table->string('name', 255);
-            $table->string('phone', 11);
-            $table->enum('education_level', ['bachelor', 'master']);
-            $table->integer('total_hours_per_week');
-            $table->integer('lecture_hours');
-            $table->integer('lab_hours');
+            $table->foreignId('teacher_request_id')
+                ->constrained('teacher_requests')
+                ->onDelete('cascade');
+            $table->integer('group_number');  // กลุ่มที่ 1, 2
+            $table->integer('undergrad_count')->default(0);
+            $table->integer('graduate_count')->default(0);
             $table->timestamps();
         });
     }
-
     /**
      * Reverse the migrations.
      */

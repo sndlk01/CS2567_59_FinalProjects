@@ -68,4 +68,16 @@ class Courses extends Model
     {
         // return $this->hasOne(ExtraAttendences::class);
     }
+
+    public function teacherRequests()
+{
+    return $this->hasManyThrough(
+        TeacherRequest::class,
+        TeacherRequestsDetail::class,
+        'course_id', // Foreign key on teacher_requests_detail table
+        'id', // Local key on teacher_requests table
+        'course_id', // Local key on courses table
+        'teacher_request_id' // Foreign key on teacher_requests_detail table
+    );
+}
 }

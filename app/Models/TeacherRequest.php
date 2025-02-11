@@ -3,30 +3,36 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TeacherRequest extends Model
 {
-   protected $fillable = [
-       'class_id',
-       'teacher_id',
-       'lab_allowed',
-       'lecture_allowed',
-       'status'
-   ];
+    protected $fillable = [
+        'teacher_id',
+        'course_id',
+        'status',
+        'payment_type'
+    ];
 
-   protected $casts = [
-       'lab_allowed' => 'boolean', 
-       'lecture_allowed' => 'boolean'
-   ];
+    protected $casts = [
+        'status' => 'string',
+        'payment_type' => 'string'
+    ];
 
-   public function class(): BelongsTo 
-   {
-       return $this->belongsTo(Classes::class, 'class_id', 'class_id');
-   }
+    // ความสัมพันธ์กับอาจารย์
+    public function teacher()
+    {
+        return $this->belongsTo(Teacher::class, 'teacher_id', 'teacher_id');
+    }
 
-   public function teacher(): BelongsTo
-   {
-       return $this->belongsTo(Teacher::class, 'teacher_id', 'teacher_id');
-   }
+    // ความสัมพันธ์กับรายวิชา
+    public function course()
+    {
+        return $this->belongsTo(Courses::class, 'course_id', 'course_id');
+    }
+
+    // ความสัมพันธ์กับรายละเอียดคำร้อง
+    public function details()
+    {
+        return $this->hasMany(TeacherRequestsDetail::class);
+    }
 }

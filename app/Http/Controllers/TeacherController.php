@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Courses;
+use App\Models\Students;
 use App\Models\Subjects;
 use App\Models\Teachers;
 use App\Models\Attendances;
@@ -13,6 +14,8 @@ use App\Models\Classes;
 use App\Models\Requests;
 use App\Models\Teaching;
 use App\Models\TeacherRequest;
+use App\Models\TeacherRequestsDetail;
+use App\Models\TeacherRequestStudent;
 use App\Models\CourseTaClasses;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -34,48 +37,141 @@ class TeacherController extends Controller
     }
 
 
-    public function index()
+    public function indexTARequests()
     {
-        $requests = TeacherRequest::with(['class.course.subject', 'details'])->get();
-        return view('layouts.teacher.teacher-requests', compact('requests'));
+        $teacher = Auth::user()->teacher;
+
+        $courses = Courses::where('owner_teacher_id', $teacher->teacher_id)
+            ->with(['subjects', 'course_tas.student'])
+            ->get()
+            ->map(function ($course) {
+                $pendingRequest = TeacherRequest::where('course_id', $course->course_id)
+                    ->where('status', 'P')
+                    ->latest()
+                    ->first();
+
+                return [
+                    'course' => $course,
+                    'pending_request' => $pendingRequest
+                ];
+            });
+
+        $requests = TeacherRequest::where('teacher_id', $teacher->teacher_id)
+            ->with([
+                'details.students',
+                'course.subjects'
+            ])
+            ->latest()
+            ->get();
+
+        return view('layouts.teacher.ta-request.index', compact('courses', 'requests'));
     }
 
-    public function create()
+    public function createTARequest($course_id)
     {
-        $classes = Classes::where('teacher_id', auth()->user()->teacher->teacher_id)->get();
-        return view('layouts.teacher.teacher-requests', compact('classes'));
+        $course = Courses::with(['subjects', 'course_tas.student'])->findOrFail($course_id);
+
+        $availableStudents = Students::whereIn('id', function ($query) use ($course_id) {
+            $query->select('student_id')
+                ->from('course_tas')
+                ->where('course_id', $course_id);
+        })->get();
+
+        \Log::info('Course: ' . json_encode($course));
+        \Log::info('Available Students: ' . json_encode($availableStudents));
+
+        return view('layouts.teacher.ta-request.create', compact('course', 'availableStudents'));
     }
 
-    public function store(Request $request)
+    public function storeTARequest(Request $request)
     {
-        $request->validate([
-            'class_id' => 'required',
+        $validated = $request->validate([
+            'course_id' => 'required|exists:courses,course_id',
             'payment_type' => 'required|in:lecture,lab,both',
-            'details' => 'required|array|min:1',
-            'details.*.student_code' => 'required|string|max:11',
-            'details.*.name' => 'required|string|max:255',
-            'details.*.phone' => 'required|string|max:11',
-            'details.*.education_level' => 'required|in:bachelor,master',
-            'details.*.total_hours_per_week' => 'required|integer',
-            'details.*.lecture_hours' => 'required|integer',
-            'details.*.lab_hours' => 'required|integer',
+            'students' => 'required|array|min:1',
+            'students.*.course_ta_id' => 'required|exists:course_tas,id',
+            'students.*.teaching_hours' => 'required|integer|min:0',
+            'students.*.prep_hours' => 'required|integer|min:0',
+            'students.*.grading_hours' => 'required|integer|min:0',
+            'students.*.other_hours' => 'nullable|integer|min:0',
+            'students.*.other_duties' => 'nullable|string'
         ]);
 
-        $teacherRequest = TeacherRequest::create([
-            'class_id' => $request->class_id,
-            'teacher_id' => auth()->user()->teacher->teacher_id,
-            'payment_type' => $request->payment_type,
-            'status' => 'P' // Pending
-        ]);
+        try {
+            DB::beginTransaction();
 
-        foreach ($request->details as $detail) {
-            $teacherRequest->details()->create($detail);
+            // สร้างคำร้องหลัก
+            $teacherRequest = TeacherRequest::create([
+                'teacher_id' => Auth::user()->teacher->teacher_id,
+                'course_id' => $validated['course_id'],
+                'status' => 'P',
+                'payment_type' => $validated['payment_type']
+            ]);
+
+            // สร้างรายละเอียดกลุ่ม
+            $requestDetail = TeacherRequestsDetail::create([
+                'teacher_request_id' => $teacherRequest->id,
+                'group_number' => 1,
+                'undergrad_count' => 0,
+                'graduate_count' => count($validated['students'])
+            ]);
+
+            // เพิ่มข้อมูล TA แต่ละคน
+            foreach ($validated['students'] as $studentData) {
+                $totalHours =
+                    $studentData['teaching_hours'] +
+                    $studentData['prep_hours'] +
+                    $studentData['grading_hours'] +
+                    ($studentData['other_hours'] ?? 0);
+
+                TeacherRequestStudent::create([
+                    'teacher_requests_detail_id' => $requestDetail->id,
+                    'course_ta_id' => $studentData['course_ta_id'],
+                    'teaching_hours' => $studentData['teaching_hours'],
+                    'prep_hours' => $studentData['prep_hours'],
+                    'grading_hours' => $studentData['grading_hours'],
+                    'other_hours' => $studentData['other_hours'] ?? 0,
+                    'other_duties' => $studentData['other_duties'] ?? null,
+                    'total_hours_per_week' => $totalHours
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('teacher.ta-requests.index')
+                ->with('success', 'บันทึกคำร้องขอ TA สำเร็จ');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()
+                ->with('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage())
+                ->withInput();
         }
-
-        return redirect()->route('request.index');
     }
 
 
+    public function showTARequest($id)
+    {
+        try {
+            // ดึงข้อมูลคำร้อง
+            $request = TeacherRequest::findOrFail($id);
+
+            // ดึงข้อมูลอาจารย์
+            $teacher = Teachers::where('teacher_id', $request->teacher_id)->first();
+
+            // ดึงข้อมูลรายวิชา
+            $course = Courses::with('subjects')->where('course_id', $request->course_id)->first();
+
+            // ดึงข้อมูลรายละเอียด
+            $details = TeacherRequestsDetail::where('teacher_request_id', $id)
+                ->with(['students.courseTa.student'])
+                ->get();
+
+            return view('layouts.teacher.ta-request.show', compact('request', 'teacher', 'course', 'details'));
+        } catch (\Exception $e) {
+            \Log::error('Error in showTARequest: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
+        }
+    }
     public function subject()
     {
         $subjects = Subjects::all();
@@ -113,7 +209,6 @@ class TeacherController extends Controller
                 ->where('course_id', $course_id)
                 ->get()
                 ->map(function ($ta) {
-                    // Get the latest request status for this TA
                     $latestRequest = $ta->courseTaClasses
                         ->flatMap->requests
                         ->sortByDesc('created_at')

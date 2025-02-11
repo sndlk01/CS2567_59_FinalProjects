@@ -109,9 +109,23 @@ Route::middleware(['auth', 'user-access:teacher'])->group(function () {
     Route::post('/teacher/approve-month/{ta_id}', [TeacherController::class, 'approveMonthlyAttendance'])
         ->name('teacher.approve-month');
 
-    Route::get('/request', [TeacherController::class, 'index'])->name('request.index');
-    Route::get('/request/create', [TeacherController::class, 'create'])->name('request.create');
-    Route::post('/request', [TeacherController::class, 'store'])->name('request.store');
+    Route::prefix('ta-requests')->name('teacher.ta-requests.')->group(function () {
+        // แสดงรายการคำร้องทั้งหมด
+        Route::get('/', [TeacherController::class, 'indexTARequests'])
+            ->name('index');
+
+        // หน้าสร้างคำร้องใหม่
+        Route::get('/create/{course_id}', [TeacherController::class, 'createTARequest'])
+            ->name('create');
+
+        // บันทึกคำร้อง
+        Route::post('/', [TeacherController::class, 'storeTARequest'])
+            ->name('store');
+
+        // แสดงรายละเอียดคำร้อง
+        Route::get('/{request}', [TeacherController::class, 'showTARequest'])
+            ->name('show');
+    });
 });
 
 Route::fallback(function () {
