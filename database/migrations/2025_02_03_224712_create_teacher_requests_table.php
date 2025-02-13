@@ -16,16 +16,25 @@ return new class extends Migration {
             $table->unsignedBigInteger('course_id');
             $table->enum('status', ['P', 'A', 'R']); // Pending, Approved, Rejected
             $table->enum('payment_type', ['lecture', 'lab', 'both']);
+            $table->text('admin_comment')->nullable();
+            $table->timestamp('admin_processed_at')->nullable();
+            $table->unsignedBigInteger('admin_user_id')->nullable();
             $table->timestamps();
 
             $table->foreign('teacher_id')
                 ->references('teacher_id')
-                ->on('teachers')
+                ->on('teachers')  
                 ->onDelete('cascade');
+
             $table->foreign('course_id')
                 ->references('course_id')
                 ->on('courses')
                 ->onDelete('cascade');
+
+            $table->foreign('admin_user_id')
+                ->references('id')
+                ->on('users')
+                ->nullOnDelete();
         });
     }
 

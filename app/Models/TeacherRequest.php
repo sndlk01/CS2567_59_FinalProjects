@@ -21,7 +21,7 @@ class TeacherRequest extends Model
     // ความสัมพันธ์กับอาจารย์
     public function teacher()
     {
-        return $this->belongsTo(Teacher::class, 'teacher_id', 'teacher_id');
+        return $this->belongsTo(Teachers::class, 'teacher_id', 'teacher_id');
     }
 
     // ความสัมพันธ์กับรายวิชา

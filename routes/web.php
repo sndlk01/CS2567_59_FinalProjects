@@ -92,8 +92,12 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
         ->name('layout.ta.download-document');
 
     Route::get('/ta/export-pdf/{id}', [AdminController::class, 'exportTaDetailPDF'])->name('layout.exports.pdf');
-    // Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
 
+    Route::prefix('admin-ta-requests')->name('admin.ta-requests.')->group(function () {
+        Route::get('/', [AdminController::class, 'taRequests'])->name('index');
+        Route::get('/{id}', [AdminController::class, 'showTARequest'])->name('show');
+        Route::put('/{id}/process', [AdminController::class, 'processTARequest'])->name('process');
+    });
 });
 
 //Teacher Routes List

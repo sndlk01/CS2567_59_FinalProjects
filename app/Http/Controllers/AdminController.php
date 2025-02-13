@@ -9,10 +9,14 @@ use App\Models\Disbursements;
 use App\Models\Teaching;
 use App\Models\Classes;
 use App\Models\ExtraAttendances;
+use App\Models\TeacherRequest;
+use App\Models\TeacherRequestsDetail;
+use App\Models\TeacherRequestStudent;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 
 use Illuminate\Http\Request;
@@ -479,6 +483,55 @@ class AdminController extends Controller
             ->with('success', 'announce deleted successfully');
     }
 
+    public function taRequests()
+    {
+        try {
+            // เพิ่ม import Teachers model และใช้งานผ่าน eager loading
+            $requests = TeacherRequest::with([
+                'teacher:teacher_id,name,email', // เลือกเฉพาะ fields ที่ต้องการ
+                'course.subjects',
+                'details.students.courseTa.student'
+            ])
+                ->latest()
+                ->get();
 
+            return view('layouts.admin.ta-requests.index', compact('requests'));
+        } catch (\Exception $e) {
+            Log::error('Error fetching TA requests: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล');
+        }
+    }
 
+    public function processTARequest(Request $request, $id)
+{
+    $validated = $request->validate([
+        'status' => 'required|in:A,R'
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        $taRequest = TeacherRequest::findOrFail($id);
+        
+        if ($taRequest->status !== 'P') {
+            return back()->with('error', 'คำร้องนี้ได้รับการดำเนินการแล้ว');
+        }
+
+        $taRequest->update([
+            'status' => $validated['status'],
+            'admin_processed_at' => now(),
+            'admin_user_id' => Auth::id()
+        ]);
+
+        DB::commit();
+
+        $statusText = $validated['status'] === 'A' ? 'อนุมัติ' : 'ปฏิเสธ';
+        return back()->with('success', "คำร้องได้รับการ{$statusText}เรียบร้อยแล้ว");
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error processing TA request: ' . $e->getMessage());
+        return back()->with('error', 'เกิดข้อผิดพลาดในการดำเนินการ');
+    }
+}
 }
