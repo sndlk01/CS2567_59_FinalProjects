@@ -10,8 +10,8 @@ class Courses extends Model
     use HasFactory;
 
     protected $primaryKey = 'course_id';
-    public $incrementing = false; // ถ้า course_id เป็น string
-    protected $keyType = 'string'; // ถ้า course_id เป็น string
+    public $incrementing = false; 
+    protected $keyType = 'string';
 
     protected $fillable = [
         'course_id',

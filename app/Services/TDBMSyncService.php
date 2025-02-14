@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\{Teachers, Curriculums, Major, Subjects, Courses, Semesters, Classes, Teaching, ExtraTeaching, User};
-use Illuminate\Support\Facades\{DB, Log};
+use Illuminate\Support\Facades\{DB, Log, File};
 
 class TDBMSyncService
 {
@@ -19,48 +19,133 @@ class TDBMSyncService
         try {
             DB::beginTransaction();
 
-            $this->syncTeachers();        // 1. สร้าง Teachers ก่อน
-            $this->syncCurriculums();     // 2. จึงสร้าง Curriculums ที่อ้างอิง teacher_id ได้
-            $this->syncMajors();          // 3. Majors อ้างอิง curriculum_id
-            $this->syncSubjects();        // 4. Subjects อ้างอิง curriculum_id
-            $this->syncSemesters();       // 5. Semesters อิสระ
-            $this->syncCourses();         // 6. Courses อ้างอิง teachers, subjects, semesters
-            $this->syncClasses();         // 7. Classes อ้างอิง courses
-            $this->syncTeachings();       // 8. Teaching อ้างอิง classes
-            $this->syncExtraTeachings();  // 9. ExtraTeaching อ้างอิง teaching
+            // เพิ่มล็อกเพื่อตรวจสอบ
+            $logFile = storage_path('logs/sync_' . date('Y-m-d') . '.log');
+            File::put($logFile, "Starting sync at " . date('Y-m-d H:i:s') . "\n");
+
+            // ซิงค์ตามลำดับการพึ่งพา
+            $this->syncTeachers();
+            $this->syncCurriculums();
+            $this->syncMajors();
+            $this->syncSubjects();
+            $this->syncSemesters();
+            $this->syncCourses();
+            $this->syncClasses();
+            $this->syncTeachings();
+            $this->syncExtraTeachings();
 
             DB::commit();
-            Log::info('TDBM data sync completed successfully');
 
+            File::append($logFile, "Sync completed at " . date('Y-m-d H:i:s') . "\n");
             return true;
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('TDBM sync failed: ' . $e->getMessage());
+            File::append($logFile, "Sync failed: " . $e->getMessage() . "\n");
             throw $e;
         }
     }
 
+    private function updateOrCreateRecord($model, $identifier, $data, $dependencies = [])
+    {
+        foreach ($dependencies as $key => $value) {
+            if (!$value) {
+                Log::warning("{$model} sync: Missing dependency {$key}");
+                return false;
+            }
+        }
+
+        try {
+            $record = $model::updateOrCreate($identifier, $data);
+            return $record;
+        } catch (\Exception $e) {
+            Log::error("{$model} sync failed: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function validateApiData($data, $required = [])
+    {
+        foreach ($required as $field) {
+            if (!isset($data[$field])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // private function syncTeachers()
+    // {
+    //     $teachers = collect($this->tdbmService->getTeachers());
+
+    //     foreach ($teachers as $teacher) {
+    //         // หา user จาก email
+    //         $user = User::where('email', $teacher['email'])->first();
+
+    //         if ($user) {
+    //             Teachers::updateOrCreate(
+    //                 ['teacher_id' => $teacher['teacher_id']],
+    //                 [
+    //                     'prefix' => $teacher['prefix'],
+    //                     'position' => $teacher['position'],
+    //                     'degree' => $teacher['degree'],
+    //                     'name' => $teacher['name'],
+    //                     'email' => $teacher['email'],
+    //                     'user_id' => $user->id
+    //                 ]
+    //             );
+    //         }
+    //     }
+    // }
+
+
     private function syncTeachers()
     {
-        $teachers = collect($this->tdbmService->getTeachers());
+        try {
+            $teachers = collect($this->tdbmService->getTeachers());
+            Log::info("Fetched " . $teachers->count() . " teachers from API");
 
-        foreach ($teachers as $teacher) {
-            // หา user จาก email
-            $user = User::where('email', $teacher['email'])->first();
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            Teachers::truncate();
 
-            if ($user) {
-                Teachers::updateOrCreate(
-                    ['teacher_id' => $teacher['teacher_id']],
-                    [
-                        'prefix' => $teacher['prefix'],
-                        'position' => $teacher['position'],
-                        'degree' => $teacher['degree'],
+            $syncCount = 0;
+            $errorCount = 0;
+
+            foreach ($teachers as $teacher) {
+                if (!$this->validateApiData($teacher, ['teacher_id', 'email', 'name'])) {
+                    Log::warning("Teacher data validation failed: " . json_encode($teacher));
+                    $errorCount++;
+                    continue;
+                }
+
+                $user = User::where('email', $teacher['email'])->first();
+                if (!$user) {
+                    Log::warning("No user found for teacher email: {$teacher['email']}");
+                    $errorCount++;
+                    continue;
+                }
+
+                try {
+                    Teachers::create([
+                        'teacher_id' => $teacher['teacher_id'],
+                        'prefix' => $teacher['prefix'] ?? '',
+                        'position' => $teacher['position'] ?? '',
+                        'degree' => $teacher['degree'] ?? '',
                         'name' => $teacher['name'],
                         'email' => $teacher['email'],
                         'user_id' => $user->id
-                    ]
-                );
+                    ]);
+                    $syncCount++;
+                } catch (\Exception $e) {
+                    Log::error("Failed to create teacher: {$teacher['teacher_id']}, Error: " . $e->getMessage());
+                    $errorCount++;
+                }
             }
+
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            Log::info("Teachers sync completed: {$syncCount} synced, {$errorCount} errors");
+        } catch (\Exception $e) {
+            Log::error("Teacher sync failed: " . $e->getMessage());
+            throw $e;
         }
     }
 
@@ -90,26 +175,53 @@ class TDBMSyncService
 
     private function syncMajors()
     {
-        $majors = collect($this->tdbmService->getMajors());
+        try {
+            $majors = collect($this->tdbmService->getMajors());
+            Log::info("Fetched " . $majors->count() . " majors from API");
 
-        foreach ($majors as $major) {
-            // ตรวจสอบการมีอยู่ของ curriculum
-            $curriculum = Curriculums::find($major['cur_id']);
-            if (!$curriculum) {
-                Log::warning("Major {$major['major_id']} references non-existent curriculum {$major['cur_id']}, skipping...");
-                continue;
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            Major::truncate(); // ล้างข้อมูลเดิมและ reset auto increment
+
+            $syncCount = 0;
+            $errorCount = 0;
+
+            foreach ($majors as $major) {
+                try {
+                    // ตรวจสอบข้อมูลที่จำเป็น
+                    if (!$this->validateApiData($major, ['major_id', 'name_th', 'major_type', 'cur_id'])) {
+                        Log::warning("Major data validation failed: " . json_encode($major));
+                        $errorCount++;
+                        continue;
+                    }
+
+                    // ตรวจสอบการมีอยู่ของ curriculum
+                    $curriculum = Curriculums::find($major['cur_id']);
+                    if (!$curriculum) {
+                        Log::warning("Major sync: Curriculum {$major['cur_id']} not found for major {$major['major_id']}");
+                        $errorCount++;
+                        continue;
+                    }
+
+                    Major::create([
+                        'major_id' => $major['major_id'], // ใช้ major_id จาก API โดยตรง
+                        'name_th' => $major['name_th'],
+                        'name_en' => $major['name_en'] ?? null,
+                        'major_type' => $major['major_type'],
+                        'cur_id' => $major['cur_id'],
+                        'status' => $major['status'] ?? 'A'
+                    ]);
+                    $syncCount++;
+                } catch (\Exception $e) {
+                    Log::error("Failed to sync major ID {$major['major_id']}: " . $e->getMessage());
+                    $errorCount++;
+                }
             }
 
-            Major::updateOrCreate(
-                ['major_id' => $major['major_id']],
-                [
-                    'name_th' => $major['name_th'],
-                    'name_en' => $major['name_en'] ?? null,
-                    'major_type' => $major['major_type'],
-                    'cur_id' => $major['cur_id'],
-                    'status' => $major['status']
-                ]
-            );
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            Log::info("Majors sync completed: {$syncCount} synced, {$errorCount} errors");
+        } catch (\Exception $e) {
+            Log::error("Major sync failed: " . $e->getMessage());
+            throw $e;
         }
     }
 
@@ -165,147 +277,321 @@ class TDBMSyncService
         }
     }
 
+    // private function syncCourses()
+    // {
+    //     try {
+    //         $courses = collect($this->tdbmService->getCourses());
+    //         Log::info("Fetched " . $courses->count() . " courses from API");
+
+    //         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+    //         $syncCount = 0;
+    //         $errorCount = 0;
+
+    //         foreach ($courses as $course) {
+    //             if (!$this->validateApiData($course, ['course_id', 'subject_id', 'owner_teacher_id', 'semester_id'])) {
+    //                 Log::warning("Course data validation failed: " . json_encode($course));
+    //                 $errorCount++;
+    //                 continue;
+    //             }
+
+    //             // Verify all required relationships
+    //             $subject = Subjects::find($course['subject_id']);
+    //             $teacher = Teachers::find($course['owner_teacher_id']);
+    //             $semester = Semesters::find($course['semester_id']);
+    //             $curriculum = null;
+
+    //             if ($course['cur_id']) {
+    //                 $curriculum = Curriculums::find($course['cur_id']);
+    //                 if (!$curriculum) {
+    //                     Log::warning("Course {$course['course_id']} references non-existent curriculum {$course['cur_id']}");
+    //                 }
+    //             }
+
+    //             if (!$subject || !$teacher || !$semester) {
+    //                 Log::warning("Course {$course['course_id']} missing dependencies - Subject: {$course['subject_id']}, Teacher: {$course['owner_teacher_id']}, Semester: {$course['semester_id']}");
+    //                 $errorCount++;
+    //                 continue;
+    //             }
+
+    //             try {
+    //                 Courses::updateOrCreate(
+    //                     ['course_id' => $course['course_id']],
+    //                     [
+    //                         'status' => $course['status'] ?? 'A',
+    //                         'subject_id' => $course['subject_id'],
+    //                         'owner_teacher_id' => $course['owner_teacher_id'],
+    //                         'semester_id' => $course['semester_id'],
+    //                         'major_id' => $course['major_id'] ?? null,
+    //                         'cur_id' => ($curriculum ? $course['cur_id'] : null)
+    //                     ]
+    //                 );
+    //                 $syncCount++;
+    //             } catch (\Exception $e) {
+    //                 Log::error("Failed to sync course: {$course['course_id']}, Error: " . $e->getMessage());
+    //                 $errorCount++;
+    //             }
+    //         }
+
+    //         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+    //         Log::info("Courses sync completed: {$syncCount} synced, {$errorCount} errors");
+    //     } catch (\Exception $e) {
+    //         Log::error("Course sync failed: " . $e->getMessage());
+    //         throw $e;
+    //     }
+    // }
+
+
+    // private function syncCourses()
+    // {
+    //     try {
+    //         $courses = collect($this->tdbmService->getCourses());
+    //         Log::info("Fetched " . $courses->count() . " courses from API");
+
+    //         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+    //         Courses::truncate();
+
+    //         $syncCount = 0;
+    //         $errorCount = 0;
+
+    //         foreach ($courses as $course) {
+    //             try {
+    //                 // ตรวจสอบข้อมูลที่จำเป็น
+    //                 if (!$this->validateApiData($course, ['course_id', 'subject_id', 'owner_teacher_id', 'semester_id'])) {
+    //                     Log::warning("Course data validation failed: " . json_encode($course));
+    //                     $errorCount++;
+    //                     continue;
+    //                 }
+
+    //                 // ทำการซิงค์ข้อมูล
+    //                 Courses::create([
+    //                     'course_id' => (string)$course['course_id'], // แปลงเป็น string
+    //                     'status' => $course['status'] ?? 'A',
+    //                     'subject_id' => $course['subject_id'],
+    //                     'owner_teacher_id' => $course['owner_teacher_id'],
+    //                     'semester_id' => $course['semester_id'],
+    //                     'major_id' => $course['major_id'] ?? null,
+    //                     'cur_id' => $course['cur_id'] ?? null,
+    //                     'ref_course_id' => $course['ref_course_id'] ?? null
+    //                 ]);
+
+    //                 $syncCount++;
+    //             } catch (\Exception $e) {
+    //                 Log::error("Failed to sync course ID {$course['course_id']}: " . $e->getMessage());
+    //                 $errorCount++;
+    //             }
+    //         }
+
+    //         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+    //         Log::info("Courses sync completed: {$syncCount} synced, {$errorCount} errors");
+    //     } catch (\Exception $e) {
+    //         Log::error("Course sync failed: " . $e->getMessage());
+    //         throw $e;
+    //     }
+    // }
+
+    
     private function syncCourses()
     {
-        $courses = collect($this->tdbmService->getCourses());
+        try {
+            $courses = collect($this->tdbmService->getCourses());
+            Log::info("Fetched " . $courses->count() . " courses from API");
 
-        foreach ($courses as $course) {
-            // ตรวจสอบข้อมูลที่จำเป็น
-            if (
-                !isset($course['course_id']) || !isset($course['subject_id']) ||
-                !isset($course['owner_teacher_id']) || !isset($course['semester_id']) ||
-                !isset($course['cur_id'])
-            ) {
-                continue;
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            Courses::truncate(); // เพิ่มการ truncate ตาราง
+
+            $syncCount = 0;
+            $errorCount = 0;
+
+            foreach ($courses as $course) {
+                try {
+                    // ตรวจสอบข้อมูลที่จำเป็น
+                    if (!$this->validateApiData($course, ['course_id', 'subject_id', 'owner_teacher_id', 'semester_id'])) {
+                        Log::warning("Course data validation failed: " . json_encode($course));
+                        $errorCount++;
+                        continue;
+                    }
+
+                    // ตรวจสอบความสัมพันธ์
+                    $subject = Subjects::where('subject_id', $course['subject_id'])->first();
+                    $teacher = Teachers::find($course['owner_teacher_id']);
+                    $semester = Semesters::find($course['semester_id']);
+
+                    if (!$subject || !$teacher || !$semester) {
+                        Log::warning("Course {$course['course_id']} missing dependencies - Subject: {$course['subject_id']}, Teacher: {$course['owner_teacher_id']}, Semester: {$course['semester_id']}");
+                        $errorCount++;
+                        continue;
+                    }
+
+                    // เช็คความมีอยู่ของ curriculum ถ้ามี
+                    $curriculum = null;
+                    if (!empty($course['cur_id'])) {
+                        $curriculum = Curriculums::find($course['cur_id']);
+                        if (!$curriculum) {
+                            Log::warning("Course {$course['course_id']} references non-existent curriculum {$course['cur_id']}");
+                            continue;
+                        }
+                    }
+
+                    // ทำการสร้างข้อมูล
+                    Courses::create([
+                        'course_id' => (string)$course['course_id'],
+                        'status' => $course['status'] ?? 'A',
+                        'subject_id' => $course['subject_id'],
+                        'owner_teacher_id' => $course['owner_teacher_id'],
+                        'semester_id' => $course['semester_id'],
+                        'major_id' => $course['major_id'] ?? null,
+                        'cur_id' => $course['cur_id'] ?? null
+                    ]);
+
+                    $syncCount++;
+                } catch (\Exception $e) {
+                    Log::error("Failed to sync course ID {$course['course_id']}: " . $e->getMessage());
+                    $errorCount++;
+                }
             }
 
-            // ตรวจสอบ subject
-            $subject = Subjects::find($course['subject_id']);
-            if (!$subject) {
-                Log::warning("Course {$course['course_id']} references non-existent subject {$course['subject_id']}, skipping...");
-                continue;
-            }
-
-            // ตรวจสอบ teacher
-            $teacher = Teachers::find($course['owner_teacher_id']);
-            if (!$teacher) {
-                Log::warning("Course {$course['course_id']} references non-existent teacher {$course['owner_teacher_id']}, skipping...");
-                continue;
-            }
-
-            Courses::updateOrCreate(
-                ['course_id' => $course['course_id']],
-                [
-                    'status' => $course['status'] ?? 'A',
-                    'subject_id' => $course['subject_id'],
-                    'owner_teacher_id' => $course['owner_teacher_id'],
-                    'semester_id' => $course['semester_id'],
-                    'major_id' => $course['major_id'] ?? null,
-                    'cur_id' => $course['cur_id']
-                ]
-            );
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            Log::info("Courses sync completed: {$syncCount} synced, {$errorCount} errors");
+        } catch (\Exception $e) {
+            Log::error("Course sync failed: " . $e->getMessage());
+            throw $e;
         }
     }
 
     private function syncClasses()
     {
-        $classes = collect($this->tdbmService->getStudentClasses());
+        try {
+            $classes = collect($this->tdbmService->getStudentClasses());
 
-        foreach ($classes as $class) {
-            // ตรวจสอบ teacher
-            $teacher = Teachers::find($class['teacher_id']);
-            if (!$teacher) {
-                Log::warning("Class {$class['class_id']} missing teacher {$class['teacher_id']}, skipping...");
-                continue;
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+            foreach ($classes as $class) {
+                // Verify dependencies
+                $course = Courses::where('course_id', $class['course_id'])->first();
+                $teacher = Teachers::where('teacher_id', $class['teacher_id'])->first();
+
+                if (!$course || !$teacher) {
+                    Log::warning("Class {$class['class_id']} dependencies check failed - Course: {$class['course_id']}, Teacher: {$class['teacher_id']}");
+                    Log::info("Full class data: " . json_encode($class));
+                    continue;
+                }
+
+                Classes::updateOrCreate(
+                    ['class_id' => $class['class_id']],
+                    [
+                        'section_num' => $class['section_num'],
+                        'title' => $class['title'],
+                        'open_num' => $class['open_num'],
+                        'enrolled_num' => $class['enrolled_num'],
+                        'available_num' => $class['available_num'],
+                        'teacher_id' => $class['teacher_id'],
+                        'course_id' => $class['course_id'],
+                        'semester_id' => $class['semester_id'],
+                        'major_id' => $class['major_id'],
+                        'status' => $class['status']
+                    ]
+                );
             }
 
-            // ตรวจสอบ course
-            $course = Courses::find($class['course_id']);
-            if (!$course) {
-                Log::warning("Class {$class['class_id']} missing course {$class['course_id']}, skipping...");
-                continue;
-            }
-
-            Classes::updateOrCreate(
-                ['class_id' => $class['class_id']],
-                [
-                    'section_num' => $class['section_num'],
-                    'title' => $class['title'],
-                    'open_num' => $class['open_num'],
-                    'enrolled_num' => $class['enrolled_num'],
-                    'available_num' => $class['available_num'],
-                    'teacher_id' => $class['teacher_id'],
-                    'course_id' => $class['course_id'],
-                    'semester_id' => $class['semester_id'],
-                    'major_id' => $class['major_id'],
-                    'status' => $class['status']
-                ]
-            );
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } catch (\Exception $e) {
+            Log::error("Classes sync failed: " . $e->getMessage());
+            throw $e;
         }
     }
 
     private function syncTeachings()
     {
-        $teachings = collect($this->tdbmService->getTeachings());
+        try {
+            $teachings = collect($this->tdbmService->getTeachings());
 
-        foreach ($teachings as $teaching) {
-            // ตรวจสอบการมีอยู่ของ class
-            $class = Classes::find($teaching['class_id']);
-            if (!$class) {
-                Log::warning("Teaching {$teaching['teaching_id']} references non-existent class {$teaching['class_id']}, skipping...");
-                continue;
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+            foreach ($teachings as $teaching) {
+                // Verify dependencies
+                $class = Classes::where('class_id', $teaching['class_id'])->first();
+                $teacher = Teachers::where('teacher_id', $teaching['teacher_id'])->first();
+
+                if (!$class || !$teacher) {
+                    Log::warning("Teaching {$teaching['teaching_id']} dependencies check failed - Class: {$teaching['class_id']}, Teacher: {$teaching['teacher_id']}");
+                    continue;
+                }
+
+                Teaching::updateOrCreate(
+                    ['teaching_id' => $teaching['teaching_id']],
+                    [
+                        'start_time' => $teaching['start_time'],
+                        'end_time' => $teaching['end_time'],
+                        'duration' => $teaching['duration'],
+                        'class_type' => $teaching['class_type'],
+                        'status' => $teaching['status'],
+                        'class_id' => $teaching['class_id'],
+                        'teacher_id' => $teaching['teacher_id']
+                    ]
+                );
             }
 
-            // ตรวจสอบการมีอยู่ของ teacher
-            $teacher = Teachers::find($teaching['teacher_id']);
-            if (!$teacher) {
-                Log::warning("Teaching {$teaching['teaching_id']} references non-existent teacher {$teaching['teacher_id']}, skipping...");
-                continue;
-            }
-
-            Teaching::updateOrCreate(
-                ['teaching_id' => $teaching['teaching_id']],
-                [
-                    'start_time' => $teaching['start_time'],
-                    'end_time' => $teaching['end_time'],
-                    'duration' => $teaching['duration'],
-                    'class_type' => $teaching['class_type'],
-                    'status' => $teaching['status'],
-                    'class_id' => $teaching['class_id'],
-                    'teacher_id' => $teaching['teacher_id']
-                ]
-            );
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } catch (\Exception $e) {
+            Log::error("Teaching sync failed: " . $e->getMessage());
+            throw $e;
         }
     }
 
     private function syncExtraTeachings()
     {
-        $extraTeachings = collect($this->tdbmService->getExtraTeachings());
+        try {
+            $extraTeachings = collect($this->tdbmService->getExtraTeachings());
+            Log::info("Fetched " . $extraTeachings->count() . " extra teachings from API");
 
-        foreach ($extraTeachings as $teaching) {
-            // ตรวจสอบข้อมูลที่จำเป็น
-            if (!isset($teaching['title']) || !isset($teaching['detail'])) {
-                Log::warning("Extra teaching {$teaching['extra_class_id']} missing required fields, skipping...");
-                continue;
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+            $syncCount = 0;
+            $errorCount = 0;
+
+            foreach ($extraTeachings as $teaching) {
+                // Verify dependencies
+                $mainTeaching = Teaching::find($teaching['teaching_id']);
+                $class = Classes::find($teaching['class_id']);
+                $teacher = Teachers::find($teaching['teacher_id']);
+
+                if (!$mainTeaching || !$class || !$teacher) {
+                    Log::warning("ExtraTeaching {$teaching['extra_class_id']} missing dependencies");
+                    $errorCount++;
+                    continue;
+                }
+
+                try {
+                    ExtraTeaching::updateOrCreate(
+                        ['extra_class_id' => $teaching['extra_class_id']],
+                        [
+                            'title' => $teaching['title'] ?? 'No Title',
+                            'detail' => $teaching['detail'] ?? 'No Detail',
+                            'opt_status' => $teaching['opt_status'] ?? 'A',
+                            'status' => $teaching['status'] ?? 'A',
+                            'class_date' => $teaching['class_date'],
+                            'start_time' => $teaching['start_time'],
+                            'end_time' => $teaching['end_time'],
+                            'duration' => $teaching['duration'],
+                            'teacher_id' => $teaching['teacher_id'],
+                            'holiday_id' => $teaching['holiday_id'],
+                            'teaching_id' => $teaching['teaching_id'],
+                            'class_id' => $teaching['class_id']
+                        ]
+                    );
+                    $syncCount++;
+                } catch (\Exception $e) {
+                    Log::error("Failed to sync extra teaching: {$teaching['extra_class_id']}, Error: " . $e->getMessage());
+                    $errorCount++;
+                }
             }
 
-            ExtraTeaching::updateOrCreate(
-                ['extra_class_id' => $teaching['extra_class_id']],
-                [
-                    'title' => $teaching['title'] ?? 'No Title',
-                    'detail' => $teaching['detail'] ?? 'No Detail',
-                    'opt_status' => $teaching['opt_status'],
-                    'status' => $teaching['status'],
-                    'class_date' => $teaching['class_date'],
-                    'start_time' => $teaching['start_time'],
-                    'end_time' => $teaching['end_time'],
-                    'duration' => $teaching['duration'],
-                    'teacher_id' => $teaching['teacher_id'],
-                    'holiday_id' => $teaching['holiday_id'],
-                    'teaching_id' => $teaching['teaching_id'],
-                    'class_id' => $teaching['class_id']
-                ]
-            );
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            Log::info("Extra teachings sync completed: {$syncCount} synced, {$errorCount} errors");
+        } catch (\Exception $e) {
+            Log::error("Extra teaching sync failed: " . $e->getMessage());
+            throw $e;
         }
     }
 }

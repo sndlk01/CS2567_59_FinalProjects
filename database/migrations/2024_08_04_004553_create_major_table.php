@@ -12,13 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('major', function (Blueprint $table) {
-            $table->id('major_id');
+            $table->unsignedBigInteger('major_id')->primary();
             $table->string('name_th', 1024)->nullable();
             $table->string('name_en', 1024)->nullable();
             $table->enum('major_type', ['N', 'S']); // normal and specials
             $table->unsignedBigInteger('cur_id');
             $table->char('status', 1);
-            
+
             $table->foreign('cur_id')->references('cur_id')->on('curriculums')->onDelete('cascade');
             $table->timestamps();
         });

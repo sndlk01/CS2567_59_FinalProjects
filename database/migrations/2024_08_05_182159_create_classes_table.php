@@ -19,7 +19,7 @@ return new class extends Migration
             $table->integer('enrolled_num'); // สมัครกี่คน
             $table->integer('available_num');  //เหลือกี่คน
             $table->unsignedBigInteger('teacher_id'); // อาจารย์ประจำวิชา
-            $table->unsignedBigInteger('course_id'); 
+            $table->string('course_id'); 
             $table->unsignedBigInteger('semester_id'); 
             $table->unsignedBigInteger('major_id');
             $table->string('status',3);
