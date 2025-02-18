@@ -45,12 +45,12 @@
                             </div>
 
                             <div class="col-md-6">
-                                <strong>ภาคการศึกษาปัจจุบัน:</strong> 
+                                <strong>ภาคการศึกษาปัจจุบัน:</strong>
                                 {{ $currentSemester['semester'] }}/{{ $currentSemester['year'] }}
                             </div>
                             <div class="col-md-6">
-                                <strong>ระยะเวลาของภาคการศึกษา:</strong> 
-                                {{ \Carbon\Carbon::parse($currentSemester['start_date'])->format('d/m/Y') }} - 
+                                <strong>ระยะเวลาของภาคการศึกษา:</strong>
+                                {{ \Carbon\Carbon::parse($currentSemester['start_date'])->format('d/m/Y') }} -
                                 {{ \Carbon\Carbon::parse($currentSemester['end_date'])->format('d/m/Y') }}
                             </div>
 
@@ -60,15 +60,15 @@
                                 <p id="selectedSubjects" class="border rounded p-2">ยังไม่ได้เลือกวิชา</p>
                             </div>
 
-                            {{-- ส่วนของการเลือกวิชา --}}
+                            
+
+                            <!-- ส่วนของการเลือกวิชา -->
                             <div class="mb-3">
                                 <label class="form-label">เลือกรายวิชาและเซคชันที่ต้องการสมัคร</label>
                                 <input type="text" id="subjectSearch" class="form-control mb-3"
-                                        placeholder="ค้นหารายวิชา...">
+                                    placeholder="ค้นหารายวิชา...">
                                 <div class="subject-container"
                                     style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-                                    {{-- ส่วนสำหรับการค้นหารายวิชา --}}
-                                    
                                     @foreach ($subjectsWithSections as $index => $item)
                                         <div class="subject-item mb-3">
                                             <div class="form-check">
@@ -90,11 +90,14 @@
                                                     <div class="form-check">
                                                         <input class="form-check-input section-checkbox" type="checkbox"
                                                             name="applications[{{ $index }}][sections][]"
-                                                            value="{{ $section }}"
-                                                            id="section-{{ $item['subject']['subject_id'] }}-{{ $section }}">
+                                                            value="{{ is_array($section) ? $section['section_num'] : $section }}"
+                                                            id="section-{{ $item['subject']['subject_id'] }}-{{ is_array($section) ? $section['section_num'] : $section }}">
                                                         <label class="form-check-label"
-                                                            for="section-{{ $item['subject']['subject_id'] }}-{{ $section }}">
-                                                            Section {{ $section }}
+                                                            for="section-{{ $item['subject']['subject_id'] }}-{{ is_array($section) ? $section['section_num'] : $section }}">
+                                                            Section {{ is_array($section) ? $section['section_num'] : $section }}
+                                                            @if(is_array($section) && isset($section['major_name']))
+                                                                - {{ $section['major_name'] }}
+                                                            @endif
                                                         </label>
                                                     </div>
                                                 @endforeach

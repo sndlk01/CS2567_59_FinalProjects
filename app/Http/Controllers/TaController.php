@@ -34,53 +34,63 @@ class TaController extends Controller
     }
 
     public function request()
-    {
-        // Get current semester
-        $currentSemester = collect($this->tdbmService->getSemesters())
-            // ตรวจสอบว่าวันที่ปัจจุบันอยู่ระหว่าง start_date และ end_date
-            ->filter(function ($semester) {
-                $startDate = \Carbon\Carbon::parse($semester['start_date']);
-                $endDate = \Carbon\Carbon::parse($semester['end_date']);
-                $now = \Carbon\Carbon::now();
-                return $now->between($startDate, $endDate);
-            })->first();
+{
+    // Get current semester
+    $currentSemester = collect($this->tdbmService->getSemesters())
+        ->filter(function ($semester) {
+            $startDate = \Carbon\Carbon::parse($semester['start_date']);
+            $endDate = \Carbon\Carbon::parse($semester['end_date']);
+            $now = \Carbon\Carbon::now();
+            return $now->between($startDate, $endDate);
+        })->first();
 
-        if (!$currentSemester) { //ตรวจสอบว่ามีเทอมปัจจุบันหรือไม่
-            return redirect()->back()->with('error', 'ขณะนี้ไม่อยู่ในช่วงเวลารับสมัคร TA');
-        }
-
-        //ดึงข้อมูลที่เกี่ยวข้องกับเทอมปัจจุบัน
-        $subjects = collect($this->tdbmService->getSubjects());
-        $courses = collect($this->tdbmService->getCourses())
-            ->where('semester_id', $currentSemester['semester_id']);
-        $studentClasses = collect($this->tdbmService->getStudentClasses())
-            ->where('semester_id', $currentSemester['semester_id']);
-
-        // กรองเฉพาะวิชาที่มีการเปิดสอนในเทอมปัจจุบัน
-        $subjectsWithSections = $subjects
-            ->filter(function ($subject) use ($courses) {
-                return $courses->where('subject_id', $subject['subject_id'])->isNotEmpty();
-            })
-            ->map(function ($subject) use ($courses, $studentClasses) {
-                $course = $courses->where('subject_id', $subject['subject_id'])->first();
-                $sections = $studentClasses->where('course_id', $course['course_id'])
-                    ->pluck('section_num') //ดึงเฉพาะข้อมูลในคอลัมน์ section_num
-                    ->unique() //กรองข้อมูลที่ซ้ำกันออก เหลือแค่ค่าที่ไม่ซ้ำ
-                    ->values()
-                    ->toArray();
-
-                return [
-                    'subject' => [
-                        'subject_id' => $subject['subject_id'],
-                        'subject_name_en' => $subject['name_en'],
-                        'subject_name_th' => $subject['name_th']
-                    ],
-                    'sections' => $sections
-                ];
-            })->values();
-
-        return view('layouts.ta.request', compact('subjectsWithSections', 'currentSemester'));
+    if (!$currentSemester) {
+        return redirect()->back()->with('error', 'ขณะนี้ไม่อยู่ในช่วงเวลารับสมัคร TA');
     }
+
+    // ดึงข้อมูลที่เกี่ยวข้อง
+    $subjects = collect($this->tdbmService->getSubjects());
+    $courses = collect($this->tdbmService->getCourses())
+        ->where('semester_id', $currentSemester['semester_id']);
+    $studentClasses = collect($this->tdbmService->getStudentClasses())
+        ->where('semester_id', $currentSemester['semester_id']);
+
+    // กรองและจัดการข้อมูล
+    $subjectsWithSections = $subjects
+        ->filter(function ($subject) use ($courses) {
+            return $courses->where('subject_id', $subject['subject_id'])->isNotEmpty();
+        })
+        ->map(function ($subject) use ($courses, $studentClasses) {
+            $course = $courses->where('subject_id', $subject['subject_id'])->first();
+            
+            // ดึงข้อมูล sections พร้อม major โดยใช้ชื่อตารางที่ถูกต้อง
+            $sectionsWithMajors = DB::table('classes AS c')
+                ->select('c.section_num', 'm.name_th as major_name')
+                ->where('c.course_id', $course['course_id'])
+                ->leftJoin('major AS m', 'm.major_id', '=', 'c.major_id')  // เปลี่ยนจาก majors เป็น major
+                ->orderBy('c.section_num')
+                ->get();
+
+            // แปลงข้อมูลเป็นรูปแบบที่ต้องการ
+            $sections = $sectionsWithMajors->map(function ($section) {
+                return [
+                    'section_num' => (int)$section->section_num,
+                    'major_name' => $section->major_name ?? 'ไม่ระบุสาขา'
+                ];
+            })->toArray();
+
+            return [
+                'subject' => [
+                    'subject_id' => $subject['subject_id'],
+                    'subject_name_en' => $subject['name_en'],
+                    'subject_name_th' => $subject['name_th']
+                ],
+                'sections' => $sections
+            ];
+        })->values();
+
+    return view('layouts.ta.request', compact('subjectsWithSections', 'currentSemester'));
+}
 
     public function taSubject()
     {
