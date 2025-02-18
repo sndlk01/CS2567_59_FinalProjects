@@ -41,9 +41,10 @@
                                             <td>{{ $request->created_at->format('d/m/Y') }}</td>
                                             <td>{{ $request->teacher->name }}</td>
                                             <td>
-                                                {{ $request->course->subjects->subject_id }} {{ $request->course->subjects->name_en }}
+                                                {{ $request->course->subjects->subject_id }}
+                                                {{ $request->course->subjects->name_en }}
                                             </td>
-                                           
+
                                             <td>
                                                 {{ $request->details->sum(function ($detail) {
                                                     return $detail->students->count();
@@ -56,17 +57,23 @@
                                                 </button>
                                             </td>
                                             <td>
-                                                @if ($request->status === 'P')
+                                                @if ($request->status === 'W')
                                                     <form action="{{ route('admin.ta-requests.process', $request->id) }}"
                                                         method="POST" class="d-flex align-items-center gap-2">
                                                         @csrf
                                                         @method('PUT')
-                                                        <select name="status" class="form-select form-select-sm"
+                                                        <select name="status"
+                                                            class="form-select form-select-sm status-select"
                                                             style="width: auto;">
-                                                            <option value="P" selected>รอดำเนินการ</option>
+                                                            <option value="W" selected>รอดำเนินการ</option>
                                                             <option value="A">อนุมัติ</option>
                                                             <option value="R">ไม่อนุมัติ</option>
                                                         </select>
+                                                        <div class="comment-field d-none">
+                                                            <input type="text" name="comment"
+                                                                class="form-control form-control-sm"
+                                                                placeholder="ระบุเหตุผล">
+                                                        </div>
                                                         <button type="submit"
                                                             class="btn btn-primary btn-sm">บันทึก</button>
                                                     </form>
@@ -139,54 +146,96 @@
                                                                                         <div class="row align-items-center">
                                                                                             <!-- ข้อมูลนักศึกษา -->
                                                                                             <div class="col-md-4">
-                                                                                                <h6 class="mb-1">{{ $student->courseTa->student->name }}</h6>
-                                                                                                <div class="text-muted">รหัสนักศึกษา: {{ $student->courseTa->student->student_id }}</div>
+                                                                                                <h6 class="mb-1">
+                                                                                                    {{ $student->courseTa->student->name }}
+                                                                                                </h6>
+                                                                                                <div class="text-muted">
+                                                                                                    รหัสนักศึกษา:
+                                                                                                    {{ $student->courseTa->student->student_id }}
+                                                                                                </div>
                                                                                             </div>
-                                                                                            
+
                                                                                             <!-- ชั่วโมงการทำงาน -->
                                                                                             <div class="col-md-8">
                                                                                                 <div class="row g-3">
                                                                                                     <div class="col-md-3">
-                                                                                                        <div class="text-center p-2 rounded bg-light">
-                                                                                                            <div class="small text-muted">ช.ม.สอน</div>
-                                                                                                            <div class="fw-bold">{{ $student->teaching_hours }}</div>
+                                                                                                        <div
+                                                                                                            class="text-center p-2 rounded bg-light">
+                                                                                                            <div
+                                                                                                                class="small text-muted">
+                                                                                                                ช.ม.สอน
+                                                                                                            </div>
+                                                                                                            <div
+                                                                                                                class="fw-bold">
+                                                                                                                {{ $student->teaching_hours }}
+                                                                                                            </div>
                                                                                                         </div>
                                                                                                     </div>
                                                                                                     <div class="col-md-3">
-                                                                                                        <div class="text-center p-2 rounded bg-light">
-                                                                                                            <div class="small text-muted">ช.ม.เตรียม</div>
-                                                                                                            <div class="fw-bold">{{ $student->prep_hours }}</div>
+                                                                                                        <div
+                                                                                                            class="text-center p-2 rounded bg-light">
+                                                                                                            <div
+                                                                                                                class="small text-muted">
+                                                                                                                ช.ม.เตรียม
+                                                                                                            </div>
+                                                                                                            <div
+                                                                                                                class="fw-bold">
+                                                                                                                {{ $student->prep_hours }}
+                                                                                                            </div>
                                                                                                         </div>
                                                                                                     </div>
                                                                                                     <div class="col-md-3">
-                                                                                                        <div class="text-center p-2 rounded bg-light">
-                                                                                                            <div class="small text-muted">ช.ม.ตรวจงาน</div>
-                                                                                                            <div class="fw-bold">{{ $student->grading_hours }}</div>
+                                                                                                        <div
+                                                                                                            class="text-center p-2 rounded bg-light">
+                                                                                                            <div
+                                                                                                                class="small text-muted">
+                                                                                                                ช.ม.ตรวจงาน
+                                                                                                            </div>
+                                                                                                            <div
+                                                                                                                class="fw-bold">
+                                                                                                                {{ $student->grading_hours }}
+                                                                                                            </div>
                                                                                                         </div>
                                                                                                     </div>
                                                                                                     <div class="col-md-3">
-                                                                                                        <div class="text-center p-2 rounded bg-light">
-                                                                                                            <div class="small text-muted">รวม/สัปดาห์</div>
-                                                                                                            <div class="fw-bold">{{ $student->total_hours_per_week }}</div>
+                                                                                                        <div
+                                                                                                            class="text-center p-2 rounded bg-light">
+                                                                                                            <div
+                                                                                                                class="small text-muted">
+                                                                                                                รวม/สัปดาห์
+                                                                                                            </div>
+                                                                                                            <div
+                                                                                                                class="fw-bold">
+                                                                                                                {{ $student->total_hours_per_week }}
+                                                                                                            </div>
                                                                                                         </div>
                                                                                                     </div>
                                                                                                 </div>
-                                                                                                
-                                                                                                @if($student->other_hours > 0)
+
+                                                                                                @if ($student->other_hours > 0)
                                                                                                     <div class="mt-2">
-                                                                                                        <div class="text-center p-2 rounded bg-light">
-                                                                                                            <div class="small text-muted">ชั่วโมงอื่นๆ</div>
-                                                                                                            <div class="fw-bold">{{ $student->other_hours }}</div>
+                                                                                                        <div
+                                                                                                            class="text-center p-2 rounded bg-light">
+                                                                                                            <div
+                                                                                                                class="small text-muted">
+                                                                                                                ชั่วโมงอื่นๆ
+                                                                                                            </div>
+                                                                                                            <div
+                                                                                                                class="fw-bold">
+                                                                                                                {{ $student->other_hours }}
+                                                                                                            </div>
                                                                                                         </div>
                                                                                                     </div>
                                                                                                 @endif
                                                                                             </div>
                                                                                         </div>
-                                                                
+
                                                                                         @if ($student->other_duties)
-                                                                                            <div class="mt-3 pt-3 border-top">
+                                                                                            <div
+                                                                                                class="mt-3 pt-3 border-top">
                                                                                                 <div class="text-muted">
-                                                                                                    <strong>งานอื่นๆ:</strong> {{ $student->other_duties }}
+                                                                                                    <strong>งานอื่นๆ:</strong>
+                                                                                                    {{ $student->other_duties }}
                                                                                                 </div>
                                                                                             </div>
                                                                                         @endif
@@ -195,16 +244,17 @@
                                                                             </div>
                                                                         @endforeach
                                                                     @endforeach
-                                                                
+
                                                                     <!-- สรุปจำนวน TA -->
                                                                     <div class="col-12">
                                                                         <div class="card bg-light">
                                                                             <div class="card-body text-end">
                                                                                 <strong>จำนวน TA ทั้งหมด:</strong>
                                                                                 <span class="ms-2">
-                                                                                    {{ $request->details->sum(function($detail) {
+                                                                                    {{ $request->details->sum(function ($detail) {
                                                                                         return $detail->students->count();
-                                                                                    }) }} คน
+                                                                                    }) }}
+                                                                                    คน
                                                                                 </span>
                                                                             </div>
                                                                         </div>
@@ -214,7 +264,7 @@
                                                         </div>
 
 
-                                                        @if ($request->status !== 'P')
+                                                        @if ($request->status !== 'W')
                                                             <div class="mt-4">
                                                                 <p><strong>สถานะ:</strong>
                                                                     @switch($request->status)
@@ -299,46 +349,14 @@
 
         @push('scripts')
             <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    // จัดการการเปลี่ยนสถานะ
-                    const statusSelects = document.querySelectorAll('select[name="status"]');
-
-                    statusSelects.forEach(select => {
-                        const form = select.closest('form');
-
-                        select.addEventListener('change', function() {
-                            if (this.value === 'R') {
-                                const reason = prompt('กรุณาระบุเหตุผลที่ไม่อนุมัติ:');
-                                if (!reason || reason.trim() === '') {
-                                    this.value = 'P';
-                                    return;
-                                }
-
-                                // เพิ่ม input field สำหรับ comment
-                                let commentInput = form.querySelector('input[name="comment"]');
-                                if (!commentInput) {
-                                    commentInput = document.createElement('input');
-                                    commentInput.type = 'hidden';
-                                    commentInput.name = 'comment';
-                                    form.appendChild(commentInput);
-                                }
-                                commentInput.value = reason;
-                            }
-                        });
-
-                        // ตรวจสอบก่อน submit
-                        form.addEventListener('submit', function(e) {
-                            const status = select.value;
-                            if (status === 'P') {
-                                e.preventDefault();
-                                alert('กรุณาเลือกสถานะ');
-                                return;
-                            }
-
-                            if (!confirm('ยืนยันการเปลี่ยนสถานะ?')) {
-                                e.preventDefault();
-                            }
-                        });
+                document.querySelectorAll('.status-select').forEach(select => {
+                    select.addEventListener('change', function() {
+                        const commentField = this.closest('form').querySelector('.comment-field');
+                        if (this.value === 'R') {
+                            commentField.classList.remove('d-none');
+                        } else {
+                            commentField.classList.add('d-none');
+                        }
                     });
                 });
             </script>

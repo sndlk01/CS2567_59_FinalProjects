@@ -46,7 +46,7 @@ class TeacherController extends Controller
             ->get()
             ->map(function ($course) {
                 $pendingRequest = TeacherRequest::where('course_id', $course->course_id)
-                    ->where('status', 'P')
+                    ->where('status', 'W')
                     ->latest()
                     ->first();
 
@@ -104,7 +104,7 @@ class TeacherController extends Controller
             $teacherRequest = TeacherRequest::create([
                 'teacher_id' => Auth::user()->teacher->teacher_id,
                 'course_id' => $validated['course_id'],
-                'status' => 'P',
+                'status' => 'W',
                 'payment_type' => $validated['payment_type']
             ]);
 
@@ -147,7 +147,99 @@ class TeacherController extends Controller
                 ->withInput();
         }
     }
-
+    public function edit($id)
+    {
+        try {
+            $request = TeacherRequest::with([
+                'details.students.courseTa.student',
+                'course.subjects',
+                'teacher'
+            ])->findOrFail($id);
+    
+            // ตรวจสอบว่าเป็นคำร้องของอาจารย์ท่านนี้จริงๆ
+            if ($request->teacher_id !== Auth::user()->teacher->teacher_id) {
+                return redirect()->route('teacher.ta-requests.index')
+                    ->with('error', 'ไม่มีสิทธิ์เข้าถึงคำร้องนี้');
+            }
+    
+            // ตรวจสอบว่าสถานะยังเป็นรอดำเนินการอยู่
+            if ($request->status !== 'W') {
+                return redirect()->route('teacher.ta-requests.show', $id)
+                    ->with('error', 'ไม่สามารถแก้ไขคำร้องที่ดำเนินการไปแล้ว');
+            }
+    
+            return view('layouts.teacher.ta-request.edit', compact('request'));
+        } catch (\Exception $e) {
+            Log::error('Error in edit TA request: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
+        }
+    }
+    
+    public function update(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'payment_type' => 'required|in:lecture,lab,both',
+            'students' => 'required|array|min:1',
+            'students.*.course_ta_id' => 'required|exists:course_tas,id',
+            'students.*.teaching_hours' => 'required|integer|min:0',
+            'students.*.prep_hours' => 'required|integer|min:0',
+            'students.*.grading_hours' => 'required|integer|min:0',
+            'students.*.other_hours' => 'nullable|integer|min:0',
+            'students.*.other_duties' => 'nullable|string'
+        ]);
+    
+        try {
+            DB::beginTransaction();
+    
+            $teacherRequest = TeacherRequest::with('details.students')
+                ->findOrFail($id);
+    
+            // ตรวจสอบสิทธิ์และสถานะ
+            if ($teacherRequest->teacher_id !== Auth::user()->teacher->teacher_id) {
+                throw new \Exception('ไม่มีสิทธิ์แก้ไขคำร้องนี้');
+            }
+    
+            if ($teacherRequest->status !== 'W') {
+                throw new \Exception('ไม่สามารถแก้ไขคำร้องที่ดำเนินการไปแล้ว');
+            }
+    
+            // อัพเดตข้อมูลหลัก
+            $teacherRequest->update([
+                'payment_type' => $validated['payment_type']
+            ]);
+    
+            // อัพเดตข้อมูล TA แต่ละคน
+            foreach ($validated['students'] as $studentData) {
+                $totalHours = 
+                    $studentData['teaching_hours'] +
+                    $studentData['prep_hours'] +
+                    $studentData['grading_hours'] +
+                    ($studentData['other_hours'] ?? 0);
+    
+                TeacherRequestStudent::where('course_ta_id', $studentData['course_ta_id'])
+                    ->whereIn('teacher_requests_detail_id', $teacherRequest->details->pluck('id'))
+                    ->update([
+                        'teaching_hours' => $studentData['teaching_hours'],
+                        'prep_hours' => $studentData['prep_hours'],
+                        'grading_hours' => $studentData['grading_hours'],
+                        'other_hours' => $studentData['other_hours'] ?? 0,
+                        'other_duties' => $studentData['other_duties'] ?? null,
+                        'total_hours_per_week' => $totalHours
+                    ]);
+            }
+    
+            DB::commit();
+            return redirect()->route('teacher.ta-requests.show', $id)
+                ->with('success', 'อัพเดตคำร้องสำเร็จ');
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error updating TA request: ' . $e->getMessage());
+            return back()
+                ->with('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
 
     public function showTARequest($id)
     {
