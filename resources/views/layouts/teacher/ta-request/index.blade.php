@@ -22,7 +22,7 @@
                                                 <th>จำนวน TA</th>
                                                 <th>รายชื่อผู้ช่วยสอน</th>
                                                 <th>สถานะ</th>
-                                                <th>การดำเนินการ</th>
+                                                <th></th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -48,15 +48,33 @@
                                                         @endif
                                                     </td>
                                                     <td>
-                                                        @if ($pendingRequest)
-                                                            <span class="badge bg-warning">รอดำเนินการ</span>
-                                                            <br>
+                                                        @php
+                                                            $latestRequest = $course
+                                                                ->teacherRequests()
+                                                                ->latest()
+                                                                ->first();
+                                                        @endphp
+
+                                                        @if ($latestRequest)
+                                                            @switch($latestRequest->status)
+                                                                @case('W')
+                                                                    <span class="badge bg-warning">รอดำเนินการ</span>
+                                                                @break
+
+                                                                @case('A')
+                                                                    <span class="badge bg-success">อนุมัติแล้ว</span>
+                                                                @break
+
+                                                                @case('R')
+                                                                    <span class="badge bg-danger">ไม่อนุมัติ</span>
+                                                                @break
+                                                            @endswitch
                                                         @else
                                                             <span class="badge bg-secondary">ยังไม่ยื่นคำร้อง</span>
                                                         @endif
                                                     </td>
                                                     <td>
-                                                        @if (!$pendingRequest)
+                                                        @if ((!$latestRequest || $latestRequest->status === 'R') && $latestRequest?->status !== 'A')
                                                             <a href="{{ route('teacher.ta-requests.create', ['course_id' => $course->course_id]) }}"
                                                                 class="btn btn-primary btn-sm">
                                                                 ยื่นคำร้อง
@@ -84,20 +102,22 @@
                                                 <th>สถานะ</th>
                                                 <th>จำนวน TA</th>
                                                 <th></th>
+                                                <th></th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @foreach ($requests as $request)
                                                 <tr>
-                                                    <td>{{ $request->created_at->format('d/m/Y') }}</td> 
+                                                    <td>{{ $request->created_at->format('d/m/Y') }}</td>
                                                     <td>
-                                                        @if($request->course && $request->course->subjects)  {{-- เปลี่ยนจาก subject เป็น subjects --}}
+                                                        @if ($request->course && $request->course->subjects)
+                                                            {{-- เปลี่ยนจาก subject เป็น subjects --}}
                                                             {{ $request->course->subjects->name_en }}
                                                         @endif
                                                     </td>
                                                     <td>
                                                         @switch($request->status)
-                                                            @case('P')
+                                                            @case('W')
                                                                 <span class="badge bg-warning">รอดำเนินการ</span>
                                                             @break
 
@@ -110,7 +130,16 @@
                                                             @break
                                                         @endswitch
                                                     </td>
-                                                    <td>{{ $request->details->sum(function ($detail) {return $detail->students->count();}) }}</td>
+                                                    <td>{{ $request->details->sum(function ($detail) {return $detail->students->count();}) }}
+                                                    </td>
+                                                    <td>
+                                                        @if ($request->status === 'W')
+                                                            <a href="{{ route('teacher.ta-requests.edit', $request->id) }}"
+                                                                class="btn btn-primary px-4 me-2">
+                                                                แก้ไขคำร้อง
+                                                            </a>
+                                                        @endif
+                                                    </td>
                                                     <td>
                                                         <a href="{{ route('teacher.ta-requests.show', $request->id) }}"
                                                             class="btn btn-info btn-sm">
