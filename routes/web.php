@@ -31,15 +31,19 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
 
     Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/home', [TaController::class, 'showAnnounces'])->name('home');
+
+    // Route to display the request form
     Route::get('/request', [TaController::class, 'request'])->name('layout.ta.request');
     Route::put('/requests/{studentId}', [RequestsController::class, 'update'])->name('requests.update');
     Route::delete('/requests/{studentId}', [RequestsController::class, 'destroy'])->name('requests.destroy');
     Route::post('/request', [TaController::class, 'apply'])->name('ta.apply');
-    Route::get('/ta/get-sections/{course_id}', [TaController::class, 'getSections'])->name('ta.getSections');
+
+    // Route to display the request status
     Route::get('/statusrequest', [RequestsController::class, 'showTARequests'])->name('layouts.ta.statusRequest');
 
+    // Route to display the disbursement form
     // Route::get('/disbursements', [TaController::class, 'disbursements'])->name('layout.ta.disbursements');
-    Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layout.ta.disbursements');
+    Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layo ut.ta.disbursements');
     Route::post('/disbursements', [DisbursementsController::class, 'uploads'])->name('layout.ta.disbursements');
     Route::get('/ta/documents/download/{id}', [DisbursementsController::class, 'downloadDocument'])->name('layout.ta.download-document');
 
@@ -48,7 +52,7 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
 
     Route::get('/attendances', [TaController::class, 'attendances'])->name('layout.ta.attendances');
 
-    // Route สำหรับแสดงข้อมูลการสอน
+    // Route to display the teaching data
     Route::get('/teaching/{id?}', action: [TaController::class, 'showTeachingData'])->name('layout.ta.teaching');
 
     // Route to display the attendance form for the selected teaching session
@@ -56,17 +60,17 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     // Route to handle attendance form submission
     Route::post('/attendances/{teaching_id}', [TaController::class, 'submitAttendance'])->name('attendances.submit');
 
+    // Route to display profile page and update profile
     Route::get('/ta/profile', [TaController::class, 'edit'])->name('ta.profile');
     Route::put('/ta/profile/update', [TaController::class, 'update'])->name('ta.profile.update');
-
-    Route::post('/extra-attendance', [TaController::class, 'storeExtraAttendance'])->name('extra-attendance.store');
-
+    
     // For regular attendance
     Route::get('/attendances/{teaching_id}/edit', [TaController::class, 'editAttendance'])->name('attendances.edit');
     Route::put('/attendances/{teaching_id}', [TaController::class, 'updateAttendance'])->name('attendances.update');
     Route::delete('/attendances/{teaching_id}', [TaController::class, 'deleteAttendance'])->name('attendances.delete');
-
+    
     // For extra attendance
+    Route::post('/extra-attendance', [TaController::class, 'storeExtraAttendance'])->name('extra-attendance.store');
     Route::get('/extra-attendance/{id}/edit', [TaController::class, 'editExtraAttendance'])->name('extra-attendance.edit');
     Route::put('/extra-attendance/{id}', [TaController::class, 'updateExtraAttendance'])->name('extra-attendance.update');
     Route::delete('/extra-attendance/{id}', [TaController::class, 'deleteExtraAttendance'])->name('extra-attendance.delete');
@@ -92,7 +96,6 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
 
     Route::get('/ta/export-pdf/{id}', [AdminController::class, 'exportTaDetailPDF'])->name('layout.exports.pdf');
     // Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
-
 });
 
 //Teacher Routes List
