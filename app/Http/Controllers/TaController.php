@@ -17,6 +17,7 @@ use App\Models\Requests;
 use App\Models\CourseTas;
 use App\Models\User;
 use App\Models\Semesters;
+use App\Models\Major;
 use Illuminate\Support\Facades\{Auth, DB, Log};
 use Illuminate\Support\Str;
 use App\Services\TDBMApiService;
@@ -35,53 +36,66 @@ class TaController extends Controller
 
     public function request()
     {
-        // Get current semester
-        $currentSemester = collect($this->tdbmService->getSemesters())
-            // ตรวจสอบว่าวันที่ปัจจุบันอยู่ระหว่าง start_date และ end_date
-            ->filter(function ($semester) {
-                $startDate = \Carbon\Carbon::parse($semester['start_date']);
-                $endDate = \Carbon\Carbon::parse($semester['end_date']);
-                $now = \Carbon\Carbon::now();
-                return $now->between($startDate, $endDate);
-            })->first();
+        try {
+            // Get current semester
+            $currentSemester = collect($this->tdbmService->getSemesters())
+                // ตรวจสอบว่าวันที่ปัจจุบันอยู่ระหว่าง start_date และ end_date
+                ->filter(function ($semester) {
+                    $startDate = \Carbon\Carbon::parse($semester['start_date']);
+                    $endDate = \Carbon\Carbon::parse($semester['end_date']);
+                    $now = \Carbon\Carbon::now();
+                    return $now->between($startDate, $endDate);
+                })->first();
 
-        if (!$currentSemester) { //ตรวจสอบว่ามีเทอมปัจจุบันหรือไม่
-            return redirect()->back()->with('error', 'ขณะนี้ไม่อยู่ในช่วงเวลารับสมัคร TA');
+            if (!$currentSemester) { //ตรวจสอบว่ามีเทอมปัจจุบันหรือไม่
+                return redirect()->back()->with('error', 'ขณะนี้ไม่อยู่ในช่วงเวลารับสมัคร TA');
+            }
+
+            //ดึงข้อมูลที่เกี่ยวข้องกับเทอมปัจจุบัน
+            $subjects = collect($this->tdbmService->getSubjects());
+            $courses = collect($this->tdbmService->getCourses())
+                ->where('semester_id', $currentSemester['semester_id']);
+            $studentClasses = collect($this->tdbmService->getStudentClasses())
+                ->where('semester_id', $currentSemester['semester_id']);
+
+            // ดึงข้อมูล major จากฐานข้อมูล
+            $majors = Major::all();
+
+            // กรองเฉพาะวิชาที่มีการเปิดสอนในเทอมปัจจุบัน
+            $subjectsWithSections = $subjects
+                ->filter(function ($subject) use ($courses) {
+                    return $courses->where('subject_id', $subject['subject_id'])->isNotEmpty();
+                })
+                ->map(function ($subject) use ($courses, $studentClasses, $majors) {
+                    $course = $courses->where('subject_id', $subject['subject_id'])->first();
+                    $sections = $studentClasses->where('course_id', $course['course_id'])
+                        ->map(function ($class) use ($majors) {
+                            $major = $majors->firstWhere('major_id', $class['major_id']);
+                            return [
+                                'section_num' => $class['section_num'],
+                                'major' => $major ? $major['name_th'] : 'ไม่ระบุสาขา'
+                            ];
+                        })
+                        ->unique('section_num')
+                        ->values()
+                        ->toArray();
+
+                    return [
+                        'subject' => [
+                            'subject_id' => $subject['subject_id'],
+                            'subject_name_en' => $subject['name_en'],
+                            'subject_name_th' => $subject['name_th']
+                        ],
+                        'sections' => $sections
+                    ];
+                })->values();
+
+            return view('layouts.ta.request', compact('subjectsWithSections', 'currentSemester'));
+        } catch (\Exception $e) {
+            \Log::error('Error in request method: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล');
         }
-
-        //ดึงข้อมูลที่เกี่ยวข้องกับเทอมปัจจุบัน
-        $subjects = collect($this->tdbmService->getSubjects());
-        $courses = collect($this->tdbmService->getCourses())
-            ->where('semester_id', $currentSemester['semester_id']);
-        $studentClasses = collect($this->tdbmService->getStudentClasses())
-            ->where('semester_id', $currentSemester['semester_id']);
-
-        // กรองเฉพาะวิชาที่มีการเปิดสอนในเทอมปัจจุบัน
-        $subjectsWithSections = $subjects
-            ->filter(function ($subject) use ($courses) {
-                return $courses->where('subject_id', $subject['subject_id'])->isNotEmpty();
-            })
-            ->map(function ($subject) use ($courses, $studentClasses) {
-                $course = $courses->where('subject_id', $subject['subject_id'])->first();
-                $sections = $studentClasses->where('course_id', $course['course_id'])
-                    ->pluck('section_num') //ดึงเฉพาะข้อมูลในคอลัมน์ section_num
-                    ->unique() //กรองข้อมูลที่ซ้ำกันออก เหลือแค่ค่าที่ไม่ซ้ำ
-                    ->values()
-                    ->toArray();
-
-                return [
-                    'subject' => [
-                        'subject_id' => $subject['subject_id'],
-                        'subject_name_en' => $subject['name_en'],
-                        'subject_name_th' => $subject['name_th']
-                    ],
-                    'sections' => $sections
-                ];
-            })->values();
-
-        return view('layouts.ta.request', compact('subjectsWithSections', 'currentSemester'));
     }
-
     public function taSubject()
     {
         return view('layouts.ta.taSubject');
@@ -555,7 +569,7 @@ class TaController extends Controller
                     return (object) [
                         'id' => 'extra_' . $attendance->id,
                         'start_time' => $attendance->start_work,
-                        'end_time' => \Carbon\Carbon::parse($attendance->start_work)    
+                        'end_time' => \Carbon\Carbon::parse($attendance->start_work)
                             ->addMinutes($attendance->duration),
                         'duration' => $attendance->duration,
                         'class_type' => $attendance->class_type,

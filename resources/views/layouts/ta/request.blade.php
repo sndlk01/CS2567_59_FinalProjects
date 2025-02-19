@@ -105,6 +105,8 @@
                                                             Section {{ is_array($section) ? $section['section_num'] : $section }}
                                                             @if(is_array($section) && isset($section['major_name']))
                                                                 - {{ $section['major_name'] }}
+                                                            @elseif(isset($section['major']))
+                                                                - {{ $section['major'] }}
                                                             @endif
                                                         </label>
                                                     </div>
