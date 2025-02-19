@@ -6,7 +6,7 @@
             <div class="col-md-8">
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-4 p-md-5">
-                        <h2 class="text-center mb-4">{{ __('Register') }}</h2>
+                        <h2 class="text-center mb-4">{{ __('สมัครสมาชิก') }}</h2>
 
                         <form method="POST" action="{{ route('register') }}" class="register-form mx-auto">
                             @csrf
@@ -104,7 +104,7 @@
                             <!-- Submit Button -->
                             <div class="text-center mt-4">
                                 <button type="submit" class="btn btn-primary px-4 py-2">
-                                    {{ __('Register') }}
+                                    {{ __('บันทึกข้อมูล') }}
                                 </button>
                             </div>
                         </form>

@@ -64,4 +64,8 @@ class Teachers extends Model
     {
         return $this->hasMany(ExtraTeaching::class);
     }
+    public function teacherRequests()
+    {
+        return $this->hasMany(TeacherRequest::class, 'teacher_id');
+    }
 }

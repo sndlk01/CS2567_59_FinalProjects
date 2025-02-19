@@ -42,6 +42,15 @@
         <div class="collapse navbar-collapse  w-auto " id="sidenav-collapse-main">
             <ul class="navbar-nav">
                 <li class="nav-item">
+                    <a class="nav-link" href="{{ url('/ta-requests') }}">
+                        <div class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
+                            <i class="ni ni-send text-primary text-sm opacity-10"></i>
+                        </div>
+                        <span class="nav-link-text ms-1">ยื่นคำร้องขอผู้ช่วยสอน</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
                     <a class="nav-link " href="{{ url('/teacherreq') }}">
                         <div
                             class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
@@ -54,7 +63,7 @@
                     <a class="nav-link" href="{{ url('/subject') }}">
                         <div
                             class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
-                            <i class="ni ni-calendar-grid-58 text-warning text-sm opacity-10"></i>
+                            <i class="ni ni-calendar-grid-58 text-primary text-sm opacity-10"></i>
                         </div>
                         <span class="nav-link-text ms-1">ข้อมูลรายวิชา</span>
                     </a>
@@ -161,7 +170,13 @@
         </div>
     </main>
 
+
+    {{-- <script>
+        window.availableStudents = @json($availableStudents);
+    </script> --}}
+
     <!--   Core JS Files   -->
+    <script src="{{ asset('js/ta-management.js') }}"></script>
     <script src="/assets/js/core/popper.min.js"></script>
     <script src="/assets/js/core/bootstrap.min.js"></script>
     <script src="/assets/js/plugins/perfect-scrollbar.min.js"></script>

@@ -95,7 +95,16 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
         ->name('layout.ta.download-document');
 
     Route::get('/ta/export-pdf/{id}', [AdminController::class, 'exportTaDetailPDF'])->name('layout.exports.pdf');
+<<<<<<< HEAD
     // Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
+=======
+
+    Route::prefix('admin-ta-requests')->name('admin.ta-requests.')->group(function () {
+        Route::get('/', [AdminController::class, 'taRequests'])->name('index');
+        Route::get('/{id}', [AdminController::class, 'showTARequest'])->name('show');
+        Route::put('/{id}/process', [AdminController::class, 'processTARequest'])->name('process');
+    });
+>>>>>>> teacher-request
 });
 
 //Teacher Routes List
@@ -110,6 +119,82 @@ Route::middleware(['auth', 'user-access:teacher'])->group(function () {
     Route::get('/subject/subjectDetail/taDetail/{student_id}', [TeacherController::class, 'taDetail'])->name('teacher.taDetail');
     Route::post('/teacher/approve-month/{ta_id}', [TeacherController::class, 'approveMonthlyAttendance'])
         ->name('teacher.approve-month');
+
+    Route::prefix('ta-requests')->name('teacher.ta-requests.')->group(function () {
+        // แสดงรายการคำร้องทั้งหมด
+        Route::get('/', [TeacherController::class, 'indexTARequests'])
+            ->name('index');
+
+        // หน้าสร้างคำร้องใหม่
+        Route::get('/create/{course_id}', [TeacherController::class, 'createTARequest'])
+            ->name('create');
+
+        // บันทึกคำร้อง
+        Route::post('/', [TeacherController::class, 'storeTARequest'])
+            ->name('store');
+
+        // แก้ไขคำร้อง
+        Route::get('/{id}/edit', [TeacherController::class, 'edit'])
+            ->name('edit');
+
+        // อัพเดตคำร้อง
+        Route::put('/{id}', [TeacherController::class, 'update'])
+            ->name('update');
+
+        // แสดงรายละเอียดคำร้อง - ต้องอยู่ท้ายสุดเพราะใช้ parameter
+        Route::get('/{request}', [TeacherController::class, 'showTARequest'])
+            ->name('show');
+    });
+    Route::prefix('ta-requests')->name('teacher.ta-requests.')->group(function () {
+        // แสดงรายการคำร้องทั้งหมด
+        Route::get('/', [TeacherController::class, 'indexTARequests'])
+            ->name('index');
+
+        // หน้าสร้างคำร้องใหม่
+        Route::get('/create/{course_id}', [TeacherController::class, 'createTARequest'])
+            ->name('create');
+
+        // บันทึกคำร้อง
+        Route::post('/', [TeacherController::class, 'storeTARequest'])
+            ->name('store');
+
+        // แก้ไขคำร้อง
+        Route::get('/{id}/edit', [TeacherController::class, 'edit'])
+            ->name('edit');
+
+        // อัพเดตคำร้อง
+        Route::put('/{id}', [TeacherController::class, 'update'])
+            ->name('update');
+
+        // แสดงรายละเอียดคำร้อง - ต้องอยู่ท้ายสุดเพราะใช้ parameter
+        Route::get('/{request}', [TeacherController::class, 'showTARequest'])
+            ->name('show');
+    });
+    Route::prefix('ta-requests')->name('teacher.ta-requests.')->group(function () {
+        // แสดงรายการคำร้องทั้งหมด
+        Route::get('/', [TeacherController::class, 'indexTARequests'])
+            ->name('index');
+
+        // หน้าสร้างคำร้องใหม่
+        Route::get('/create/{course_id}', [TeacherController::class, 'createTARequest'])
+            ->name('create');
+
+        // บันทึกคำร้อง
+        Route::post('/', [TeacherController::class, 'storeTARequest'])
+            ->name('store');
+
+        // แก้ไขคำร้อง
+        Route::get('/{id}/edit', [TeacherController::class, 'edit'])
+            ->name('edit');
+
+        // อัพเดตคำร้อง
+        Route::put('/{id}', [TeacherController::class, 'update'])
+            ->name('update');
+
+        // แสดงรายละเอียดคำร้อง - ต้องอยู่ท้ายสุดเพราะใช้ parameter
+        Route::get('/{request}', [TeacherController::class, 'showTARequest'])
+            ->name('show');
+    });
 });
 
 Route::fallback(function () {
