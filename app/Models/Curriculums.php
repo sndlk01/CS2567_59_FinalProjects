@@ -18,10 +18,14 @@ class Curriculums extends Model
     protected $primaryKey = 'cur_id';  // เปลี่ยนจาก id เป็น cur_id
 
     protected $fillable = [
+        'cur_id',
         'name_th',
         'name_en',
         'head_teacher_id',
+        'curr_type'
     ];
+    
+    public $incrementing = false;
 
     /**
      * Get the user that owns the employee.

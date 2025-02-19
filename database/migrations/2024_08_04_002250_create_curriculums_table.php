@@ -15,6 +15,7 @@ return new class extends Migration
             $table->unsignedBigInteger('cur_id')->primary();
             $table->string('name_th')->nullable(); 
             $table->string('name_en')->nullable(); 
+            $table->char('curr_type', 1); 
             $table->foreignId('head_teacher_id')->nullable()->references('teacher_id')->on('teachers')->onDelete('cascade');
             $table->timestamps();
         });

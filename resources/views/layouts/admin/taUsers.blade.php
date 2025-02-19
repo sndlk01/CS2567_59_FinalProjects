@@ -13,10 +13,8 @@
                                     <h5 class="card-title">รายวิชาที่มีผู้ช่วยสอน</h5>
                                 </div>
                                 <div class="col-md-6">
-                                    <input type="text" 
-                                           id="searchInput" 
-                                           class="form-control"
-                                           placeholder="ค้นหารายวิชา, รหัสวิชา, หรือชื่ออาจารย์..." >
+                                    <input type="text" id="searchInput" class="form-control"
+                                        placeholder="ค้นหารายวิชา, รหัสวิชา, หรือชื่ออาจารย์...">
                                 </div>
                             </div>
                             <table class="table" id="taTable">
@@ -67,28 +65,28 @@
     </div>
 
     @push('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Script loaded'); // Debug log
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('Script loaded'); // Debug log
 
-            const searchInput = document.getElementById('searchInput');
-            const tableRows = document.querySelectorAll('.table-row');
+                const searchInput = document.getElementById('searchInput');
+                const tableRows = document.querySelectorAll('.table-row');
 
-            console.log('Found rows:', tableRows.length); // Debug log
+                console.log('Found rows:', tableRows.length); // Debug log
 
-            if (searchInput && tableRows.length > 0) {
-                searchInput.addEventListener('input', function() {
-                    console.log('Search input:', this.value); // Debug log
-                    
-                    const searchTerm = this.value.toLowerCase();
-                    
-                    tableRows.forEach(row => {
-                        const text = row.textContent.toLowerCase();
-                        row.style.display = text.includes(searchTerm) ? '' : 'none';
+                if (searchInput && tableRows.length > 0) {
+                    searchInput.addEventListener('input', function() {
+                        console.log('Search input:', this.value); // Debug log
+
+                        const searchTerm = this.value.toLowerCase();
+
+                        tableRows.forEach(row => {
+                            const text = row.textContent.toLowerCase();
+                            row.style.display = text.includes(searchTerm) ? '' : 'none';
+                        });
                     });
-                });
-            }
-        });
-    </script>
+                }
+            });
+        </script>
     @endpush
 @endsection

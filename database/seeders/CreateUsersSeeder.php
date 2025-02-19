@@ -16,7 +16,6 @@ class CreateUsersSeeder extends Seeder
      */
     public function run(): void
     {
-
         $users = [
             [
                 'prefix' => null,

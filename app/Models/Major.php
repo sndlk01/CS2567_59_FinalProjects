@@ -9,13 +9,15 @@ class Major extends Model
 {
     use HasFactory;
 
-    /**
-
-     *
-     * @var array
-     */
     protected $table = 'major';
+
+    // กำหนด primary key
+    protected $primaryKey = 'major_id';
+
+    // ปิดการใช้งาน auto increment
+    public $incrementing = false;
     protected $fillable = [
+        'major_id',
         'name_th',
         'name_en',
         'major_type',
