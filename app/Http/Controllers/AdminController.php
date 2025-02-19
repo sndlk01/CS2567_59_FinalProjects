@@ -36,27 +36,23 @@ class AdminController extends Controller
     }
 
 
-    /// ADMIN ROLE
 
     public function taUsers()
     {
         $coursesWithTAs = Courses::whereHas('course_tas.courseTaClasses.requests', function ($query) {
-            $query->where('status', 'A')  // เช็คสถานะว่าอนุมัติ
-                ->whereNotNull('approved_at');  // และมีวันที่อนุมัติ
+            $query->where('status', 'A')  
+                ->whereNotNull('approved_at'); 
         })
             ->with([
-                'subjects',  // ข้อมูลวิชา
-                'teachers',  // ข้อมูลอาจารย์
-                'course_tas.student',  // ข้อมูลนักศึกษา TA
+                'subjects',  
+                'teachers',  
+                'course_tas.student',  
                 'course_tas.courseTaClasses.requests' => function ($query) {
                     $query->where('status', 'A')
                         ->whereNotNull('approved_at');
                 }
             ])
             ->get();
-
-        // Debug ข้อมูล
-        Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
 
         return view('layouts.admin.taUsers', compact('coursesWithTAs'));
     }
@@ -86,8 +82,6 @@ class AdminController extends Controller
         try {
             $disbursement = Disbursements::findOrFail($id);
 
-            // ตรวจสอบว่าไฟล์มีอยู่จริง
-            // $filePath = storage_path('public' . $disbursement->file_path);
             if (!Storage::exists('public' . $disbursement->file_path)) {
                 return back()->with('error', 'ไม่พบไฟล์เอกสาร');
             }
@@ -117,7 +111,6 @@ class AdminController extends Controller
                 return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
             }
 
-            // สร้างรายการเดือน
             $monthsInSemester = [];
             if ($start->year === $end->year) {
                 for ($m = $start->month; $m <= $end->month; $m++) {
@@ -143,16 +136,26 @@ class AdminController extends Controller
             $regularHours = 0;
             $specialHours = 0;
 
-            // Get regular attendances
-            if ($attendanceType === 'all' || $attendanceType === 'regular') {
-                $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
+            if ($attendanceType === 'all' || $attendanceType === 'N' || $attendanceType === 'S') {
+                $teachings = Teaching::with([
+                    'attendance',
+                    'teacher',
+                    'class.course.subjects',
+                    'class.major'
+                ])
                     ->where('class_id', 'LIKE', $ta->course_id . '%')
                     ->whereYear('start_time', $selectedDate->year)
                     ->whereMonth('start_time', $selectedDate->month)
                     ->whereHas('attendance', function ($query) {
                         $query->where('approve_status', 'A');
                     })
-                    ->get()->groupBy(function ($teaching) {
+                    ->when($attendanceType !== 'all', function ($query) use ($attendanceType) {
+                        $query->whereHas('class.major', function ($q) use ($attendanceType) {
+                            $q->where('major_type', $attendanceType);
+                        });
+                    })
+                    ->get()
+                    ->groupBy(function ($teaching) {
                         return $teaching->class->section_num;
                     });
 
@@ -174,13 +177,20 @@ class AdminController extends Controller
                 }
             }
 
-            // Get extra attendances
-            if ($attendanceType === 'all' || $attendanceType === 'special') {
-                $extraAttendances = ExtraAttendances::with(['classes.course.subjects'])
+            if ($attendanceType === 'all' || $attendanceType === 'N' || $attendanceType === 'S') {
+                $extraAttendances = ExtraAttendances::with([
+                    'classes.course.subjects',
+                    'classes.major'
+                ])
                     ->where('student_id', $student->id)
                     ->where('approve_status', 'A')
                     ->whereYear('start_work', $selectedDate->year)
                     ->whereMonth('start_work', $selectedDate->month)
+                    ->when($attendanceType !== 'all', function ($query) use ($attendanceType) {
+                        $query->whereHas('classes.major', function ($q) use ($attendanceType) {
+                            $q->where('major_type', $attendanceType);
+                        });
+                    })
                     ->get()
                     ->groupBy('class_id');
 
@@ -209,7 +219,6 @@ class AdminController extends Controller
             $specialPay = $specialHours * $specialPayRate;
             $totalPay = $regularPay + $specialPay;
 
-            // เพิ่มข้อมูลการคำนวณเข้าไปใน view
             $compensation = [
                 'regularHours' => $regularHours,
                 'specialHours' => $specialHours,
@@ -227,7 +236,7 @@ class AdminController extends Controller
                 'monthsInSemester',
                 'selectedYearMonth',
                 'attendanceType',
-                'compensation'  // ส่งข้อมูลการคำนวณไปยัง view
+                'compensation'
             ));
 
         } catch (\Exception $e) {
@@ -259,12 +268,10 @@ class AdminController extends Controller
             $monthText = $selectedDate->locale('th')->monthName . ' ' . ($selectedDate->year + 543);
             $year = $selectedDate->year + 543;
 
-            // ตัวแปรสำหรับเก็บชั่วโมงแยกตามประเภท
             $regularBroadcastHours = 0;  // ชั่วโมงบรรยาย
             $regularLabHours = 0;        // ชั่วโมงปฏิบัติการ
             $allAttendances = collect();
 
-            // Get regular attendances
             if ($attendanceType === 'all' || $attendanceType === 'regular') {
                 $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
                     ->where('class_id', 'LIKE', $ta->course_id . '%')
@@ -285,9 +292,9 @@ class AdminController extends Controller
                         $hours = $endTime->diffInMinutes($startTime) / 60;
 
                         if ($teaching->class_type === 'L') {
-                            $regularLabHours += $hours;  // เพิ่มชั่วโมงปฏิบัติการ
+                            $regularLabHours += $hours;  
                         } else {
-                            $regularBroadcastHours += $hours;  // เพิ่มชั่วโมงบรรยาย
+                            $regularBroadcastHours += $hours;  
                         }
 
                         $allAttendances->push([
@@ -301,12 +308,11 @@ class AdminController extends Controller
                 }
             }
 
-            $regularBroadcastHours = 0;   // ชั่วโมงบรรยายปกติ
-            $regularLabHours = 0;         // ชั่วโมงปฏิบัติการปกติ
-            $specialTeachingHours = 0;    // ชั่วโมงสอนพิเศษ
+            $regularBroadcastHours = 0;   
+            $regularLabHours = 0;         
+            $specialTeachingHours = 0;    
             $allAttendances = collect();
 
-            // Get regular attendances
             if ($attendanceType === 'all' || $attendanceType === 'regular') {
                 $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
                     ->where('class_id', 'LIKE', $ta->course_id . '%')
@@ -343,7 +349,6 @@ class AdminController extends Controller
                 }
             }
 
-            // Get extra/special attendances
             if ($attendanceType === 'all' || $attendanceType === 'special') {
                 $extraAttendances = ExtraAttendances::with(['classes.course.subjects'])
                     ->where('student_id', $student->id)
@@ -356,7 +361,7 @@ class AdminController extends Controller
                 foreach ($extraAttendances as $classId => $extras) {
                     foreach ($extras as $extra) {
                         $hours = $extra->duration / 60;
-                        $specialTeachingHours += $hours;  // นับเป็นชั่วโมงพิเศษทั้งหมด
+                        $specialTeachingHours += $hours; 
 
                         $allAttendances->push([
                             'type' => 'special',
@@ -370,15 +375,14 @@ class AdminController extends Controller
             }
 
             // คำนวณค่าตอบแทน
-            $regularPay = ($regularBroadcastHours + $regularLabHours) * 40;  // ชั่วโมงปกติ 40 บาท/ชั่วโมง
-            $specialPay = $specialTeachingHours * 50;                        // ชั่วโมงพิเศษ 50 บาท/ชั่วโมง
+            $regularPay = ($regularBroadcastHours + $regularLabHours) * 40; 
+            $specialPay = $specialTeachingHours * 50;                       
             $totalPay = $regularPay + $specialPay;
 
             $totalPayText = $this->convertNumberToThaiBaht($totalPay);
 
             $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
 
-            // สร้าง PDF
             $pdf = PDF::loadView('exports.detailPDF', compact(
                 'student',
                 'semester',
@@ -488,9 +492,8 @@ class AdminController extends Controller
     public function taRequests()
     {
         try {
-            // เพิ่ม import Teachers model และใช้งานผ่าน eager loading
             $requests = TeacherRequest::with([
-                'teacher:teacher_id,name,email', // เลือกเฉพาะ fields ที่ต้องการ
+                'teacher:teacher_id,name,email', 
                 'course.subjects',
                 'details.students.courseTa.student'
             ])
@@ -505,60 +508,56 @@ class AdminController extends Controller
     }
 
     public function processTARequest(Request $request, $id)
-{
-    $validated = $request->validate([
-        'status' => 'required|in:A,R',
-        'comment' => 'nullable|string'
-    ]);
-
-    try {
-        DB::beginTransaction();
-
-        $taRequest = TeacherRequest::with(['details.students.courseTa'])
-            ->findOrFail($id);
-        
-        if ($taRequest->status !== 'W') {
-            return back()->with('error', 'คำร้องนี้ได้รับการดำเนินการแล้ว');
-        }
-
-        // Update main request status
-        $taRequest->update([
-            'status' => $validated['status'],
-            'admin_processed_at' => now(),
-            'admin_user_id' => Auth::id(),
-            'admin_comment' => $validated['comment'] ?? null
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:A,R',
+            'comment' => 'nullable|string'
         ]);
 
-        // For each student in the request, update their request status
-        foreach ($taRequest->details as $detail) {
-            foreach ($detail->students as $student) {
-                // หา courseTaClasses ที่มีอยู่แล้ว
-                $courseTaClasses = CourseTaClasses::where('course_ta_id', $student->course_ta_id)->get();
+        try {
+            DB::beginTransaction();
 
-                foreach ($courseTaClasses as $courseTaClass) {
-                    // อัพเดตหรือสร้าง request ใหม่
-                    Requests::updateOrCreate(
-                        [
-                            'course_ta_class_id' => $courseTaClass->id
-                        ],
-                        [
-                            'status' => $validated['status'],
-                            'comment' => $validated['comment'] ?? null,
-                            'approved_at' => now(),
-                        ]
-                    );
+            $taRequest = TeacherRequest::with(['details.students.courseTa'])
+                ->findOrFail($id);
+
+            if ($taRequest->status !== 'W') {
+                return back()->with('error', 'คำร้องนี้ได้รับการดำเนินการแล้ว');
+            }
+
+            $taRequest->update([
+                'status' => $validated['status'],
+                'admin_processed_at' => now(),
+                'admin_user_id' => Auth::id(),
+                'admin_comment' => $validated['comment'] ?? null
+            ]);
+
+            foreach ($taRequest->details as $detail) {
+                foreach ($detail->students as $student) {
+                    $courseTaClasses = CourseTaClasses::where('course_ta_id', $student->course_ta_id)->get();
+
+                    foreach ($courseTaClasses as $courseTaClass) {
+                        Requests::updateOrCreate(
+                            [
+                                'course_ta_class_id' => $courseTaClass->id
+                            ],
+                            [
+                                'status' => $validated['status'],
+                                'comment' => $validated['comment'] ?? null,
+                                'approved_at' => now(),
+                            ]
+                        );
+                    }
                 }
             }
+
+            DB::commit();
+            $statusText = $validated['status'] === 'A' ? 'อนุมัติ' : 'ปฏิเสธ';
+            return back()->with('success', "คำร้องได้รับการ{$statusText}เรียบร้อยแล้ว");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error processing TA request: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดำเนินการ: ' . $e->getMessage());
         }
-
-        DB::commit();
-        $statusText = $validated['status'] === 'A' ? 'อนุมัติ' : 'ปฏิเสธ';
-        return back()->with('success', "คำร้องได้รับการ{$statusText}เรียบร้อยแล้ว");
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Error processing TA request: ' . $e->getMessage());
-        return back()->with('error', 'เกิดข้อผิดพลาดในการดำเนินการ: ' . $e->getMessage());
     }
-}
 }

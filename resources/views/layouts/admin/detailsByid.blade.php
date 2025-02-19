@@ -15,7 +15,24 @@
                             <div class="col-md-6">
                                 <p><strong>รหัสนักศึกษา:</strong> {{ $student->student_id }}</p>
                                 <p><strong>ชื่อ-นามสกุล:</strong> {{ $student->name }}</p>
-                                <p><strong>ระดับการศึกษา:</strong> {{ $student->degree ?? 'ปริญญาตรี' }}</p>
+                                <p><strong>ระดับการศึกษา:</strong>
+                                    @switch($student->degree_level)
+                                        @case('bachelor')
+                                            ปริญญาตรี
+                                        @break
+
+                                        @case('master')
+                                            ปริญญาโท
+                                        @break
+
+                                        @case('doctoral')
+                                            ปริญญาเอก
+                                        @break
+
+                                        @default
+                                            {{ $student->degree_level ?? 'ไม่ระบุ' }}
+                                    @endswitch
+                                </p>
                             </div>
                             <div class="col-md-6">
                                 <p><strong>อีเมล:</strong> {{ $student->email }}</p>
@@ -66,14 +83,14 @@
                             <form method="GET" class="d-flex align-items-center gap-3">
                                 <!-- ตัวเลือกประเภทการลงเวลา -->
                                 <div class="d-flex align-items-center">
-                                    <label for="type" class="me-2">ประเภท:</label>
+                                    <label for="type" class="me-2">ประเภทโครงการ:</label>
                                     <select name="type" id="type" class="form-select" style="width: 150px;">
                                         <option value="all" {{ request('type', 'all') === 'all' ? 'selected' : '' }}>
                                             ทั้งหมด</option>
-                                        <option value="regular" {{ request('type') === 'regular' ? 'selected' : '' }}>ปกติ
-                                        </option>
-                                        <option value="special" {{ request('type') === 'special' ? 'selected' : '' }}>พิเศษ
-                                        </option>
+                                        <option value="N" {{ request('type') === 'N' ? 'selected' : '' }}>
+                                            โครงการปกติ</option>
+                                        <option value="S" {{ request('type') === 'S' ? 'selected' : '' }}>
+                                            โครงการพิเศษ</option>
                                     </select>
                                 </div>
 
@@ -121,9 +138,17 @@
                                                     <tr>
                                                         <td>
                                                             @if ($attendance['type'] === 'regular')
-                                                                <span class="badge bg-primary">ปกติ</span>
+                                                                @if ($attendance['data']->class->major && $attendance['data']->class->major->major_type === 'S')
+                                                                    <span class="badge bg-warning">โครงการพิเศษ</span>
+                                                                @else
+                                                                    <span class="badge bg-primary">โครงการปกติ</span>
+                                                                @endif
                                                             @else
-                                                                <span class="badge bg-info">พิเศษ</span>
+                                                                @if ($attendance['data']->classes->major && $attendance['data']->classes->major->major_type === 'S')
+                                                                    <span class="badge bg-warning">โครงการพิเศษ</span>
+                                                                @else
+                                                                    <span class="badge bg-primary">โครงการปกติ</span>
+                                                                @endif
                                                             @endif
                                                         </td>
                                                         <td>
@@ -199,8 +224,6 @@
                                         </table>
                                     </div>
                                 </div>
-
-
                             </div>
                         @empty
                             <div class="alert alert-info">

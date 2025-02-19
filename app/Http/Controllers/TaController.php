@@ -37,7 +37,6 @@ class TaController extends Controller
     public function request()
     {
         try {
-            // Get current semester
             $currentSemester = collect($this->tdbmService->getSemesters())
                 // ตรวจสอบว่าวันที่ปัจจุบันอยู่ระหว่าง start_date และ end_date
                 ->filter(function ($semester) {
@@ -132,7 +131,6 @@ class TaController extends Controller
         try {
             DB::beginTransaction();
 
-            // 1. Validate request
             $request->validate([
                 'applications' => 'required|array|min:1|max:3',
                 'applications.*.subject_id' => 'required',
@@ -141,13 +139,10 @@ class TaController extends Controller
             ]);
 
             $user = Auth::user();
-
-            // 2. Get API data
             $courses = collect($this->tdbmService->getCourses());
             $studentClasses = collect($this->tdbmService->getStudentClasses());
             $subjects = collect($this->tdbmService->getSubjects());
 
-            // 3. Get current semester
             $currentSemester = collect($this->tdbmService->getSemesters())
                 ->filter(function ($semester) {
                     $startDate = \Carbon\Carbon::parse($semester['start_date']);
@@ -160,7 +155,6 @@ class TaController extends Controller
                 return redirect()->back();
             }
 
-            // 4. Create or update semester
             $localSemester = Semesters::firstOrCreate(
                 [
                     'semester_id' => $currentSemester['semester_id']
@@ -173,7 +167,6 @@ class TaController extends Controller
                 ]
             );
 
-            // 5. Create or update student
             $student = Students::updateOrCreate(
                 ['user_id' => $user->id],
                 [
@@ -189,19 +182,16 @@ class TaController extends Controller
 
             $applications = $request->input('applications');
 
-            // 6. Check course limit
             $currentCourseCount = CourseTas::where('student_id', $student->id)->count();
             if ($currentCourseCount + count($applications) > 3) {
                 Toastr()->warning('คุณไม่สามารถสมัครเป็นผู้ช่วยสอนได้เกิน 3 วิชา', 'คำเตือน!');
                 return redirect()->back();
             }
 
-            // 7. Process each application
             foreach ($applications as $application) {
                 $subjectId = $application['subject_id'];
                 $sectionNums = $application['sections'];
 
-                // Find course from API
                 $course = $courses->where('subject_id', $subjectId)
                     ->where('semester_id', $currentSemester['semester_id'])
                     ->first();
@@ -212,7 +202,6 @@ class TaController extends Controller
                     return redirect()->back();
                 }
 
-                // Get subject data
                 $subjectData = $subjects->where('subject_id', $course['subject_id'])->first();
                 if (!$subjectData) {
                     DB::rollBack();
@@ -220,7 +209,6 @@ class TaController extends Controller
                     return redirect()->back();
                 }
 
-                // Check duplicate
                 $existingTA = CourseTas::where('student_id', $student->id)
                     ->where('course_id', $course['course_id'])
                     ->first();
@@ -231,7 +219,6 @@ class TaController extends Controller
                     return redirect()->back();
                 }
 
-                // Create subject
                 $localSubject = Subjects::firstOrCreate(
                     ['subject_id' => $subjectData['subject_id']],
                     [
@@ -245,13 +232,11 @@ class TaController extends Controller
                     ]
                 );
 
-                // Debug ข้อมูลที่ได้จาก API ก่อนสร้าง course
                 Log::info('Course data from API:', [
                     'course' => $course,
                     'owner_teacher_id' => $course['owner_teacher_id'] ?? null
                 ]);
 
-                // ตรวจสอบว่ามี owner_teacher_id ก่อนสร้าง course
                 if (!isset($course['owner_teacher_id']) || empty($course['owner_teacher_id'])) {
                     Log::error('Missing owner_teacher_id:', [
                         'course_id' => $course['course_id'],
@@ -262,7 +247,6 @@ class TaController extends Controller
                     return redirect()->back();
                 }
 
-                // สร้าง course โดยตรวจสอบข้อมูลที่จำเป็นทั้งหมด
                 $localCourse = Courses::firstOrCreate(
                     ['course_id' => $course['course_id']],
                     [
@@ -275,13 +259,11 @@ class TaController extends Controller
                     ]
                 );
 
-                // Create course TA
                 $courseTA = CourseTas::create([
                     'student_id' => $student->id,
                     'course_id' => $localCourse->course_id,
                 ]);
 
-                // Process sections
                 foreach ($sectionNums as $sectionNum) {
                     $class = $studentClasses->where('course_id', $course['course_id'])
                         ->where('section_num', $sectionNum)
@@ -461,7 +443,6 @@ class TaController extends Controller
                     ];
                 });
 
-            // 3. Get extra attendances
             $extraAttendances = ExtraAttendances::where('class_id', $id)
                 ->get()
                 ->map(function ($attendance) {
@@ -481,7 +462,6 @@ class TaController extends Controller
                     ];
                 });
 
-            // 4. Merge all teaching records
             $allTeachings = $apiTeachings->concat($apiExtraTeachings)->concat($extraAttendances);
 
             if ($allTeachings->isEmpty()) {
@@ -489,11 +469,9 @@ class TaController extends Controller
                 return view('layouts.ta.teaching', ['teachings' => []]);
             }
 
-            // 5. Get related API data
             $apiClasses = collect($this->tdbmService->getStudentClasses());
             $apiTeachers = collect($this->tdbmService->getTeachers());
 
-            // 6. Save regular and extra teachings to local DB
             foreach ($allTeachings as $teaching) {
                 if (!isset($teaching['is_extra_attendance'])) {
                     Teaching::updateOrCreate(
@@ -511,7 +489,6 @@ class TaController extends Controller
                 }
             }
 
-            // 7. Prepare data for view
             $query = Teaching::with(['class', 'teacher', 'attendance'])
                 ->where('class_id', $id);
 
@@ -521,7 +498,6 @@ class TaController extends Controller
 
             $localTeachings = $query->orderBy('start_time', 'asc')->get();
 
-            // 8. Format teaching records for view
             $formattedTeachings = $localTeachings->map(function ($teaching) use ($apiClasses, $apiTeachers) {
                 $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
                 $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
@@ -549,7 +525,6 @@ class TaController extends Controller
                 ];
             });
 
-            // 9. Add extra attendances to formatted records
             $formattedExtraAttendances = ExtraAttendances::where('class_id', $id)
                 ->when($selectedMonth, function ($query) use ($selectedMonth) {
                     return $query->whereMonth('start_work', \Carbon\Carbon::parse("1-{$selectedMonth}-2024")->month);
@@ -558,7 +533,6 @@ class TaController extends Controller
                 ->map(function ($attendance) use ($apiClasses, $apiTeachers) {
                     $class = $apiClasses->firstWhere('class_id', $attendance->class_id);
 
-                    // Get the course associated with this class to find the teacher
                     $course = Courses::where('course_id', $class['course_id'] ?? null)->first();
                     $teacher = null;
 
@@ -590,7 +564,6 @@ class TaController extends Controller
                     ];
                 });
 
-            // 10. Merge and sort all records
             $allRecords = $formattedTeachings->concat($formattedExtraAttendances)
                 ->sortBy('start_time')
                 ->values();
@@ -613,10 +586,8 @@ class TaController extends Controller
     public function showAttendanceForm($teaching_id)
     {
         try {
-            // ดึงข้อมูล teaching จาก local DB
             $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
 
-            // ถ้ามี attendance แล้วให้ redirect กลับ
             if ($teaching->attendance) {
                 return redirect()
                     ->back()
@@ -637,7 +608,6 @@ class TaController extends Controller
         try {
             DB::beginTransaction();
 
-            // Validate request
             $request->validate([
                 'status' => 'required|in:เข้าปฏิบัติการสอน,ลา',
                 'note' => 'required|string|max:255',
@@ -651,7 +621,6 @@ class TaController extends Controller
             $student = Students::where('user_id', $user->id)->firstOrFail();
             $teaching = Teaching::findOrFail($teaching_id);
 
-            // 1. Check if month is already approved
             $selectedDate = \Carbon\Carbon::parse($teaching->start_time);
 
             $isMonthApproved = Attendances::where('student_id', $student->id)
@@ -660,21 +629,18 @@ class TaController extends Controller
                 ->where('approve_status', 'a')
                 ->exists();
 
-            // 2. เพิ่มเงื่อนไขนี้เพื่อไม่ให้ลงเวลาในเดือนที่ถูก approve แล้ว
             if ($isMonthApproved) {
                 return redirect()
                     ->back()
                     ->with('error', 'ไม่สามารถลงเวลาได้เนื่องจากการลงเวลาของเดือนนี้ได้รับการอนุมัติแล้ว');
             }
 
-            // ตรวจสอบว่ามีการลงเวลาไปแล้วหรือไม่
             if ($teaching->attendance) {
                 return redirect()
                     ->back()
                     ->with('error', 'คุณได้ลงเวลาการสอนไปแล้ว');
             }
 
-            // สร้าง attendance record
             Attendances::create([
                 'status' => $request->status,
                 'note' => $request->note,
@@ -689,7 +655,6 @@ class TaController extends Controller
 
             $selectedMonth = $request->input('selected_month');
 
-            // redirect กลับไปยังหน้า teaching พร้อมกับส่งค่าเดือนที่เลือกไว้
             return redirect()
                 ->route('layout.ta.teaching', [
                     'id' => $teaching->class_id,
@@ -706,7 +671,6 @@ class TaController extends Controller
         }
     }
 
-    // Edit Profile
     public function edit()
     {
         $user = Auth::user();
@@ -719,10 +683,8 @@ class TaController extends Controller
         return view('layouts.ta.profile', compact('user', 'student'));
     }
 
-    // Update Profile
     public function update(Request $request)
     {
-        // 1. Validate request
         $request->validate([
             'prefix' => 'nullable|string|max:256',
             'name' => 'required|string|max:1024',
@@ -733,13 +695,10 @@ class TaController extends Controller
             'degree_level' => 'nullable|string|max:256',
         ]);
 
-        // 2. Get current user
         $user = Auth::user();
 
-        // 3. Start transaction
         DB::beginTransaction();
         try {
-            // 4. Update user table
             $userUpdateData = [
                 'prefix' => $request->prefix,
                 'name' => $request->name,
@@ -752,7 +711,6 @@ class TaController extends Controller
 
             User::where('id', $user->id)->update($userUpdateData);
 
-            // 5. If password is provided, update it
             if ($request->filled('password')) {
                 $request->validate([
                     'password' => 'required|min:8|confirmed'
@@ -762,7 +720,6 @@ class TaController extends Controller
                 ]);
             }
 
-            // 6. Always update or create student record for type "user"
             if ($user->type === "user") {  // เปลี่ยนเงื่อนไขจาก type == 0 เป็น type === "user"
                 $studentData = [
                     'prefix' => $request->prefix,
@@ -779,13 +736,10 @@ class TaController extends Controller
                 );
             }
 
-            // 7. Commit transaction
             DB::commit();
 
-            // 8. Redirect with success message
             return redirect()->back()->with('success', 'อัพเดตข้อมูลเรียบร้อยแล้ว');
         } catch (\Exception $e) {
-            // 9. If error occurs, rollback
             DB::rollback();
             return redirect()->back()
                 ->withInput()
@@ -796,7 +750,6 @@ class TaController extends Controller
     public function storeExtraAttendance(Request $request)
     {
         try {
-            // 1. Validate request
             $request->validate([
                 'start_work' => 'required|date',
                 'class_type' => 'required|string|in:L,C',
@@ -813,7 +766,6 @@ class TaController extends Controller
 
             DB::beginTransaction();
 
-            // 2. Check if month is already approved
             $selectedDate = \Carbon\Carbon::parse($request->start_work);
 
             $isMonthApproved = Attendances::where('student_id', $request->student_id)
@@ -829,7 +781,6 @@ class TaController extends Controller
                     ->with('error', 'ไม่สามารถลงเวลาเพิ่มเติมได้เนื่องจากการลงเวลาของเดือนนี้ได้รับการอนุมัติแล้ว');
             }
 
-            // 4. Create extra attendance record
             $extraAttendance = ExtraAttendances::create([
                 'start_work' => $request->start_work,
                 'class_type' => $request->class_type,
@@ -845,7 +796,6 @@ class TaController extends Controller
 
             DB::commit();
 
-            // 5. Redirect back with success message
             return redirect()
                 ->route('layout.ta.teaching', [
                     'id' => $request->class_id,
@@ -885,14 +835,12 @@ class TaController extends Controller
 
             $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
 
-            // Check if attendance is already approved
             if ($teaching->attendance && $teaching->attendance->approve_status === 'a') {
                 return redirect()
                     ->back()
                     ->with('error', 'ไม่สามารถแก้ไขการลงเวลาได้เนื่องจากได้รับการอนุมัติแล้ว');
             }
 
-            // Validate request
             $request->validate([
                 'status' => 'required|in:เข้าปฏิบัติการสอน,ลา',
                 'note' => 'required|string|max:255',
@@ -903,7 +851,6 @@ class TaController extends Controller
                 'note.max' => 'งานที่ปฏิบัติต้องไม่เกิน 255 ตัวอักษร'
             ]);
 
-            // Update attendance
             $teaching->attendance->update([
                 'status' => $request->status,
                 'note' => $request->note,
@@ -933,21 +880,18 @@ class TaController extends Controller
 
             $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
 
-            // Check if attendance is already approved
             if ($teaching->attendance && $teaching->attendance->approve_status === 'a') {
                 return redirect()
                     ->back()
                     ->with('error', 'ไม่สามารถลบการลงเวลาได้เนื่องจากได้รับการอนุมัติแล้ว');
             }
 
-            // Check if attendance exists
             if (!$teaching->attendance) {
                 return redirect()
                     ->back()
                     ->with('error', 'ไม่พบข้อมูลการลงเวลา');
             }
 
-            // Delete attendance
             $teaching->attendance->delete();
 
             DB::commit();

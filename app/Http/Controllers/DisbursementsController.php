@@ -51,7 +51,6 @@ class DisbursementsController extends Controller
 
             $disbursement = Disbursements::firstOrNew(['student_id' => $student->id]);
 
-            // Delete old file if exists
             if ($disbursement->uploadfile && Storage::disk('public')->exists($disbursement->uploadfile)) {
                 Storage::disk('public')->delete($disbursement->uploadfile);
             }
@@ -61,7 +60,6 @@ class DisbursementsController extends Controller
                 $fileName = time() . '_' . $file->getClientOriginalName();
                 $path = $file->storeAs('assets/fileUploads', $fileName, 'public');
                 $disbursement->uploadfile = $path;
-                // $disbursement->original_filename = $file->getClientOriginalName(); // Add this if you have the column
             }
 
             $disbursement->bookbank_id = $request->bookbank_id;

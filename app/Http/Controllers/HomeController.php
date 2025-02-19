@@ -37,8 +37,7 @@ class HomeController extends Controller
      */
     public function adminHome()
     {
-        // $announces = Announce::orderBy('created_at', 'desc')->get();
-        // return view('adminHome', compact('announces'));
+
         
 
         $requests = CourseTas::with([
@@ -48,7 +47,6 @@ class HomeController extends Controller
                 $query->latest();
             }
         ])
-            // ->where('student_id', $student->id)
             ->get()
             ->map(function ($courseTa) {
                 $latestRequest = $courseTa->courseTaClasses->flatMap->requests->sortByDesc('created_at')->first();

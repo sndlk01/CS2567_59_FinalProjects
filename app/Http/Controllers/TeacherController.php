@@ -564,7 +564,6 @@ class TeacherController extends Controller
             $allCourses = collect($tdbmService->getCourses());
             $allSubjects = collect($tdbmService->getSubjects());
 
-            // Get current semester courses with TAs
             $teacherCourses = $allCourses->where('owner_teacher_id', $localTeacher->teacher_id);
 
             $subjectsWithTAs = CourseTas::whereIn('course_id', $teacherCourses->pluck('course_id'))
@@ -678,11 +677,9 @@ class TeacherController extends Controller
             foreach ($courseTaIds as $index => $courseTaId) {
                 $courseTa = CourseTas::findOrFail($courseTaId);
 
-                // Get or create course_ta_classes
                 $courseTaClasses = CourseTaClasses::where('course_ta_id', $courseTaId)->get();
 
                 if ($courseTaClasses->isEmpty()) {
-                    // Create a new class if none exists
                     $courseTaClass = CourseTaClasses::create([
                         'course_ta_id' => $courseTaId,
                         'class_id' => $courseTa->course_id
@@ -691,7 +688,6 @@ class TeacherController extends Controller
                 }
 
                 foreach ($courseTaClasses as $courseTaClass) {
-                    // Create or update request
                     Requests::updateOrCreate(
                         ['course_ta_class_id' => $courseTaClass->id],
                         [

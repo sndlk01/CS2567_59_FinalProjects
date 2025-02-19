@@ -31,7 +31,6 @@ class RequestsController extends Controller
             return redirect()->back()->with('error', 'ไม่พบข้อมูลนักศึกษาสำหรับผู้ใช้นี้');
         }
 
-        // Get current semester
         $currentSemester = collect($this->tdbmService->getSemesters())
             ->filter(function ($semester) {
                 $startDate = \Carbon\Carbon::parse($semester['start_date']);
@@ -39,7 +38,6 @@ class RequestsController extends Controller
                 return now()->between($startDate, $endDate);
             })->first();
 
-        // Get subjects with sections for the current semester
         $subjects = collect($this->tdbmService->getSubjects());
         $courses = collect($this->tdbmService->getCourses())
             ->where('semester_id', $currentSemester['semester_id']);
@@ -68,7 +66,6 @@ class RequestsController extends Controller
                 ];
             })->values();
 
-        // Get requests
         $requests = CourseTas::with([
             'student',
             'course.subjects',
@@ -127,7 +124,6 @@ class RequestsController extends Controller
                 throw new \Exception('ไม่พบข้อมูลภาคการศึกษาปัจจุบัน');
             }
 
-            // Get course from TDBM API
             $tdbmCourse = collect($this->tdbmService->getCourses())
                 ->where('semester_id', $currentSemester['semester_id'])
                 ->where('subject_id', $request->subject_id)
@@ -137,7 +133,6 @@ class RequestsController extends Controller
                 throw new \Exception('ไม่พบข้อมูลรายวิชาที่เลือกใน TDBM');
             }
 
-            // Get subject information from TDBM
             $subjects = collect($this->tdbmService->getSubjects());
             $tdbmSubject = $subjects->where('subject_id', $request->subject_id)->first();
 
@@ -145,17 +140,14 @@ class RequestsController extends Controller
                 throw new \Exception('ไม่พบข้อมูลรายวิชาใน TDBM');
             }
 
-            // Get cur_id from course
             $curId = $tdbmCourse['cur_id'] ?? 1;
 
-            // Ensure subject exists in local database
             $localSubject = DB::table('subjects')
                 ->where('subject_id', $request->subject_id)
                 ->first();
 
             if (!$localSubject) {
                 try {
-                    // Create subject in local database
                     DB::table('subjects')->insert([
                         'subject_id' => $tdbmSubject['subject_id'],
                         'name_th' => $tdbmSubject['name_th'] ?? '',
@@ -176,7 +168,6 @@ class RequestsController extends Controller
                 }
             }
 
-            // Check if course exists locally
             $localCourse = DB::table('courses')
                 ->where('course_id', $tdbmCourse['course_id'])
                 ->first();
@@ -215,12 +206,10 @@ class RequestsController extends Controller
                 }
             }
 
-            // Find existing CourseTa record
             $existingCourseTa = CourseTas::where('student_id', $student->id)
                 ->first();
 
             if ($existingCourseTa) {
-                // Get classes for the new sections
                 $studentClasses = collect($this->tdbmService->getStudentClasses())
                     ->where('course_id', $tdbmCourse['course_id'])
                     ->whereIn('section_num', $request->sections)
@@ -230,24 +219,20 @@ class RequestsController extends Controller
                     throw new \Exception('ไม่พบข้อมูลกลุ่มเรียนที่เลือก');
                 }
 
-                // Delete existing CourseTaClasses and their requests
                 foreach ($existingCourseTa->courseTaClasses as $taClass) {
                     $taClass->requests()->delete();
                 }
                 $existingCourseTa->courseTaClasses()->delete();
 
-                // Update course_id in existing CourseTa
                 $existingCourseTa->course_id = $localCourse->course_id;
                 $existingCourseTa->save();
 
-                // Create new CourseTaClasses and Requests for each section
                 foreach ($studentClasses as $class) {
                     $localClass = DB::table('classes')
                         ->where('class_id', $class['class_id'])
                         ->first();
 
                     if (!$localClass) {
-                        // Get teacher and major information
                         $teacherId = $class['teacher_id'] ?? $tdbmCourse['owner_teacher_id'] ?? 1;
                         $majorId = $class['major_id'] ?? $tdbmCourse['major_id'] ?? null;
 
@@ -268,14 +253,12 @@ class RequestsController extends Controller
                         ]);
                     }
 
-                    // Create new CourseTaClass
                     $taClass = new CourseTaClasses([
                         'class_id' => $class['class_id'],
                         'course_ta_id' => $existingCourseTa->id
                     ]);
                     $taClass->save();
 
-                    // Create new Request
                     $newRequest = new Requests([
                         'course_ta_class_id' => $taClass->id,
                         'status' => 'W',
@@ -311,7 +294,6 @@ class RequestsController extends Controller
         try {
             DB::beginTransaction();
 
-            // หา student id จากตาราง students
             $student = DB::table('students')
                 ->where('student_id', $studentId)
                 ->first();
@@ -320,7 +302,6 @@ class RequestsController extends Controller
                 throw new \Exception('ไม่พบข้อมูลนักศึกษา');
             }
 
-            // หา CourseTa record ของนักศึกษา
             $courseTa = CourseTas::with([
                 'courseTaClasses.requests' => function ($query) {
                     $query->latest();
@@ -333,7 +314,6 @@ class RequestsController extends Controller
                 throw new \Exception('ไม่พบคำร้องที่ต้องการลบ');
             }
 
-            // ตรวจสอบสถานะคำร้องล่าสุด
             $latestRequest = $courseTa->courseTaClasses
                 ->flatMap(function ($taClass) {
                     return $taClass->requests;
@@ -345,15 +325,12 @@ class RequestsController extends Controller
                 throw new \Exception('ไม่สามารถลบคำร้องที่ดำเนินการแล้วได้');
             }
 
-            // ลบ Requests ที่เกี่ยวข้อง
             foreach ($courseTa->courseTaClasses as $taClass) {
                 $taClass->requests()->delete();
             }
 
-            // ลบ CourseTaClasses
             $courseTa->courseTaClasses()->delete();
 
-            // ลบ CourseTa
             $courseTa->delete();
 
             DB::commit();
