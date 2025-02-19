@@ -171,6 +171,7 @@ class TaController extends Controller
                     'email' => $user->email,
                     'card_id' => $user->card_id,
                     'phone' => $user->phone,
+                    'degree_level' => 'bachelor'
                 ]
             );
 
@@ -426,13 +427,11 @@ class TaController extends Controller
             $selectedMonth = $request->query('month');
             DB::beginTransaction();
 
-            // 1. Get regular teachings
             $apiTeachings = collect($this->tdbmService->getTeachings())
                 ->filter(function ($teaching) use ($id) {
                     return $teaching['class_id'] == $id;
                 });
 
-            // 2. Get extra teachings
             $apiExtraTeachings = collect($this->tdbmService->getExtraTeachings())
                 ->filter(function ($teaching) use ($id) {
                     return $teaching['class_id'] == $id;
@@ -792,6 +791,7 @@ class TaController extends Controller
             'phone' => 'nullable|string|max:11',
             'student_id' => 'nullable|string|max:11',
             'email' => 'required|email|unique:users,email,' . Auth::id(),
+            'degree_level' => 'nullable|string|max:256',
         ]);
 
         // 2. Get current user
@@ -808,6 +808,7 @@ class TaController extends Controller
                 'phone' => $request->phone,
                 'student_id' => $request->student_id,
                 'email' => $request->email,
+                'degree_level' => $request->degree_level
             ];
 
             User::where('id', $user->id)->update($userUpdateData);

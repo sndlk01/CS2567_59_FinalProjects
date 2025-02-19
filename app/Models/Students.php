@@ -22,6 +22,7 @@ class Students extends Model
         // 'dis_id',
         'user_id',
         'subject_id',
+        'degree_level',
     ];
 
 

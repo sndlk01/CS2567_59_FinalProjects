@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -19,6 +18,9 @@ return new class extends Migration
             $table->string('card_id', 13);
             $table->string('phone', 11);
             $table->string('email', 1024);
+            $table->enum('degree_level', ['bachelor', 'master', 'doctoral'])
+                ->default('bachelor')
+                ->comment('ระดับปริญญา (ตรี/โท/เอก)');
             $table->unsignedBigInteger('user_id');
             $table->timestamps();
 

@@ -42,6 +42,14 @@
                                     <input type="text" class="form-control" placeholder="เบอร์โทรศัพท์"
                                         value="{{ Auth::user()->phone ?? 'N/A : เบอร์โทรศัพท์' }}" disabled>
                                 </div>
+
+                                <div class="col-md-4">
+                                    <select class="form-select" name="degree_level" disabled>
+                                        <option value="bachelor" {{ Auth::user()->degree_level == 'bachelor' ? 'selected' : '' }}>ปริญญาตรี</option>
+                                        <option value="master" {{ Auth::user()->degree_level == 'master' ? 'selected' : '' }}>ปริญญาโท</option>
+                                        <option value="doctoral" {{ Auth::user()->degree_level == 'doctoral' ? 'selected' : '' }}>ปริญญาเอก</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div class="col-md-6">
