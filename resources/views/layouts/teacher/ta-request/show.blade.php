@@ -107,7 +107,7 @@
                         <div>
                             @switch($request->status)
                                 @case('W')
-                                    <span class="badge bg-warning">รอดำเนินการ</span>
+                                    <span class="badge bg-success">ยื่นคำร้องแล้ว</span>
                                 @break
 
                                 @case('A')

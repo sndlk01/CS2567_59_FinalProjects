@@ -42,8 +42,21 @@ class TeacherController extends Controller
         try {
             $teacher = Auth::user()->teacher;
 
-            // Load courses with their TAs and requests
+            // หาเทอมปัจจุบัน
+            $currentSemester = collect($this->tdbmService->getSemesters())
+                ->filter(function ($semester) {
+                    $startDate = \Carbon\Carbon::parse($semester['start_date']);
+                    $endDate = \Carbon\Carbon::parse($semester['end_date']);
+                    $now = \Carbon\Carbon::now();
+                    return $now->between($startDate, $endDate);
+                })->first();
+
+            if (!$currentSemester) {
+                return back()->with('error', 'ไม่พบข้อมูลภาคการศึกษาปัจจุบัน');
+            }
+
             $courses = Courses::where('owner_teacher_id', $teacher->teacher_id)
+                ->where('semester_id', $currentSemester['semester_id']) // เพิ่มเงื่อนไขเทอมปัจจุบัน
                 ->with([
                     'subjects',
                     'course_tas.student',
@@ -52,20 +65,12 @@ class TeacherController extends Controller
                 ])
                 ->get()
                 ->map(function ($course) {
-                    // Get only approved TAs
                     $approvedTAs = $course->course_tas->filter(function ($ta) {
                         return $ta->courseTaClasses->flatMap->requests
                             ->where('status', 'A')
                             ->isNotEmpty();
                     });
 
-                    // Get pending request
-                    $pendingRequest = $course->teacherRequests
-                        ->where('status', 'W')
-                        ->sortByDesc('created_at')
-                        ->first();
-
-                    // Get latest request
                     $latestRequest = $course->teacherRequests
                         ->sortByDesc('created_at')
                         ->first();
@@ -73,12 +78,12 @@ class TeacherController extends Controller
                     return [
                         'course' => $course,
                         'approved_tas' => $approvedTAs,
-                        'pending_request' => $pendingRequest,
                         'latest_request' => $latestRequest
                     ];
                 });
 
             $requests = TeacherRequest::where('teacher_id', $teacher->teacher_id)
+                ->whereIn('course_id', $courses->pluck('course.course_id')) 
                 ->with([
                     'details.students.courseTa.student',
                     'course.subjects'
