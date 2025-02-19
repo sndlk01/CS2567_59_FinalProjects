@@ -67,7 +67,7 @@
                                                 {{ old('remember') ? 'checked' : '' }}>
                                             <label class="form-check-label text-secondary" for="remember"
                                                 style="font-size: 14px; margin-top: -1rem;">
-                                                {{ __('Remember Me') }}
+                                                {{ __('จดจำรหัสผ่าน') }}
                                             </label>
                                         </div>
                                     </div>
@@ -75,19 +75,19 @@
                                     <div class="col-12">
                                         <div class="d-grid text-center">
                                             <button class="btn  btn-lg" type="submit"
-                                                style="font-size: 16px; border-radius: 1.5rem; background-color:#0676be; color:#ffffff;">{{ __('Login') }}</button>
+                                                style="font-size: 16px; border-radius: 1.5rem; background-color:#0676be; color:#ffffff;">{{ __('เข้าสู่ระบบ') }}</button>
 
                                             @if (Route::has('password.request'))
                                                 <a class="btn btn-link" href="{{ route('password.request') }}"
-                                                    class="link-secondary text-decoration-none">{{ __('Forgot Your Password?') }}</a>
+                                                    class="link-secondary text-decoration-none">{{ __('จำรหัสผ่านไม่ได้?') }}</a>
                                             @endif
 
-                                            <h5 style="border-top: 1px solid #e6e5e5; margin-top: 1rem; padding: 0.5rem;">Or
+                                            <h5 style="border-top: 1px solid #e6e5e5; margin-top: 1rem; padding: 0.5rem;">หรือ
                                             </h5>
 
                                             <a href="{{ route('google-auth') }}" class="btn btn-white btn-lg"
                                                 style="font-size: 16px; border-radius: 1.5rem; background-color:#0676be; color:#ffffff;"><i
-                                                    class="bi bi-google me-2"></i>Log in with google</a>
+                                                    class="bi bi-google me-2"></i>เข้าสู่ระบบโดย Google</a>
                                         </div>
                                     </div>
                                 </div>

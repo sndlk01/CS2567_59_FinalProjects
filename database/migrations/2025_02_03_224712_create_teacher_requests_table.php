@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->id();
             $table->unsignedBigInteger('teacher_id');
             $table->unsignedBigInteger('course_id');
-            $table->enum('status', ['W', 'A', 'R']);            // approve, wait, not approve (rejects)
+            $table->enum('status', ['P', 'A', 'R']); // Pending, Approved, Rejected
             $table->enum('payment_type', ['lecture', 'lab', 'both']);
             $table->text('admin_comment')->nullable();
             $table->timestamp('admin_processed_at')->nullable();

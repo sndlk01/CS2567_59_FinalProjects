@@ -42,7 +42,7 @@ class Courses extends Model
     {
         return $this->belongsTo(Major::class, 'major_id');
     }
-
+    
     public function curriculums()
     {
         return $this->belongsTo(Curriculums::class, 'cur_id');
@@ -54,12 +54,12 @@ class Courses extends Model
         return $this->hasMany(Classes::class, 'course_id');
     }
 
-    public function course_tas()
+    public function course_tas() 
     {
-        return $this->hasMany(CourseTas::class, 'course_id', 'course_id');
+        return $this->hasMany(CourseTas::class , 'course_id', 'course_id');
     }
 
-    public function course_teacher()
+    public function course_teacher() 
     {
         return $this->hasMany(CourseTeacher::class);
     }
@@ -70,7 +70,14 @@ class Courses extends Model
     }
 
     public function teacherRequests()
-    {
-        return $this->hasMany(TeacherRequest::class, 'course_id', 'course_id');
-    }
+{
+    return $this->hasManyThrough(
+        TeacherRequest::class,
+        TeacherRequestsDetail::class,
+        'course_id', // Foreign key on teacher_requests_detail table
+        'id', // Local key on teacher_requests table
+        'course_id', // Local key on courses table
+        'teacher_request_id' // Foreign key on teacher_requests_detail table
+    );
+}
 }
