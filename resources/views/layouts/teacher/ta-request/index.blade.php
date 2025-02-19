@@ -27,62 +27,48 @@
                                         </thead>
                                         <tbody>
                                             @foreach ($courses as $courseData)
-                                                @php
-                                                    $course = $courseData['course'];
-                                                    $pendingRequest = $courseData['pending_request'];
-                                                @endphp
-                                                <tr>
-                                                    <td>{{ $course->subjects->subject_id }}</td>
-                                                    <td>{{ $course->subjects->name_en }}</td>
-                                                    <td>{{ $course->course_tas->count() }}</td>
-                                                    <td>
-                                                        @if ($course->course_tas->isNotEmpty())
-                                                            <ul class="list-unstyled mb-0">
-                                                                @foreach ($course->course_tas as $ta)
-                                                                    <li>{{ $ta->student->name }}
-                                                                    </li>
-                                                                @endforeach
-                                                            </ul>
-                                                        @else
-                                                            <span class="text-muted">-</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @php
-                                                            $latestRequest = $course
-                                                                ->teacherRequests()
-                                                                ->latest()
-                                                                ->first();
-                                                        @endphp
-
-                                                        @if ($latestRequest)
-                                                            @switch($latestRequest->status)
-                                                                @case('W')
-                                                                    <span class="badge bg-warning">รอดำเนินการ</span>
+                                            <tr>
+                                                <td>{{ $courseData['course']->subjects->subject_id }}</td>
+                                                <td>{{ $courseData['course']->subjects->name_en }}</td>
+                                                <td>{{ $courseData['approved_tas']->count() }}</td>
+                                                <td>
+                                                    @if ($courseData['approved_tas']->isNotEmpty())
+                                                        <ul class="list-unstyled mb-0">
+                                                            @foreach ($courseData['approved_tas'] as $ta)
+                                                                <li>{{ $ta->student->name }}</li>
+                                                            @endforeach
+                                                        </ul>
+                                                    @else
+                                                        <span class="text-muted">-</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if ($courseData['latest_request'])
+                                                        @switch($courseData['latest_request']->status)
+                                                            @case('W')
+                                                                <span class="badge bg-warning">รอดำเนินการ</span>
                                                                 @break
-
-                                                                @case('A')
-                                                                    <span class="badge bg-success">อนุมัติแล้ว</span>
+                                                            @case('A')
+                                                                <span class="badge bg-success">อนุมัติแล้ว</span>
                                                                 @break
-
-                                                                @case('R')
-                                                                    <span class="badge bg-danger">ไม่อนุมัติ</span>
+                                                            @case('R')
+                                                                <span class="badge bg-danger">ไม่อนุมัติ</span>
                                                                 @break
-                                                            @endswitch
-                                                        @else
-                                                            <span class="badge bg-secondary">ยังไม่ยื่นคำร้อง</span>
-                                                        @endif
-                                                    </td>
-                                                    <td>
-                                                        @if ((!$latestRequest || $latestRequest->status === 'R') && $latestRequest?->status !== 'A')
-                                                            <a href="{{ route('teacher.ta-requests.create', ['course_id' => $course->course_id]) }}"
-                                                                class="btn btn-primary btn-sm">
-                                                                ยื่นคำร้อง
-                                                            </a>
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            @endforeach
+                                                        @endswitch
+                                                    @else
+                                                        <span class="badge bg-secondary">ยังไม่ยื่นคำร้อง</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    @if ((!$courseData['latest_request'] || $courseData['latest_request']->status === 'R') && $courseData['latest_request']?->status !== 'A')
+                                                        <a href="{{ route('teacher.ta-requests.create', ['course_id' => $courseData['course']->course_id]) }}"
+                                                            class="btn btn-primary btn-sm">
+                                                            ยื่นคำร้อง
+                                                        </a>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
                                         </tbody>
                                     </table>
                                 </div>

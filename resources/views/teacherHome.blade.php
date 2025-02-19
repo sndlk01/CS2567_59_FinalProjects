@@ -24,7 +24,7 @@
                                             <th>รายวิชา</th>
                                             <th>สถานะการสมัคร</th>
                                             <th>วันที่อนุมัติ</th>
-                                            {{-- <th>การดำเนินการ</th> --}}
+                                            <th>การดำเนินการ</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -55,7 +55,7 @@
                                                         N/A
                                                     @endif
                                                 </td>
-                                                {{-- <td>
+                                                <td>
                                                     <input type="hidden" name="course_ta_ids[]"
                                                         value="{{ $courseTa['course_ta_id'] }}">
                                                     <select name="statuses[]" class="form-select mb-2">
@@ -68,12 +68,12 @@
                                                     </select>
                                                     <input type="text" name="comments[]" class="form-control mb-2"
                                                         placeholder="ความคิดเห็น" value="{{ $courseTa['comment'] }}">
-                                                </td> --}}
+                                                </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
                                 </table>
-                                {{-- <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button> --}}
+                                <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
                             </form>
                         @endif
                     </div>
