@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::create('teacher_requests', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('teacher_id');
-            $table->unsignedBigInteger('course_id');
+            $table->string('course_id');
             $table->enum('status', ['W', 'A', 'R']);            // approve, wait, not approve (rejects)
             $table->enum('payment_type', ['lecture', 'lab', 'both']);
             $table->text('admin_comment')->nullable();

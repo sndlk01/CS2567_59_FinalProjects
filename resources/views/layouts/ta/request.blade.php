@@ -45,14 +45,19 @@
 
                                 <div class="col-md-4">
                                     <select class="form-select" name="degree_level">
-                                        <option value="bachelor" {{ Auth::user()->degree_level == 'bachelor' ? 'selected' : '' }}>ปริญญาตรี</option>
-                                        <option value="master" {{ Auth::user()->degree_level == 'master' ? 'selected' : '' }}>ปริญญาโท</option>
-                                        <option value="doctoral" {{ Auth::user()->degree_level == 'doctoral' ? 'selected' : '' }}>ปริญญาเอก</option>
+                                        <option value="bachelor"
+                                            {{ Auth::user()->degree_level == 'bachelor' ? 'selected' : '' }}>ปริญญาตรี
+                                        </option>
+                                        <option value="master"
+                                            {{ Auth::user()->degree_level == 'master' ? 'selected' : '' }}>ปริญญาโท</option>
+                                        <option value="doctoral"
+                                            {{ Auth::user()->degree_level == 'doctoral' ? 'selected' : '' }}>ปริญญาเอก
+                                        </option>
                                     </select>
                                 </div>
                             </div>
 
-                            <div class="col-md-6">
+                            {{-- <div class="col-md-6">
                                 <strong>ภาคการศึกษาปัจจุบัน:</strong>
                                 {{ $currentSemester['semester'] }}/{{ $currentSemester['year'] }}
                             </div>
@@ -66,9 +71,17 @@
                             <div class="mb-3">
                                 <label>วิชาที่คุณเลือก:</label>
                                 <p id="selectedSubjects" class="border rounded p-2">ยังไม่ได้เลือกวิชา</p>
-                            </div>
+                            </div> --}}
 
-                            
+                            <div class="col-md-6">
+                                <strong>ภาคการศึกษาปัจจุบัน:</strong>
+                                {{ $currentSemester->semesters }}/{{ $currentSemester->year }}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>ระยะเวลาของภาคการศึกษา:</strong>
+                                {{ \Carbon\Carbon::parse($currentSemester->start_date)->format('d/m/Y') }} -
+                                {{ \Carbon\Carbon::parse($currentSemester->end_date)->format('d/m/Y') }}
+                            </div>
 
                             <!-- ส่วนของการเลือกวิชา -->
                             <div class="mb-3">
@@ -77,7 +90,7 @@
                                     placeholder="ค้นหารายวิชา...">
                                 <div class="subject-container"
                                     style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-                                    @foreach ($subjectsWithSections as $index => $item)
+                                    {{-- @foreach ($subjectsWithSections as $index => $item)
                                         <div class="subject-item mb-3">
                                             <div class="form-check">
                                                 <input class="form-check-input subject-checkbox" type="checkbox"
@@ -102,10 +115,43 @@
                                                             id="section-{{ $item['subject']['subject_id'] }}-{{ is_array($section) ? $section['section_num'] : $section }}">
                                                         <label class="form-check-label"
                                                             for="section-{{ $item['subject']['subject_id'] }}-{{ is_array($section) ? $section['section_num'] : $section }}">
-                                                            Section {{ is_array($section) ? $section['section_num'] : $section }}
-                                                            @if(is_array($section) && isset($section['major_name']))
+                                                            Section
+                                                            {{ is_array($section) ? $section['section_num'] : $section }}
+                                                            @if (is_array($section) && isset($section['major_name']))
                                                                 - {{ $section['major_name'] }}
                                                             @endif
+                                                        </label>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endforeach --}}
+                                    @foreach ($subjectsWithSections as $index => $item)
+                                        <div class="subject-item mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input subject-checkbox" type="checkbox"
+                                                    name="applications[{{ $index }}][subject_id]"
+                                                    value="{{ $item['subject']['subject_id'] }}"
+                                                    id="subject{{ $item['subject']['subject_id'] }}">
+                                                <label class="form-check-label"
+                                                    for="subject{{ $item['subject']['subject_id'] }}">
+                                                    {{ $item['subject']['subject_id'] }}
+                                                    {{ $item['subject']['subject_name_th'] }}
+                                                    <br>
+                                                    <small
+                                                        class="text-muted">{{ $item['subject']['subject_name_en'] }}</small>
+                                                </label>
+                                            </div>
+                                            <div class="sections-container ml-4 mt-2" style="display: none;">
+                                                @foreach ($item['sections'] as $section)
+                                                    <div class="form-check">
+                                                        <input class="form-check-input section-checkbox" type="checkbox"
+                                                            name="applications[{{ $index }}][sections][]"
+                                                            value="{{ $section }}"
+                                                            id="section-{{ $item['subject']['subject_id'] }}-{{ $section }}">
+                                                        <label class="form-check-label"
+                                                            for="section-{{ $item['subject']['subject_id'] }}-{{ $section }}">
+                                                            Section {{ $section }}
                                                         </label>
                                                     </div>
                                                 @endforeach

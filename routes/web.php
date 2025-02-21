@@ -15,21 +15,21 @@ use Illuminate\Support\Facades\Route;
 
 Auth::routes();
 
-Route::get('/', [HomeController::class, 'index'])->name('home');
+// Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/', [TaController::class, 'showAnnounces'])->name('home');
 
 // login with google
 Route::get('/auth/google/', [GoogleAuthController::class, 'redirect'])->name('google-auth');
 Route::get('/auth/google/call-back', [GoogleAuthController::class, 'callbackGoogle']);
 
-// update profile
+// Route to display the input form for the account
 Route::get('/complete-profile', [ProfileController::class, 'showCompleteProfileForm'])->name('complete.profile');
 Route::post('/complete-profile', [ProfileController::class, 'saveCompleteProfile'])->name('save.profile');
 
 //Ta Routes List
 Route::middleware(['auth', 'user-access:user'])->group(function () {
 
-    Route::get('/home', [HomeController::class, 'index'])->name('home');
+    // Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/home', [TaController::class, 'showAnnounces'])->name('home');
 
     // Route to display the request form
@@ -60,7 +60,7 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     // Route to handle attendance form submission
     Route::post('/attendances/{teaching_id}', [TaController::class, 'submitAttendance'])->name('attendances.submit');
 
-    // Route to display profile page and update profile
+    // Route to display profile page edit and update profile
     Route::get('/ta/profile', [TaController::class, 'edit'])->name('ta.profile');
     Route::put('/ta/profile/update', [TaController::class, 'update'])->name('ta.profile.update');
     
@@ -79,7 +79,7 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
 //Admin Routes List
 Route::middleware(['auth', 'user-access:admin'])->group(function () {
 
-    Route::get('/admin', [HomeController::class, 'adminHome'])->name('admin.home');
+    Route::get('/admin', [AdminController::class, 'adminHome'])->name('admin.home');
     // Route::get('/admin', [RequestsController::class, 'showCourseTas'])->name('admin.home');
     // Route::get('/statusrequest', [RequestsController::class, 'showCourseTas'])->name('layout.ta.statusRequest');
 
@@ -88,7 +88,6 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
     Route::get('/admin/tausers', [AdminController::class, 'taUsers'])->name('layout.admin.taUsers');
     Route::get('/admin/detailsta', [AdminController::class, 'detailsTa'])->name('layout.admin.detailsTa');
     Route::get('/admin/detailsta/id', [AdminController::class, 'detailsByid'])->name('layout.admin.detailsByid');
-    Route::get('/fetchdata', [ApiController::class, 'fetchData']);
     Route::get('/admin/detailsta/{course_id}', [AdminController::class, 'showTaDetails'])->name('layout.admin.detailsTa');
     Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
     Route::get('/layout/ta/download-document/{id}', [AdminController::class, 'downloadDocument'])
@@ -106,7 +105,7 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
 //Teacher Routes List
 Route::middleware(['auth', 'user-access:teacher'])->group(function () {
 
-    Route::get('/teacherreq', [HomeController::class, 'teacherHome'])->name('teacher.home');
+    // Route::get('/teacherreq', [HomeController::class, 'teacherHome'])->name('teacher.home');
     Route::get('/teacherreq', [TeacherController::class, 'showTARequests'])->name('teacher.home');
     Route::post('/teacherreq', [TeacherController::class, 'updateTARequestStatus'])->name('teacher.home');
     Route::get('/subject', [TeacherController::class, 'subjectTeacher'])->name('layout.teacher.subject');

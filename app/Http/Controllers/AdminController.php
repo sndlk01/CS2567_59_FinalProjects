@@ -1,24 +1,24 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Models\Announce;
-use App\Models\Courses;
-use App\Models\Students;
-use App\Models\CourseTas;
-use App\Models\Disbursements;
-use App\Models\Teaching;
-use App\Models\Classes;
-use App\Models\ExtraAttendances;
-use App\Models\TeacherRequest;
-use App\Models\TeacherRequestsDetail;
-use App\Models\TeacherRequestStudent;
-use App\Models\CourseTaClasses;
+
+use App\Models\{
+    Announce,
+    Classes,
+    Courses,
+    CourseTas,
+    CourseTaClasses,
+    Disbursements,
+    ExtraAttendances,
+    Requests,
+    Students,
+    Teaching,
+    TeacherRequest,
+    TeacherRequestsDetail
+};
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use App\Models\Requests;
+use Illuminate\Support\Facades\{Auth, DB, Log, Storage};
+
 
 
 use Illuminate\Http\Request;
@@ -37,6 +37,34 @@ class AdminController extends Controller
 
 
     /// ADMIN ROLE
+
+    public function adminHome()
+    {
+
+        $requests = CourseTas::with([
+            'student',
+            'course.subjects',
+            'courseTaClasses.requests' => function ($query) {
+                $query->latest();
+            }
+        ])
+            // ->where('student_id', $student->id)
+            ->get()
+            ->map(function ($courseTa) {
+                $latestRequest = $courseTa->courseTaClasses->flatMap->requests->sortByDesc('created_at')->first();
+
+                return [
+                    'student_id' => $courseTa->student->student_id,
+                    'full_name' => $courseTa->student->name,
+                    'course' => $courseTa->course->subjects->subject_id . ' ' . $courseTa->course->subjects->name_en,
+                    'applied_at' => $courseTa->created_at,
+                    'status' => $latestRequest ? $latestRequest->status : null,
+                    'approved_at' => $latestRequest ? $latestRequest->approved_at : null,
+                    'comment' => $latestRequest ? $latestRequest->comment : null,
+                ];
+            });
+        return view('layouts.admin.adminHome', compact('requests'));
+    }
 
     public function taUsers()
     {
@@ -92,7 +120,7 @@ class AdminController extends Controller
                 return back()->with('error', 'ไม่พบไฟล์เอกสาร');
             }
 
-            return Storage::disk('public')->download($disbursement->uploadfile);
+            return response()->download(storage_path('app/public' . $disbursement->file_path));
         } catch (\Exception $e) {
             Log::error('Document download error: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร');
@@ -229,7 +257,6 @@ class AdminController extends Controller
                 'attendanceType',
                 'compensation'  // ส่งข้อมูลการคำนวณไปยัง view
             ));
-
         } catch (\Exception $e) {
             Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
@@ -399,7 +426,6 @@ class AdminController extends Controller
             $fileName = 'TA-Compensation-' . $student->student_id . '-' . $selectedYearMonth . '.pdf';
 
             return $pdf->download($fileName);
-
         } catch (\Exception $e) {
             Log::error('PDF Export Error: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการสร้าง PDF: ' . $e->getMessage());
@@ -505,60 +531,59 @@ class AdminController extends Controller
     }
 
     public function processTARequest(Request $request, $id)
-{
-    $validated = $request->validate([
-        'status' => 'required|in:A,R',
-        'comment' => 'nullable|string'
-    ]);
-
-    try {
-        DB::beginTransaction();
-
-        $taRequest = TeacherRequest::with(['details.students.courseTa'])
-            ->findOrFail($id);
-        
-        if ($taRequest->status !== 'W') {
-            return back()->with('error', 'คำร้องนี้ได้รับการดำเนินการแล้ว');
-        }
-
-        // Update main request status
-        $taRequest->update([
-            'status' => $validated['status'],
-            'admin_processed_at' => now(),
-            'admin_user_id' => Auth::id(),
-            'admin_comment' => $validated['comment'] ?? null
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:A,R',
+            'comment' => 'nullable|string'
         ]);
 
-        // For each student in the request, update their request status
-        foreach ($taRequest->details as $detail) {
-            foreach ($detail->students as $student) {
-                // หา courseTaClasses ที่มีอยู่แล้ว
-                $courseTaClasses = CourseTaClasses::where('course_ta_id', $student->course_ta_id)->get();
+        try {
+            DB::beginTransaction();
 
-                foreach ($courseTaClasses as $courseTaClass) {
-                    // อัพเดตหรือสร้าง request ใหม่
-                    Requests::updateOrCreate(
-                        [
-                            'course_ta_class_id' => $courseTaClass->id
-                        ],
-                        [
-                            'status' => $validated['status'],
-                            'comment' => $validated['comment'] ?? null,
-                            'approved_at' => now(),
-                        ]
-                    );
+            $taRequest = TeacherRequest::with(['details.students.courseTa'])
+                ->findOrFail($id);
+
+            if ($taRequest->status !== 'W') {
+                return back()->with('error', 'คำร้องนี้ได้รับการดำเนินการแล้ว');
+            }
+
+            // Update main request status
+            $taRequest->update([
+                'status' => $validated['status'],
+                'admin_processed_at' => now(),
+                'admin_user_id' => Auth::id(),
+                'admin_comment' => $validated['comment'] ?? null
+            ]);
+
+            // For each student in the request, update their request status
+            foreach ($taRequest->details as $detail) {
+                foreach ($detail->students as $student) {
+                    // หา courseTaClasses ที่มีอยู่แล้ว
+                    $courseTaClasses = CourseTaClasses::where('course_ta_id', $student->course_ta_id)->get();
+
+                    foreach ($courseTaClasses as $courseTaClass) {
+                        // อัพเดตหรือสร้าง request ใหม่
+                        Requests::updateOrCreate(
+                            [
+                                'course_ta_class_id' => $courseTaClass->id
+                            ],
+                            [
+                                'status' => $validated['status'],
+                                'comment' => $validated['comment'] ?? null,
+                                'approved_at' => now(),
+                            ]
+                        );
+                    }
                 }
             }
+
+            DB::commit();
+            $statusText = $validated['status'] === 'A' ? 'อนุมัติ' : 'ปฏิเสธ';
+            return back()->with('success', "คำร้องได้รับการ{$statusText}เรียบร้อยแล้ว");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error processing TA request: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดำเนินการ: ' . $e->getMessage());
         }
-
-        DB::commit();
-        $statusText = $validated['status'] === 'A' ? 'อนุมัติ' : 'ปฏิเสธ';
-        return back()->with('success', "คำร้องได้รับการ{$statusText}เรียบร้อยแล้ว");
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Error processing TA request: ' . $e->getMessage());
-        return back()->with('error', 'เกิดข้อผิดพลาดในการดำเนินการ: ' . $e->getMessage());
     }
-}
 }
