@@ -91,7 +91,7 @@ class TaController extends Controller
 
             return view('layouts.ta.request', compact('subjectsWithSections', 'currentSemester'));
         } catch (\Exception $e) {
-            \Log::error('Error in request method: ' . $e->getMessage());
+            Log::error('Error in request method: ' . $e->getMessage());
             return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล');
         }
     }
