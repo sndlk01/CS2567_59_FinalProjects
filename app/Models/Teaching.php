@@ -58,4 +58,9 @@ class Teaching extends Model
     {
         return $this->hasMany(ExtraTeaching::class);
     }
+
+    public function getAttendanceForUser($userId)
+    {
+        return $this->attendances()->where('user_id', $userId)->first();
+    }
 }

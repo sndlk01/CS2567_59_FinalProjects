@@ -419,77 +419,13 @@ class TaController extends Controller
             }
 
             $selectedMonth = $request->query('month');
+            $user = Auth::user();
+            $student = Students::where('user_id', $user->id)->first();
+
             DB::beginTransaction();
 
-            $apiTeachings = collect($this->tdbmService->getTeachings())
-                ->filter(function ($teaching) use ($id) {
-                    return $teaching['class_id'] == $id;
-                });
-
-            $apiExtraTeachings = collect($this->tdbmService->getExtraTeachings())
-                ->filter(function ($teaching) use ($id) {
-                    return $teaching['class_id'] == $id;
-                })
-                ->map(function ($teaching) {
-                    return [
-                        'teaching_id' => $teaching['teaching_id'],
-                        'start_time' => $teaching['class_date'] . ' ' . $teaching['start_time'],
-                        'end_time' => $teaching['class_date'] . ' ' . $teaching['end_time'],
-                        'duration' => $teaching['duration'],
-                        'class_type' => 'E', // E for Extra
-                        'status' => $teaching['status'],
-                        'class_id' => $teaching['class_id'],
-                        'teacher_id' => $teaching['teacher_id']
-                    ];
-                });
-
-            $extraAttendances = ExtraAttendances::where('class_id', $id)
-                ->get()
-                ->map(function ($attendance) {
-                    return [
-                        'teaching_id' => 'extra_' . $attendance->id, // Unique identifier
-                        'start_time' => $attendance->start_work,
-                        'end_time' => \Carbon\Carbon::parse($attendance->start_work)
-                            ->addMinutes($attendance->duration)
-                            ->format('Y-m-d H:i:s'),
-                        'duration' => $attendance->duration,
-                        'class_type' => $attendance->class_type,
-                        'status' => 'A', // Assuming approved
-                        'class_id' => $attendance->class_id,
-                        'teacher_id' => null, // No teacher for extra attendance
-                        'is_extra_attendance' => true,
-                        'detail' => $attendance->detail
-                    ];
-                });
-
-            $allTeachings = $apiTeachings->concat($apiExtraTeachings)->concat($extraAttendances);
-
-            if ($allTeachings->isEmpty()) {
-                session()->flash('info', 'ยังไม่มีข้อมูลการสอนสำหรับรายวิชานี้');
-                return view('layouts.ta.teaching', ['teachings' => []]);
-            }
-
-            $apiClasses = collect($this->tdbmService->getStudentClasses());
-            $apiTeachers = collect($this->tdbmService->getTeachers());
-
-            foreach ($allTeachings as $teaching) {
-                if (!isset($teaching['is_extra_attendance'])) {
-                    Teaching::updateOrCreate(
-                        ['teaching_id' => $teaching['teaching_id']],
-                        [
-                            'start_time' => $teaching['start_time'],
-                            'end_time' => $teaching['end_time'],
-                            'duration' => $teaching['duration'],
-                            'class_type' => $teaching['class_type'] ?? 'N',
-                            'status' => $teaching['status'] ?? 'W',
-                            'class_id' => $teaching['class_id'],
-                            'teacher_id' => $teaching['teacher_id']
-                        ]
-                    );
-                }
-            }
-
-            $query = Teaching::with(['class', 'teacher', 'attendance'])
+            // ดึงข้อมูลการสอนจากฐานข้อมูลโดยตรงแทนการดึงจาก API
+            $query = Teaching::with(['class', 'teacher'])
                 ->where('class_id', $id);
 
             if ($selectedMonth) {
@@ -498,9 +434,36 @@ class TaController extends Controller
 
             $localTeachings = $query->orderBy('start_time', 'asc')->get();
 
-            $formattedTeachings = $localTeachings->map(function ($teaching) use ($apiClasses, $apiTeachers) {
-                $class = $apiClasses->firstWhere('class_id', $teaching->class_id);
-                $teacher = $apiTeachers->firstWhere('teacher_id', $teaching->teacher_id);
+            // ดึงข้อมูลการลงเวลาของผู้ใช้ปัจจุบัน
+            $userAttendances = Attendances::where('student_id', $student->id)
+                ->whereIn('teaching_id', $localTeachings->pluck('teaching_id'))
+                ->get()
+                ->keyBy('teaching_id');
+
+            // ตรวจสอบว่ามีข้อมูลการสอนหรือไม่
+            if ($localTeachings->isEmpty()) {
+                $extraAttendances = ExtraAttendances::where('class_id', $id)
+                    ->when($selectedMonth, function ($query) use ($selectedMonth) {
+                        return $query->whereMonth('start_work', \Carbon\Carbon::parse("1-{$selectedMonth}-2024")->month);
+                    })
+                    ->get();
+
+                if ($extraAttendances->isEmpty()) {
+                    session()->flash('info', 'ยังไม่มีข้อมูลการสอนสำหรับรายวิชานี้');
+                    return view('layouts.ta.teaching', [
+                        'teachings' => [],
+                        'selectedMonth' => $selectedMonth
+                    ]);
+                }
+            }
+
+            $formattedTeachings = $localTeachings->map(function ($teaching) use ($userAttendances) {
+                // ดึงข้อมูลคลาสและอาจารย์จากฐานข้อมูลโดยตรง
+                $class = $teaching->class;
+                $teacher = $teaching->teacher;
+
+                // ดึงข้อมูลการลงเวลาเฉพาะของผู้ใช้ปัจจุบัน
+                $userAttendance = $userAttendances->get($teaching->teaching_id);
 
                 return (object) [
                     'id' => $teaching->teaching_id,
@@ -509,60 +472,70 @@ class TaController extends Controller
                     'duration' => $teaching->duration,
                     'class_type' => $teaching->class_type,
                     'class_id' => (object) [
-                        'title' => $class['title'] ?? 'N/A',
+                        'title' => $class ? $class->title : 'N/A',
                     ],
                     'teacher_id' => (object) [
-                        'position' => $teacher['position'] ?? '',
-                        'degree' => $teacher['degree'] ?? '',
-                        'name' => $teacher['name'] ?? 'N/A',
+                        'position' => $teacher ? $teacher->position : '',
+                        'degree' => $teacher ? $teacher->degree : '',
+                        'name' => $teacher ? $teacher->name : 'N/A',
                     ],
-                    'attendance' => $teaching->attendance ? (object) [
-                        'status' => $teaching->attendance->status,
-                        'note' => $teaching->attendance->note ?? '',
-                        'approve_status' => $teaching->attendance->approve_status ?? null // เพิ่มบรรทัดนี้
+                    'attendance' => $userAttendance ? (object) [
+                        'status' => $userAttendance->status,
+                        'note' => $userAttendance->note ?? '',
+                        'approve_status' => $userAttendance->approve_status ?? null
                     ] : null,
-                    'is_extra_attendance' => false
+                    'is_extra_attendance' => false,
+                    'has_user_attendance' => $userAttendance ? true : false
                 ];
             });
 
-            $formattedExtraAttendances = ExtraAttendances::where('class_id', $id)
+            // สำหรับ extra attendances ดึงข้อมูลจากฐานข้อมูลโดยตรง
+            $userExtraAttendances = ExtraAttendances::where('class_id', $id)
+                ->where('student_id', $student->id)
                 ->when($selectedMonth, function ($query) use ($selectedMonth) {
                     return $query->whereMonth('start_work', \Carbon\Carbon::parse("1-{$selectedMonth}-2024")->month);
                 })
-                ->get()
-                ->map(function ($attendance) use ($apiClasses, $apiTeachers) {
-                    $class = $apiClasses->firstWhere('class_id', $attendance->class_id);
+                ->get();
 
-                    $course = Courses::where('course_id', $class['course_id'] ?? null)->first();
-                    $teacher = null;
+            $formattedExtraAttendances = $userExtraAttendances->map(function ($attendance) {
+                // ดึงข้อมูลคลาส
+                $class = Classes::find($attendance->class_id);
 
+                // ดึงข้อมูลคอร์สและอาจารย์
+                $course = null;
+                $teacher = null;
+
+                if ($class) {
+                    $course = Courses::find($class->course_id);
                     if ($course) {
-                        $teacher = $apiTeachers->firstWhere('teacher_id', $course->owner_teacher_id);
+                        $teacher = Teachers::find($course->owner_teacher_id);
                     }
+                }
 
-                    return (object) [
-                        'id' => 'extra_' . $attendance->id,
-                        'start_time' => $attendance->start_work,
-                        'end_time' => \Carbon\Carbon::parse($attendance->start_work)
-                            ->addMinutes($attendance->duration),
-                        'duration' => $attendance->duration,
-                        'class_type' => $attendance->class_type,
-                        'class_id' => (object) [
-                            'title' => $class['title'] ?? 'N/A',
-                        ],
-                        'teacher_id' => (object) [
-                            'position' => $teacher['position'] ?? '',
-                            'degree' => $teacher['degree'] ?? '',
-                            'name' => $teacher['name'] ?? 'N/A'
-                        ],
-                        'attendance' => (object) [
-                            'status' => 'เข้าปฏิบัติการสอน',
-                            'note' => $attendance->detail,
-                            'approve_status' => $attendance->approve_status ?? null // เพิ่มบรรทัดนี้
-                        ],
-                        'is_extra_attendance' => true
-                    ];
-                });
+                return (object) [
+                    'id' => 'extra_' . $attendance->id,
+                    'start_time' => $attendance->start_work,
+                    'end_time' => \Carbon\Carbon::parse($attendance->start_work)
+                        ->addMinutes($attendance->duration),
+                    'duration' => $attendance->duration,
+                    'class_type' => $attendance->class_type,
+                    'class_id' => (object) [
+                        'title' => $class ? $class->title : 'N/A',
+                    ],
+                    'teacher_id' => (object) [
+                        'position' => $teacher ? $teacher->position : '',
+                        'degree' => $teacher ? $teacher->degree : '',
+                        'name' => $teacher ? $teacher->name : 'N/A'
+                    ],
+                    'attendance' => (object) [
+                        'status' => 'เข้าปฏิบัติการสอน',
+                        'note' => $attendance->detail,
+                        'approve_status' => $attendance->approve_status ?? null
+                    ],
+                    'is_extra_attendance' => true,
+                    'has_user_attendance' => true
+                ];
+            });
 
             $allRecords = $formattedTeachings->concat($formattedExtraAttendances)
                 ->sortBy('start_time')
@@ -586,9 +559,15 @@ class TaController extends Controller
     public function showAttendanceForm($teaching_id)
     {
         try {
-            $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
+            $teaching = Teaching::findOrFail($teaching_id);
+            $user = Auth::user();
 
-            if ($teaching->attendance) {
+            // ตรวจสอบว่ามีการลงเวลาแล้วหรือไม่
+            $existingAttendance = Attendances::where('teaching_id', $teaching_id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($existingAttendance) {
                 return redirect()
                     ->back()
                     ->with('error', 'คุณได้ลงเวลาการสอนไปแล้ว');
@@ -635,7 +614,12 @@ class TaController extends Controller
                     ->with('error', 'ไม่สามารถลงเวลาได้เนื่องจากการลงเวลาของเดือนนี้ได้รับการอนุมัติแล้ว');
             }
 
-            if ($teaching->attendance) {
+            // ตรวจสอบว่าผู้ใช้ได้ลงเวลาแล้วหรือยัง
+            $existingAttendance = Attendances::where('teaching_id', $teaching_id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($existingAttendance) {
                 return redirect()
                     ->back()
                     ->with('error', 'คุณได้ลงเวลาการสอนไปแล้ว');
@@ -815,13 +799,18 @@ class TaController extends Controller
     public function editAttendance($teaching_id)
     {
         try {
-            $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
+            $user = Auth::user();
+            $attendance = Attendances::where('teaching_id', $teaching_id)
+                ->where('user_id', $user->id)
+                ->first();
 
-            if (!$teaching->attendance) {
-                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลา');
+            if (!$attendance) {
+                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลาของคุณ');
             }
 
-            return view('layouts.ta.edit-attendance', compact('teaching'));
+            $teaching = Teaching::findOrFail($teaching_id);
+
+            return view('layouts.ta.edit-attendance', compact('teaching', 'attendance'));
         } catch (\Exception $e) {
             Log::error('Error in editAttendance: ' . $e->getMessage());
             return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการแสดงฟอร์มแก้ไข');
@@ -833,9 +822,16 @@ class TaController extends Controller
         try {
             DB::beginTransaction();
 
-            $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
+            $user = Auth::user();
+            $attendance = Attendances::where('teaching_id', $teaching_id)
+                ->where('user_id', $user->id)
+                ->first();
 
-            if ($teaching->attendance && $teaching->attendance->approve_status === 'a') {
+            if (!$attendance) {
+                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลาของคุณ');
+            }
+
+            if ($attendance->approve_status === 'a') {
                 return redirect()
                     ->back()
                     ->with('error', 'ไม่สามารถแก้ไขการลงเวลาได้เนื่องจากได้รับการอนุมัติแล้ว');
@@ -851,10 +847,12 @@ class TaController extends Controller
                 'note.max' => 'งานที่ปฏิบัติต้องไม่เกิน 255 ตัวอักษร'
             ]);
 
-            $teaching->attendance->update([
+            $attendance->update([
                 'status' => $request->status,
                 'note' => $request->note,
             ]);
+
+            $teaching = Teaching::findOrFail($teaching_id);
 
             DB::commit();
 
@@ -878,21 +876,22 @@ class TaController extends Controller
         try {
             DB::beginTransaction();
 
-            $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
+            $user = Auth::user();
+            $attendance = Attendances::where('teaching_id', $teaching_id)
+                ->where('user_id', $user->id)
+                ->first();
 
-            if ($teaching->attendance && $teaching->attendance->approve_status === 'a') {
+            if (!$attendance) {
+                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลาของคุณ');
+            }
+
+            if ($attendance->approve_status === 'a') {
                 return redirect()
                     ->back()
                     ->with('error', 'ไม่สามารถลบการลงเวลาได้เนื่องจากได้รับการอนุมัติแล้ว');
             }
 
-            if (!$teaching->attendance) {
-                return redirect()
-                    ->back()
-                    ->with('error', 'ไม่พบข้อมูลการลงเวลา');
-            }
-
-            $teaching->attendance->delete();
+            $attendance->delete();
 
             DB::commit();
 
