@@ -83,7 +83,7 @@ class TeacherController extends Controller
                 });
 
             $requests = TeacherRequest::where('teacher_id', $teacher->teacher_id)
-                ->whereIn('course_id', $courses->pluck('course.course_id')) 
+                ->whereIn('course_id', $courses->pluck('course.course_id'))
                 ->with([
                     'details.students.courseTa.student',
                     'course.subjects'
@@ -370,7 +370,7 @@ class TeacherController extends Controller
                 return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
             }
 
-            // สร้างรายการเดือน
+            // สร้างรายการเดือน (คงไว้เหมือนเดิม)
             $monthsInSemester = [];
             if ($start->year === $end->year) {
                 for ($m = $start->month; $m <= $end->month; $m++) {
@@ -391,24 +391,38 @@ class TeacherController extends Controller
             $selectedYearMonth = request('month', $start->format('Y-m'));
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
 
-            // ดึงข้อมูลการลงเวลาปกติ
-            $teachings = Teaching::with([
-                'attendance' => function ($query) {
-                    $query->select('id', 'teaching_id', 'student_id', 'status', 'note', 'approve_status', 'approve_note');
-                },
-                'teacher',
-                'class'
-            ])
-                ->where('class_id', 'LIKE', $ta->course_id . '%')
-                ->whereBetween('start_time', [$start, $end])
-                ->whereYear('start_time', $selectedDate->year)
-                ->whereMonth('start_time', $selectedDate->month)
-                ->whereHas('attendance')
+            // ดึงข้อมูลการลงเวลาปกติของนักศึกษาที่เลือก
+            // แก้ไขจากการกรองตาม created_at เป็นการไม่กรองเดือน
+            $attendances = Attendances::where('student_id', $student->id)->get();
+
+            // เตรียม teaching_ids ที่นักศึกษาลงเวลา
+            $teachingIds = $attendances->pluck('teaching_id')->toArray();
+
+            // ดึงข้อมูลการสอนตาม teaching_ids ที่ได้
+            $teachings = Teaching::with(['teacher', 'class'])
+                ->whereIn('teaching_id', $teachingIds)
                 ->get();
 
-            // ดึงข้อมูลการลงเวลาพิเศษ
+            // กรองตามเดือนที่เลือกโดยใช้ start_time ของ teaching แทน created_at ของ attendance
+            $filteredTeachings = $teachings->filter(function ($teaching) use ($selectedDate) {
+                return \Carbon\Carbon::parse($teaching->start_time)->format('Y-m') === $selectedDate->format('Y-m');
+            });
+
+            // สร้าง collection ใหม่ที่มี attendance ของนักศึกษาที่เลือกเท่านั้น
+            $formattedTeachings = collect();
+
+            foreach ($filteredTeachings as $teaching) {
+                $attendance = $attendances->where('teaching_id', $teaching->teaching_id)->first();
+                if ($attendance) {
+                    // สร้าง object ใหม่ที่มีทั้งข้อมูล teaching และ attendance
+                    $teachingWithAttendance = clone $teaching;
+                    $teachingWithAttendance->attendance = $attendance;
+                    $formattedTeachings->push($teachingWithAttendance);
+                }
+            }
+
+            // ดึงข้อมูลการลงเวลาพิเศษเฉพาะของนักศึกษาที่เลือก
             $extraAttendances = ExtraAttendances::where('student_id', $student->id)
-                ->where('class_id', 'LIKE', $ta->course_id . '%')
                 ->whereYear('start_work', $selectedDate->year)
                 ->whereMonth('start_work', $selectedDate->month)
                 ->with([
@@ -418,11 +432,10 @@ class TeacherController extends Controller
                 ])
                 ->get();
 
-            // ตรวจสอบว่าเดือนนี้มีการอนุมัติแล้วหรือไม่
-            $isMonthApproved = false;
-            $approvalNote = null;
+            // ใช้ $formattedTeachings เป็น $teachings
+            $teachings = $formattedTeachings;
 
-            // ตรวจสอบจากทั้งสองตาราง
+            // ตรวจสอบสถานะการอนุมัติ
             $normalAttendanceApproved = Attendances::where('student_id', $student->id)
                 ->whereYear('created_at', $selectedDate->year)
                 ->whereMonth('created_at', $selectedDate->month)
@@ -435,11 +448,11 @@ class TeacherController extends Controller
                 ->where('approve_status', 'a')
                 ->exists();
 
-            // ถ้าทั้งสองตารางมีการอนุมัติแล้ว
-            if ($normalAttendanceApproved && $extraAttendanceApproved) {
-                $isMonthApproved = true;
+            $isMonthApproved = $normalAttendanceApproved || $extraAttendanceApproved;
+            $approvalNote = null;
 
-                // ดึงหมายเหตุการอนุมัติล่าสุดจากทั้งสองตาราง
+            if ($isMonthApproved) {
+                // ดึงหมายเหตุการอนุมัติล่าสุด
                 $latestNormalApproval = Attendances::where('student_id', $student->id)
                     ->whereYear('created_at', $selectedDate->year)
                     ->whereMonth('created_at', $selectedDate->month)
@@ -454,7 +467,6 @@ class TeacherController extends Controller
                     ->latest()
                     ->first();
 
-                // เลือกหมายเหตุจากรายการที่อนุมัติล่าสุด
                 if ($latestNormalApproval && $latestExtraApproval) {
                     $approvalNote = $latestNormalApproval->approve_at > $latestExtraApproval->approve_at
                         ? $latestNormalApproval->approve_note
@@ -478,7 +490,8 @@ class TeacherController extends Controller
             ));
 
         } catch (\Exception $e) {
-            Log::error($e->getMessage());
+            Log::error('Exception in taDetail: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }

@@ -32,8 +32,8 @@
                                     method="GET" class="d-block">
                                     <div class="mb-3">
                                         <button type="submit" class="btn btn-primary">+ ลงเวลา</button>
-                                        <a href="#" class="btn btn-success">ดาวน์โฟลดเอกสารสรุปภาระงาน</a>
-                                        <a href="#" class="btn btn-success">ดาวน์โหลดเอกสาร</a>
+                                        {{-- <a href="#" class="btn btn-success">ดาวน์โฟลดเอกสารสรุปภาระงาน</a>
+                                        <a href="#" class="btn btn-success">ดาวน์โหลดเอกสาร</a> --}}
                                     </div>
                                     <div class="dropdown">
                                         <select name="month" class="form-select" aria-label="Default select example">

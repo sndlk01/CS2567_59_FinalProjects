@@ -18,6 +18,7 @@ use App\Models\CourseTas;
 use App\Models\User;
 use App\Models\Semesters;
 use App\Models\Major;
+use App\Models\Teachers;
 use Illuminate\Support\Facades\{Auth, DB, Log};
 use Illuminate\Support\Str;
 use App\Services\TDBMApiService;
