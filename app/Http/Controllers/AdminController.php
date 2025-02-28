@@ -1,24 +1,25 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Models\Announce;
-use App\Models\Courses;
-use App\Models\Students;
-use App\Models\CourseTas;
-use App\Models\Disbursements;
-use App\Models\Teaching;
-use App\Models\Classes;
-use App\Models\ExtraAttendances;
-use App\Models\TeacherRequest;
-use App\Models\TeacherRequestsDetail;
-use App\Models\TeacherRequestStudent;
-use App\Models\CourseTaClasses;
+
+use App\Models\{
+    Announce,
+    Classes,
+    Courses,
+    CourseTas,
+    CourseTaClasses,
+    Disbursements,
+    ExtraAttendances,
+    Requests,
+    Students,
+    Teaching,
+    TeacherRequest,
+    TeacherRequestsDetail,
+    Semesters
+};
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use App\Models\Requests;
+use Illuminate\Support\Facades\{Auth, DB, Log, Storage};
+
 
 
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class AdminController extends Controller
 
 
 
-    public function taUsers()
+    public function adminHome()
     {
         $coursesWithTAs = Courses::whereHas('course_tas.courseTaClasses.requests', function ($query) {
             $query->where('status', 'A')
@@ -54,10 +55,227 @@ class AdminController extends Controller
             ])
             ->get();
 
-        return view('layouts.admin.taUsers', compact('coursesWithTAs'));
+        // Accept Both
+        // return view('layouts.admin.taUsers', compact('coursesWithTAs'));
+
+        $requests = CourseTas::with([
+            'student',
+            'course.subjects',
+            'courseTaClasses.requests' => function ($query) {
+                $query->latest();
+            }
+        ])
+            // ->where('student_id', $student->id)
+            ->get()
+            ->map(function ($courseTa) {
+                $latestRequest = $courseTa->courseTaClasses->flatMap->requests->sortByDesc('created_at')->first();
+
+                return [
+                    'student_id' => $courseTa->student->student_id,
+                    'full_name' => $courseTa->student->name,
+                    'course' => $courseTa->course->subjects->subject_id . ' ' . $courseTa->course->subjects->name_en,
+                    'applied_at' => $courseTa->created_at,
+                    'status' => $latestRequest ? $latestRequest->status : null,
+                    'approved_at' => $latestRequest ? $latestRequest->approved_at : null,
+                    'comment' => $latestRequest ? $latestRequest->comment : null,
+                ];
+            });
+        return view('layouts.admin.adminHome', compact('requests'));
     }
 
+    // public function taUsers()
+    // {
+    //     $coursesWithTAs = Courses::whereHas('course_tas.courseTaClasses.requests', function ($query) {
+    //         $query->where('status', 'A')  // เช็คสถานะว่าอนุมัติ
+    //             ->whereNotNull('approved_at');  // และมีวันที่อนุมัติ
+    //     }) 
+    //         ->with([
+    //             'subjects',  // ข้อมูลวิชา
+    //             'teachers',  // ข้อมูลอาจารย์
+    //             'course_tas.student',  // ข้อมูลนักศึกษา TA
+    //             'course_tas.courseTaClasses.requests' => function ($query) {
+    //                 $query->where('status', 'A')
+    //                     ->whereNotNull('approved_at');
+    //             }
+    //         ])
+    //         ->get();
 
+    //     // Debug ข้อมูล
+    //     Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
+
+    //     return view('layouts.admin.taUsers', compact('coursesWithTAs'));
+    // }
+
+
+    public function taUsers(Request $request)
+    {
+        try {
+            // ดึงข้อมูล semesters ทั้งหมดเพื่อให้ admin เลือก
+            $semesters = Semesters::orderBy('year', 'desc')
+                ->orderBy('semesters', 'desc')
+                ->get();
+
+            // ดึง semester_id ที่ admin เลือกจาก request หรือใช้ค่าที่บันทึกใน session
+            $selectedSemesterId = $request->input('semester_id');
+
+            if ($selectedSemesterId) {
+                // บันทึกค่าที่เลือกลงใน session สำหรับ admin
+                session(['admin_selected_semester_id' => $selectedSemesterId]);
+            } else {
+                $selectedSemesterId = session('admin_selected_semester_id');
+
+                if (!$selectedSemesterId && $semesters->isNotEmpty()) {
+                    $selectedSemesterId = $semesters->first()->semester_id;
+                    session(['admin_selected_semester_id' => $selectedSemesterId]);
+                }
+            }
+
+            // ค้นหา semester ที่ admin เลือก
+            $selectedSemester = $semesters->firstWhere('semester_id', $selectedSemesterId);
+
+            // ดึงข้อมูล semester ที่เลือกสำหรับผู้ใช้ (TA และ Teacher)
+            $userSetting = DB::table('setting_semesters')->where('key', 'user_active_semester_id')->first();
+            $userSelectedSemesterId = $userSetting ? $userSetting->value : null;
+
+            if (!$userSelectedSemesterId && $semesters->isNotEmpty()) {
+                $userSelectedSemesterId = $semesters->first()->semester_id;
+
+                // บันทึกค่าเริ่มต้นลงในตาราง setting_semesters
+                DB::table('setting_semesters')->updateOrInsert(
+                    ['key' => 'user_active_semester_id'],
+                    ['value' => $userSelectedSemesterId, 'updated_at' => now()]
+                );
+            }
+
+            $userSelectedSemester = $semesters->firstWhere('semester_id', $userSelectedSemesterId);
+
+            // ถ้าไม่พบ semester ที่ admin เลือก ให้แสดงข้อความแจ้งเตือน
+            if (!$selectedSemester) {
+                return view('layouts.admin.taUsers', [
+                    'coursesWithTAs' => collect(),
+                    'semesters' => $semesters,
+                    'selectedSemester' => null,
+                    'userSelectedSemester' => $userSelectedSemester
+                ])->with('warning', 'ไม่พบข้อมูลภาคการศึกษาที่เลือก');
+            }
+
+            // ดึงข้อมูลรายวิชาที่มี TA ตาม semester ที่ admin เลือก
+            $coursesWithTAs = Courses::where('semester_id', $selectedSemester->semester_id)
+                ->whereHas('course_tas.courseTaClasses.requests', function ($query) {
+                    $query->where('status', 'A')
+                        ->whereNotNull('approved_at');
+                })
+                ->with([
+                    'subjects',
+                    'teachers',
+                    'course_tas.student',
+                    'course_tas.courseTaClasses.requests' => function ($query) {
+                        $query->where('status', 'A')
+                            ->whereNotNull('approved_at');
+                    }
+                ])
+                ->get();
+
+            // Debug ข้อมูล
+            Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
+
+            return view('layouts.admin.taUsers', [
+                'coursesWithTAs' => $coursesWithTAs,
+                'semesters' => $semesters,
+                'selectedSemester' => $selectedSemester,
+                'userSelectedSemester' => $userSelectedSemester
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in taUsers: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
+        }
+    }
+
+    // ฟังก์ชันสำหรับบันทึกค่า semester ที่เลือกลงในฐานข้อมูล
+    private function updateActiveSemester($semesterId)
+    {
+        try {
+            // สร้างหรืออัปเดตตารางการตั้งค่า
+            // สมมติว่ามีตาราง settings สำหรับเก็บการตั้งค่าของระบบ
+            DB::table('setting_semesters')->updateOrInsert(
+                ['key' => 'active_semester_id'],
+                ['value' => $semesterId, 'updated_at' => now()]
+            );
+
+            // บันทึกลง session ด้วยเพื่อให้ controller อื่นๆ สามารถเข้าถึงได้
+            session(['active_semester_id' => $semesterId]);
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error updating active semester: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function updateUserSemester(Request $request)
+    {
+        try {
+            $semesterId = $request->input('semester_id');
+
+            if (!$semesterId) {
+                return back()->with('error', 'กรุณาเลือกภาคการศึกษา');
+            }
+
+            // ตรวจสอบว่ามี semester ที่เลือกจริงหรือไม่
+            $semester = Semesters::find($semesterId);
+            if (!$semester) {
+                return back()->with('error', 'ไม่พบภาคการศึกษาที่เลือก');
+            }
+
+            // บันทึกค่าลงในตาราง setting_semesters สำหรับผู้ใช้
+            DB::table('setting_semesters')->updateOrInsert(
+                ['key' => 'user_active_semester_id'],
+                ['value' => $semesterId, 'updated_at' => now()]
+            );
+
+            // บันทึกลง session
+            session(['user_active_semester_id' => $semesterId]);
+
+            return back()->with('success', 'บันทึกการเลือกภาคการศึกษาสำหรับผู้ใช้งานเรียบร้อยแล้ว');
+        } catch (\Exception $e) {
+            Log::error('Error updating user semester: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
+        }
+    }
+
+    // เพิ่มฟังก์ชันสำหรับดึงค่า semester ที่เลือก
+    public function getActiveSemester()
+    {
+        try {
+            // ลองดึงจาก session ก่อน
+            $activeSemesterId = session('active_semester_id');
+
+            // ถ้าไม่มีใน session ให้ดึงจากฐานข้อมูล
+            if (!$activeSemesterId) {
+                $setting = DB::table('setting_semesters')->where('key', 'active_semester_id')->first();
+
+                if ($setting) {
+                    $activeSemesterId = $setting->value;
+                    session(['active_semester_id' => $activeSemesterId]);
+                } else {
+                    // ถ้าไม่มีค่าในฐานข้อมูล ให้ใช้ semester ล่าสุด
+                    $latestSemester = Semesters::orderBy('year', 'desc')
+                        ->orderBy('semesters', 'desc')
+                        ->first();
+
+                    if ($latestSemester) {
+                        $activeSemesterId = $latestSemester->semester_id;
+                        $this->updateActiveSemester($activeSemesterId);
+                    }
+                }
+            }
+
+            return Semesters::find($activeSemesterId);
+        } catch (\Exception $e) {
+            Log::error('Error getting active semester: ' . $e->getMessage());
+            return null;
+        }
+    }
 
     public function showTaDetails($course_id)
     {
@@ -86,7 +304,7 @@ class AdminController extends Controller
                 return back()->with('error', 'ไม่พบไฟล์เอกสาร');
             }
 
-            return Storage::disk('public')->download($disbursement->uploadfile);
+            return response()->download(storage_path('app/public' . $disbursement->file_path));
         } catch (\Exception $e) {
             Log::error('Document download error: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร');
@@ -238,7 +456,6 @@ class AdminController extends Controller
                 'attendanceType',
                 'compensation'
             ));
-
         } catch (\Exception $e) {
             Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
@@ -471,7 +688,6 @@ class AdminController extends Controller
             $fileName = 'TA-Compensation-' . $student->student_id . '-' . $selectedYearMonth . '.pdf';
 
             return $pdf->download($fileName);
-
         } catch (\Exception $e) {
             Log::error('PDF Export Error: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการสร้าง PDF: ' . $e->getMessage());
@@ -592,6 +808,7 @@ class AdminController extends Controller
                 return back()->with('error', 'คำร้องนี้ได้รับการดำเนินการแล้ว');
             }
 
+            // Update main request status
             $taRequest->update([
                 'status' => $validated['status'],
                 'admin_processed_at' => now(),
@@ -599,11 +816,14 @@ class AdminController extends Controller
                 'admin_comment' => $validated['comment'] ?? null
             ]);
 
+            // For each student in the request, update their request status
             foreach ($taRequest->details as $detail) {
                 foreach ($detail->students as $student) {
+                    // หา courseTaClasses ที่มีอยู่แล้ว
                     $courseTaClasses = CourseTaClasses::where('course_ta_id', $student->course_ta_id)->get();
 
                     foreach ($courseTaClasses as $courseTaClass) {
+                        // อัพเดตหรือสร้าง request ใหม่
                         Requests::updateOrCreate(
                             [
                                 'course_ta_class_id' => $courseTaClass->id
@@ -621,7 +841,6 @@ class AdminController extends Controller
             DB::commit();
             $statusText = $validated['status'] === 'A' ? 'อนุมัติ' : 'ปฏิเสธ';
             return back()->with('success', "คำร้องได้รับการ{$statusText}เรียบร้อยแล้ว");
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error processing TA request: ' . $e->getMessage());

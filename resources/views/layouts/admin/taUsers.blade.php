@@ -5,6 +5,81 @@
         <div class="col-12">
             <div class="card mb-4">
                 <div class="card-body">
+                    {{-- ส่วนของปุ่มสำหรับเลือก semesters --}}
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="card-title mb-0">ภาคการศึกษาสำหรับผู้ช่วยสอนและอาจารย์</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form action="{{ route('layout.admin.updateUserSemester') }}" method="POST">
+                                        @csrf
+                                        <div class="row g-3 align-items-center">
+                                            <div class="col-md-8">
+                                                <label for="user_semester_id" class="form-label">เลือกภาคการศึกษาที่ TA
+                                                    และอาจารย์จะเห็น:</label>
+                                                <select name="semester_id" id="user_semester_id" class="form-select">
+                                                    @foreach ($semesters as $semester)
+                                                        <option value="{{ $semester->semester_id }}"
+                                                            {{ $userSelectedSemester && $userSelectedSemester->semester_id == $semester->semester_id ? 'selected' : '' }}>
+                                                            {{ $semester->year }}/{{ $semester->semesters }}
+                                                            ({{ \Carbon\Carbon::parse($semester->start_date)->format('d/m/Y') }}
+                                                            -
+                                                            {{ \Carbon\Carbon::parse($semester->end_date)->format('d/m/Y') }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <button type="submit" class="btn btn-primary mt-5">บันทึกการเลือก</button>
+                                            </div>
+                                        </div>
+                                        <div class="form-text mt-2">
+                                            <i class="bi bi-info-circle"></i>
+                                            ภาคการศึกษานี้จะกำหนดข้อมูลที่ผู้ช่วยสอนและอาจารย์จะมองเห็น
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">
+                                    <h5 class="card-title mb-0">ภาคการศึกษาสำหรับผู้ดูแลระบบ</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form action="{{ route('layout.admin.taUsers') }}" method="GET">
+                                        <div class="row g-3 align-items-center">
+                                            <div class="col-md-8">
+                                                <label for="admin_semester_id"
+                                                    class="form-label">เลือกภาคการศึกษาที่ต้องการดูข้อมูล:</label>
+                                                <select name="semester_id" id="admin_semester_id" class="form-select">
+                                                    @foreach ($semesters as $semester)
+                                                        <option value="{{ $semester->semester_id }}"
+                                                            {{ $selectedSemester && $selectedSemester->semester_id == $semester->semester_id ? 'selected' : '' }}>
+                                                            {{ $semester->year }}/{{ $semester->semesters }}
+                                                            ({{ \Carbon\Carbon::parse($semester->start_date)->format('d/m/Y') }}
+                                                            -
+                                                            {{ \Carbon\Carbon::parse($semester->end_date)->format('d/m/Y') }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <button type="submit" class="btn btn-info mt-5">แสดงข้อมูล</button>
+                                            </div>
+                                        </div>
+                                        <div class="form-text mt-2">
+                                            <i class="bi bi-info-circle"></i>
+                                            ภาคการศึกษานี้จะกำหนดข้อมูลที่แสดงในหน้านี้เท่านั้น
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <h4>จัดการข้อมูลผู้ช่วยสอน</h4>
                     <div class="card mb-4 p-2">
                         <div class="card-body">

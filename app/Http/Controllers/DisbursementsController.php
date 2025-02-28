@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Disbursements;
 use App\Models\Students;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class DisbursementsController extends Controller
@@ -103,7 +104,8 @@ class DisbursementsController extends Controller
             return Storage::disk('public')->download($disbursement->uploadfile);
     
         } catch (\Exception $e) {
-            return back()->with('error', 'An error occurred while downloading the document.');
+            Log::error('Document download error: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร');
         }
     }
 }

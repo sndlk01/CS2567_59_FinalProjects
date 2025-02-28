@@ -2,25 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Courses;
-use App\Models\Students;
-use App\Models\Subjects;
-use App\Models\Teachers;
-use App\Models\Attendances;
-use App\Models\ExtraAttendances;
+use App\Models\{
+    Attendances,
+    Classes,
+    Courses,
+    CourseTaClasses,
+    CourseTas,
+    ExtraAttendances,
+    Requests,
+    Students,
+    Subjects,
+    Teachers,
+    Teaching,
+    TeacherRequest,
+    TeacherRequestsDetail,
+    TeacherRequestStudent,
+    Semesters
+};
 use Illuminate\Http\Request;
-use App\Models\CourseTas;
-use App\Models\Classes;
-use App\Models\Requests;
-use App\Models\Teaching;
-use App\Models\TeacherRequest;
-use App\Models\TeacherRequestsDetail;
-use App\Models\TeacherRequestStudent;
-use App\Models\CourseTaClasses;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\{Auth, DB, Log};
 use App\Services\TDBMApiService;
-use Illuminate\Support\Facades\DB;
+
 
 class TeacherController extends Controller
 {
@@ -36,6 +38,33 @@ class TeacherController extends Controller
         $this->tdbmService = $tdbmService;
     }
 
+    // เพิ่มในทั้ง TaController และ TeacherController
+    private function getActiveSemester()
+    {
+        // ลองดึงจาก session ก่อน
+        $activeSemesterId = session('user_active_semester_id');
+
+        // ถ้าไม่มีใน session ให้ดึงจากฐานข้อมูล
+        if (!$activeSemesterId) {
+            $setting = DB::table('setting_semesters')->where('key', 'user_active_semester_id')->first();
+
+            if ($setting) {
+                $activeSemesterId = $setting->value;
+                session(['user_active_semester_id' => $activeSemesterId]);
+            }
+        }
+
+        // ถ้ายังไม่มีค่า ให้ใช้ semester ล่าสุด
+        if (!$activeSemesterId) {
+            $semester = Semesters::orderBy('year', 'desc')
+                ->orderBy('semesters', 'desc')
+                ->first();
+        } else {
+            $semester = Semesters::find($activeSemesterId);
+        }
+
+        return $semester;
+    }
 
     public function indexTARequests()
     {
@@ -92,7 +121,6 @@ class TeacherController extends Controller
                 ->get();
 
             return view('layouts.teacher.ta-request.index', compact('courses', 'requests'));
-
         } catch (\Exception $e) {
             Log::error('Error in indexTARequests: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
@@ -109,8 +137,8 @@ class TeacherController extends Controller
                 ->where('course_id', $course_id);
         })->get();
 
-        \Log::info('Course: ' . json_encode($course));
-        \Log::info('Available Students: ' . json_encode($availableStudents));
+        Log::info('Course: ' . json_encode($course));
+        Log::info('Available Students: ' . json_encode($availableStudents));
 
         return view('layouts.teacher.ta-request.create', compact('course', 'availableStudents'));
     }
@@ -171,7 +199,6 @@ class TeacherController extends Controller
             DB::commit();
             return redirect()->route('teacher.ta-requests.index')
                 ->with('success', 'บันทึกคำร้องขอ TA สำเร็จ');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()
@@ -263,7 +290,6 @@ class TeacherController extends Controller
             DB::commit();
             return redirect()->route('teacher.ta-requests.show', $id)
                 ->with('success', 'อัพเดตคำร้องสำเร็จ');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating TA request: ' . $e->getMessage());
@@ -292,7 +318,7 @@ class TeacherController extends Controller
 
             return view('layouts.teacher.ta-request.show', compact('request', 'teacher', 'course', 'details'));
         } catch (\Exception $e) {
-            \Log::error('Error in showTARequest: ' . $e->getMessage());
+            Log::error('Error in showTARequest: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
@@ -488,7 +514,6 @@ class TeacherController extends Controller
                 'isMonthApproved',
                 'approvalNote'
             ));
-
         } catch (\Exception $e) {
             Log::error('Exception in taDetail: ' . $e->getMessage());
             Log::error($e->getTraceAsString());
@@ -555,13 +580,11 @@ class TeacherController extends Controller
 
                 DB::commit();
                 return back()->with('success', 'อนุมัติการลงเวลาประจำเดือนเรียบร้อยแล้ว');
-
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error('Error during approval: ' . $e->getMessage());
                 return back()->with('error', 'เกิดข้อผิดพลาดในการอนุมัติ: ' . $e->getMessage());
             }
-
         } catch (\Exception $e) {
             Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการประมวลผล: ' . $e->getMessage());
@@ -609,7 +632,6 @@ class TeacherController extends Controller
             }
 
             return view('layouts.teacher.subject', ['subjects' => array_values($subjects)]);
-
         } catch (\Exception $e) {
             Log::error($e->getMessage());
             return response()->json(['status' => 'error', 'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูล'], 500);
@@ -671,7 +693,7 @@ class TeacherController extends Controller
 
             Log::info('Formatted Course TAs count: ' . $formattedCourseTas->count());
 
-            return view('teacherHome', ['courseTas' => $formattedCourseTas]);
+            return view('layouts.teacher.teacherHome', ['courseTas' => $formattedCourseTas]);
         } catch (\Exception $e) {
             Log::error('Error in showTARequests: ' . $e->getMessage());
             return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
@@ -714,7 +736,6 @@ class TeacherController extends Controller
 
             DB::commit();
             return redirect()->back()->with('success', 'อัพเดทสถานะสำเร็จ');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating TA request status: ' . $e->getMessage());

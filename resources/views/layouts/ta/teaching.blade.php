@@ -81,7 +81,7 @@
                                             {{ $teaching->teacher_id->name }}
                                         </td>
                                         <td>
-                                            @if ($teaching->has_user_attendance)
+                                            @if ($teaching->attendance)
                                                 <span class="badge bg-success">เข้าปฏิบัติการสอน</span>
                                             @elseif ($teaching->is_extra_attendance)
                                                 <span class="badge bg-success">บันทึกแล้ว</span>
@@ -91,14 +91,20 @@
                                         </td>
                                         <td>{{ $teaching->attendance->note ?? '-' }}</td>
                                         <td>
-                                            @if ($teaching->has_user_attendance)
+                                            @if ($teaching->attendance || $teaching->is_extra_attendance)
                                                 <div class="btn-group">
                                                     @php
                                                         $isApproved = false;
                                                         if ($teaching->attendance) {
-                                                            $isApproved =
-                                                                isset($teaching->attendance->approve_status) &&
-                                                                $teaching->attendance->approve_status === 'a';
+                                                            if ($teaching->is_extra_attendance) {
+                                                                $isApproved =
+                                                                    isset($teaching->attendance->approve_status) &&
+                                                                    $teaching->attendance->approve_status === 'a';
+                                                            } else {
+                                                                $isApproved =
+                                                                    isset($teaching->attendance->approve_status) &&
+                                                                    $teaching->attendance->approve_status === 'a';
+                                                            }
                                                         }
                                                     @endphp
 
@@ -140,7 +146,10 @@
                                                         ->exists();
                                                 @endphp
 
-                                                @if (!$isMonthApproved)
+                                                @if (
+                                                    !$isMonthApproved &&
+                                                        (!$teaching->attendance ||
+                                                            (isset($teaching->attendance->approve_status) && $teaching->attendance->approve_status !== 'a')))
                                                     <a href="{{ route('attendances.form', ['teaching_id' => $teaching->id, 'selected_month' => $selectedMonth]) }}"
                                                         class="btn btn-outline-primary btn-sm">
                                                         ลงเวลา
@@ -193,7 +202,7 @@
                     </div>
                 </div>
             </div>
-        @elseif ($teaching->has_user_attendance)
+        @elseif ($teaching->attendance)
             <!-- Delete Regular Attendance Modal -->
             <div class="modal fade" id="deleteModal{{ $teaching->id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog">
@@ -201,32 +210,22 @@
                         <div class="modal-header">
                             <h5 class="modal-title">ยืนยันการลบ</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                            <div class="modal fade" id="deleteModal{{ $teaching->id }}" tabindex="-1" aria-hidden="true">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title">ยืนยันการลบ</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                                aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            คุณต้องการลบการลงเวลานี้ใช่หรือไม่?
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary"
-                                                data-bs-dismiss="modal">ยกเลิก</button>
-                                            <form action="{{ route('attendances.delete', $teaching->id) }}"
-                                                method="POST">
-                                                @csrf
-                                                @method('DELETE')
-                                                <input type="hidden" name="selected_month"
-                                                    value="{{ $selectedMonth }}">
-                                                <button type="submit" class="btn btn-danger">ลบ</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        </div>
+                        <div class="modal-body">
+                            คุณต้องการลบการลงเวลานี้ใช่หรือไม่?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                            <form action="{{ route('attendances.delete', $teaching->id) }}" method="POST">
+                                @csrf
+                                @method('DELETE')
+                                <input type="hidden" name="selected_month" value="{{ $selectedMonth }}">
+                                <button type="submit" class="btn btn-danger">ลบ</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
         @endif
     @endforeach
 
