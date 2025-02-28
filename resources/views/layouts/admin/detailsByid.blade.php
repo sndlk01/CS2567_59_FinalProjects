@@ -238,14 +238,25 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <p><strong>ค่าตอบแทนภาคปกติ
-                                                ({{ number_format($compensation['regularHours'], 2) }} ชั่วโมง × 40
-                                                บาท):</strong>
-                                            {{ number_format($compensation['regularPay'], 2) }} บาท</p>
-                                        <p><strong>ค่าตอบแทนภาคพิเศษ
-                                                ({{ number_format($compensation['specialHours'], 2) }} ชั่วโมง × 50
-                                                บาท):</strong>
-                                            {{ number_format($compensation['specialPay'], 2) }} บาท</p>
+                                        <p><strong>ค่าตอบแทนภาคบรรยายปกติ
+                                                ({{ number_format($compensation['regularLectureHours'], 2) }} ชั่วโมง × 
+                                                <span class="text-primary">{{ number_format($compensation['rates']['regularLecture'], 2) }} บาท</span>):</strong>
+                                            {{ number_format($compensation['regularLecturePay'], 2) }} บาท</p>
+                                        
+                                        <p><strong>ค่าตอบแทนภาคปฏิบัติการปกติ
+                                                ({{ number_format($compensation['regularLabHours'], 2) }} ชั่วโมง × 
+                                                <span class="text-primary">{{ number_format($compensation['rates']['regularLab'], 2) }} บาท</span>):</strong>
+                                            {{ number_format($compensation['regularLabPay'], 2) }} บาท</p>
+                                        
+                                        <p><strong>ค่าตอบแทนภาคบรรยายพิเศษ
+                                                ({{ number_format($compensation['specialLectureHours'], 2) }} ชั่วโมง × 
+                                                <span class="text-primary">{{ number_format($compensation['rates']['specialLecture'], 2) }} บาท</span>):</strong>
+                                            {{ number_format($compensation['specialLecturePay'], 2) }} บาท</p>
+                                        
+                                        <p><strong>ค่าตอบแทนภาคปฏิบัติการพิเศษ
+                                                ({{ number_format($compensation['specialLabHours'], 2) }} ชั่วโมง × 
+                                                <span class="text-primary">{{ number_format($compensation['rates']['specialLab'], 2) }} บาท</span>):</strong>
+                                            {{ number_format($compensation['specialLabPay'], 2) }} บาท</p>
                                     </div>
                                     <div class="col-md-6">
                                         <p><strong>จำนวนชั่วโมงรวม:</strong>
@@ -257,16 +268,24 @@
                                 </div>
                             </div>
                         </div>
-
+                        
                         <div class="mt-3">
+                            <a href="{{ route('admin.compensation-rates.index') }}" class="btn btn-info">
+                                <i class="fas fa-money-bill-wave"></i> จัดการอัตราค่าตอบแทน
+                            </a>
+
                             <a href="{{ route('layout.exports.pdf', ['id' => $student->id, 'month' => $selectedYearMonth, 'type' => $attendanceType]) }}"
                                 class="btn btn-primary">
                                 Export PDF
                             </a>
-                            <a href="{{ url()->previous() }}" class="btn btn-secondary">
+                            
+                            
+                            
+                            {{-- <a href="{{ url()->previous() }}" class="btn btn-secondary">
                                 ย้อนกลับ
-                            </a>
+                            </a> --}}
                         </div>
+          
                     </div>
 
                 </div>

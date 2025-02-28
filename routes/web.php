@@ -10,6 +10,7 @@ use App\Http\Controllers\DisbursementsController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\CompensationRateController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -101,6 +102,15 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
         Route::put('/{id}/process', [AdminController::class, 'processTARequest'])->name('process');
     });
 
+    Route::prefix('admin/compensation-rates')->name('admin.compensation-rates.')->group(function () {
+        Route::get('/', [CompensationRateController::class, 'index'])->name('index');
+        Route::get('/create', [CompensationRateController::class, 'create'])->name('create');
+        Route::post('/', [CompensationRateController::class, 'store'])->name('store');
+        Route::get('/{rate}/edit', [CompensationRateController::class, 'edit'])->name('edit');
+        Route::put('/{rate}', [CompensationRateController::class, 'update'])->name('update');
+    });
+
+    
     Route::post('/admin/update-user-semester', [AdminController::class, 'updateUserSemester'])->name('layout.admin.updateUserSemester');
 });
 

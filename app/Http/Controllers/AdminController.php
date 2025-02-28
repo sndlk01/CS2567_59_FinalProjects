@@ -15,6 +15,8 @@ use App\Models\{
     Teaching,
     TeacherRequest,
     TeacherRequestsDetail,
+    CompensationRate,
+    CompensationTransaction,
     Semesters
 };
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -312,6 +314,30 @@ class AdminController extends Controller
     }
 
 
+    private function getCompensationRate($teachingType, $classType)
+    {
+        $rate = CompensationRate::getActiveRate($teachingType, $classType);
+
+        if (!$rate) {
+            // ถ้าไม่พบอัตราที่เฉพาะเจาะจง ให้ดึงอัตราค่าเริ่มต้น
+            if ($teachingType === 'regular') {
+                if ($classType === 'LECTURE') {
+                    return 40; // ค่าเริ่มต้นสำหรับการสอนบรรยายภาคปกติ
+                } else { // LAB
+                    return 40; // ค่าเริ่มต้นสำหรับการสอนปฏิบัติการภาคปกติ
+                }
+            } else { // special
+                if ($classType === 'LECTURE') {
+                    return 50; // ค่าเริ่มต้นสำหรับการสอนบรรยายภาคพิเศษ
+                } else { // LAB
+                    return 50; // ค่าเริ่มต้นสำหรับการสอนปฏิบัติการภาคพิเศษ
+                }
+            }
+        }
+
+        return $rate->rate_per_hour;
+    }
+
     public function taDetail($student_id)
     {
         try {
@@ -351,10 +377,13 @@ class AdminController extends Controller
             $attendanceType = request('type', 'all');
 
             $allAttendances = collect();
-            $regularHours = 0;
-            $specialHours = 0;
+            $regularLectureHours = 0;
+            $regularLabHours = 0;
+            $specialLectureHours = 0;
+            $specialLabHours = 0;
 
             if ($attendanceType === 'all' || $attendanceType === 'N' || $attendanceType === 'S') {
+                // ดึงข้อมูลการสอนปกติ
                 $teachings = Teaching::with([
                     'attendance',
                     'teacher',
@@ -382,20 +411,40 @@ class AdminController extends Controller
                         $startTime = \Carbon\Carbon::parse($teaching->start_time);
                         $endTime = \Carbon\Carbon::parse($teaching->end_time);
                         $hours = $endTime->diffInMinutes($startTime) / 60;
-                        $regularHours += $hours;
+
+                        $majorType = $teaching->class->major->major_type ?? 'N';
+                        $classType = $teaching->class_type === 'L' ? 'LAB' : 'LECTURE';
+
+                        // คำนวณชั่วโมงตามประเภท
+                        if ($majorType === 'N') {
+                            if ($classType === 'LECTURE') {
+                                $regularLectureHours += $hours;
+                            } else {
+                                $regularLabHours += $hours;
+                            }
+                        } else { // S
+                            if ($classType === 'LECTURE') {
+                                $specialLectureHours += $hours;
+                            } else {
+                                $specialLabHours += $hours;
+                            }
+                        }
 
                         $allAttendances->push([
                             'type' => 'regular',
                             'section' => $section,
                             'date' => $teaching->start_time,
                             'data' => $teaching,
-                            'hours' => $hours
+                            'hours' => $hours,
+                            'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
+                            'class_type' => $classType
                         ]);
                     }
                 }
             }
 
             if ($attendanceType === 'all' || $attendanceType === 'N' || $attendanceType === 'S') {
+                // ดึงข้อมูลการสอนพิเศษ
                 $extraAttendances = ExtraAttendances::with([
                     'classes.course.subjects',
                     'classes.major'
@@ -413,38 +462,82 @@ class AdminController extends Controller
                     ->groupBy('class_id');
 
                 foreach ($extraAttendances as $classId => $extras) {
-                    $class = Classes::find($classId);
                     foreach ($extras as $extra) {
                         $hours = $extra->duration / 60;
-                        $specialHours += $hours;
+                        $class = $extra->classes;
+
+                        $majorType = $class && $class->major ? $class->major->major_type : 'N';
+                        $classType = $extra->class_type === 'L' ? 'LAB' : 'LECTURE';
+
+                        // คำนวณชั่วโมงตามประเภท
+                        if ($majorType === 'N') {
+                            if ($classType === 'LECTURE') {
+                                $regularLectureHours += $hours;
+                            } else {
+                                $regularLabHours += $hours;
+                            }
+                        } else { // S
+                            if ($classType === 'LECTURE') {
+                                $specialLectureHours += $hours;
+                            } else {
+                                $specialLabHours += $hours;
+                            }
+                        }
 
                         $allAttendances->push([
                             'type' => 'special',
                             'section' => $class ? $class->section_num : 'N/A',
                             'date' => $extra->start_work,
                             'data' => $extra,
-                            'hours' => $hours
+                            'hours' => $hours,
+                            'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
+                            'class_type' => $classType
                         ]);
                     }
                 }
             }
 
-            // คำนวณค่าตอบแทน
-            $regularPayRate = 40; // บาทต่อชั่วโมง
-            $specialPayRate = 50; // บาทต่อชั่วโมง
+            // ดึงอัตราค่าตอบแทนจากฐานข้อมูล
+            $regularLectureRate = $this->getCompensationRate('regular', 'LECTURE');
+            $regularLabRate = $this->getCompensationRate('regular', 'LAB');
+            $specialLectureRate = $this->getCompensationRate('special', 'LECTURE');
+            $specialLabRate = $this->getCompensationRate('special', 'LAB');
 
-            $regularPay = $regularHours * $regularPayRate;
-            $specialPay = $specialHours * $specialPayRate;
+            // คำนวณค่าตอบแทน
+            $regularLecturePay = $regularLectureHours * $regularLectureRate;
+            $regularLabPay = $regularLabHours * $regularLabRate;
+            $specialLecturePay = $specialLectureHours * $specialLectureRate;
+            $specialLabPay = $specialLabHours * $specialLabRate;
+
+            $regularPay = $regularLecturePay + $regularLabPay;
+            $specialPay = $specialLecturePay + $specialLabPay;
             $totalPay = $regularPay + $specialPay;
 
+            // เก็บข้อมูลค่าตอบแทนเพื่อส่งไปยัง view
             $compensation = [
-                'regularHours' => $regularHours,
-                'specialHours' => $specialHours,
+                'regularLectureHours' => $regularLectureHours,
+                'regularLabHours' => $regularLabHours,
+                'specialLectureHours' => $specialLectureHours,
+                'specialLabHours' => $specialLabHours,
+                'regularHours' => $regularLectureHours + $regularLabHours,
+                'specialHours' => $specialLectureHours + $specialLabHours,
+                'regularLecturePay' => $regularLecturePay,
+                'regularLabPay' => $regularLabPay,
+                'specialLecturePay' => $specialLecturePay,
+                'specialLabPay' => $specialLabPay,
                 'regularPay' => $regularPay,
                 'specialPay' => $specialPay,
-                'totalPay' => $totalPay
+                'totalPay' => $totalPay,
+                
+                'rates' => [
+                    'regularLecture' => $regularLectureRate,
+                    'regularLab' => $regularLabRate,
+                    'specialLecture' => $specialLectureRate,
+                    'specialLab' => $specialLabRate
+                ]
             ];
 
+            // จัดกลุ่มข้อมูลการลงเวลาตาม section เพื่อแสดงผล
             $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
 
             return view('layouts.admin.detailsById', compact(
@@ -461,6 +554,7 @@ class AdminController extends Controller
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
+
 
     private function getAttendanceData($student_id, $selectedYearMonth, $attendanceType)
     {
