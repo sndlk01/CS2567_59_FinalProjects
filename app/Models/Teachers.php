@@ -18,6 +18,7 @@ class Teachers extends Model
 
     protected $primaryKey = 'teacher_id';
     protected $fillable = [
+        'teacher_id',
         'prefix',
         'position',
         'degree',
@@ -25,6 +26,8 @@ class Teachers extends Model
         'email',
         'user_id'
     ];
+
+    public $incrementing = false;
 
     /**
      * Get the user that owns the employee.
