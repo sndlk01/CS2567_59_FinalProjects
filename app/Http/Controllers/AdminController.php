@@ -40,13 +40,13 @@ class AdminController extends Controller
     public function taUsers()
     {
         $coursesWithTAs = Courses::whereHas('course_tas.courseTaClasses.requests', function ($query) {
-            $query->where('status', 'A')  
-                ->whereNotNull('approved_at'); 
+            $query->where('status', 'A')
+                ->whereNotNull('approved_at');
         })
             ->with([
-                'subjects',  
-                'teachers',  
-                'course_tas.student',  
+                'subjects',
+                'teachers',
+                'course_tas.student',
                 'course_tas.courseTaClasses.requests' => function ($query) {
                     $query->where('status', 'A')
                         ->whereNotNull('approved_at');
@@ -245,6 +245,74 @@ class AdminController extends Controller
         }
     }
 
+    private function getAttendanceData($student_id, $selectedYearMonth, $attendanceType)
+    {
+        $start = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth)->startOfMonth();
+        $end = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth)->endOfMonth();
+
+        $allAttendances = collect();
+        $regularHours = 0;
+        $specialHours = 0;
+
+        // ดึงข้อมูลการลงเวลาปกติ
+        $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
+            ->whereHas('attendance', function ($query) use ($student_id) {
+                $query->where('student_id', $student_id)
+                    ->where('approve_status', 'A');
+            })
+            ->whereBetween('start_time', [$start, $end])
+            ->when($attendanceType !== 'all', function ($query) use ($attendanceType) {
+                $query->whereHas('class.major', function ($q) use ($attendanceType) {
+                    $q->where('major_type', $attendanceType);
+                });
+            })
+            ->get();
+
+        foreach ($teachings as $teaching) {
+            $hours = $teaching->duration / 60;
+            $regularHours += $hours;
+
+            $allAttendances->push([
+                'type' => 'regular',
+                'section' => $teaching->class->section_num,
+                'date' => $teaching->start_time,
+                'data' => $teaching,
+                'hours' => $hours
+            ]);
+        }
+
+        // ดึงข้อมูลการลงเวลาเพิ่มเติม
+        $extraAttendances = ExtraAttendances::with(['classes.course.subjects'])
+            ->where('student_id', $student_id)
+            ->where('approve_status', 'A')
+            ->whereBetween('start_work', [$start, $end])
+            ->when($attendanceType !== 'all', function ($query) use ($attendanceType) {
+                $query->whereHas('classes.major', function ($q) use ($attendanceType) {
+                    $q->where('major_type', $attendanceType);
+                });
+            })
+            ->get();
+
+        foreach ($extraAttendances as $extra) {
+            $hours = $extra->duration / 60;
+            $specialHours += $hours;
+
+            $allAttendances->push([
+                'type' => 'special',
+                'section' => $extra->classes->section_num,
+                'date' => $extra->start_work,
+                'data' => $extra,
+                'hours' => $hours
+            ]);
+        }
+
+        return [
+            'allAttendances' => $allAttendances,
+            'regularHours' => $regularHours,
+            'specialHours' => $specialHours
+        ];
+    }
+
     public function exportTaDetailPDF($id)
     {
         try {
@@ -292,9 +360,9 @@ class AdminController extends Controller
                         $hours = $endTime->diffInMinutes($startTime) / 60;
 
                         if ($teaching->class_type === 'L') {
-                            $regularLabHours += $hours;  
+                            $regularLabHours += $hours;
                         } else {
-                            $regularBroadcastHours += $hours;  
+                            $regularBroadcastHours += $hours;
                         }
 
                         $allAttendances->push([
@@ -308,9 +376,9 @@ class AdminController extends Controller
                 }
             }
 
-            $regularBroadcastHours = 0;   
-            $regularLabHours = 0;         
-            $specialTeachingHours = 0;    
+            $regularBroadcastHours = 0;
+            $regularLabHours = 0;
+            $specialTeachingHours = 0;
             $allAttendances = collect();
 
             if ($attendanceType === 'all' || $attendanceType === 'regular') {
@@ -361,7 +429,7 @@ class AdminController extends Controller
                 foreach ($extraAttendances as $classId => $extras) {
                     foreach ($extras as $extra) {
                         $hours = $extra->duration / 60;
-                        $specialTeachingHours += $hours; 
+                        $specialTeachingHours += $hours;
 
                         $allAttendances->push([
                             'type' => 'special',
@@ -375,8 +443,8 @@ class AdminController extends Controller
             }
 
             // คำนวณค่าตอบแทน
-            $regularPay = ($regularBroadcastHours + $regularLabHours) * 40; 
-            $specialPay = $specialTeachingHours * 50;                       
+            $regularPay = ($regularBroadcastHours + $regularLabHours) * 40;
+            $specialPay = $specialTeachingHours * 50;
             $totalPay = $regularPay + $specialPay;
 
             $totalPayText = $this->convertNumberToThaiBaht($totalPay);
@@ -493,7 +561,7 @@ class AdminController extends Controller
     {
         try {
             $requests = TeacherRequest::with([
-                'teacher:teacher_id,name,email', 
+                'teacher:teacher_id,name,email',
                 'course.subjects',
                 'details.students.courseTa.student'
             ])

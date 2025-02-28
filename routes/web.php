@@ -43,7 +43,7 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
 
     // Route to display the disbursement form
     // Route::get('/disbursements', [TaController::class, 'disbursements'])->name('layout.ta.disbursements');
-    Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layo ut.ta.disbursements');
+    Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layout.ta.disbursements');
     Route::post('/disbursements', [DisbursementsController::class, 'uploads'])->name('layout.ta.disbursements');
     Route::get('/ta/documents/download/{id}', [DisbursementsController::class, 'downloadDocument'])->name('layout.ta.download-document');
 
