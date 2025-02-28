@@ -36,12 +36,38 @@ class TaController extends Controller
         $this->tdbmService = $tdbmService;
     }
 
+    // เพิ่มในทั้ง TaController และ TeacherController
+    private function getActiveSemester()
+    {
+        // ลองดึงจาก session ก่อน
+        $activeSemesterId = session('user_active_semester_id');
+
+        // ถ้าไม่มีใน session ให้ดึงจากฐานข้อมูล
+        if (!$activeSemesterId) {
+            $setting = DB::table('setting_semesters')->where('key', 'user_active_semester_id')->first();
+
+            if ($setting) {
+                $activeSemesterId = $setting->value;
+                session(['user_active_semester_id' => $activeSemesterId]);
+            }
+        }
+
+        // ถ้ายังไม่มีค่า ให้ใช้ semester ล่าสุด
+        if (!$activeSemesterId) {
+            $semester = Semesters::orderBy('year', 'desc')
+                ->orderBy('semesters', 'desc')
+                ->first();
+        } else {
+            $semester = Semesters::find($activeSemesterId);
+        }
+
+        return $semester;
+    }
+
     public function request()
     {
         // Get latest semester
-        $currentSemester = Semesters::orderBy('year', 'desc')
-            ->orderBy('semesters', 'desc')
-            ->first();
+        $currentSemester = $this->getActiveSemester();
 
         if (!$currentSemester) {
             return redirect()->back()->with('error', 'ไม่พบข้อมูลภาคการศึกษา');
@@ -312,9 +338,7 @@ class TaController extends Controller
             $subjects = Subjects::all();
 
             // 3. Get latest semester
-            $currentSemester = Semesters::orderBy('year', 'desc')
-                ->orderBy('semesters', 'desc')
-                ->first();
+            $currentSemester = $this->getActiveSemester();
 
             if (!$currentSemester) {
                 Toastr::error('ไม่พบข้อมูลภาคการศึกษา', 'เกิดข้อผิดพลาด!');

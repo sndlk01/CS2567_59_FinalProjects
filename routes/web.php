@@ -63,12 +63,12 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     // Route to display profile page edit and update profile
     Route::get('/ta/profile', [TaController::class, 'edit'])->name('ta.profile');
     Route::put('/ta/profile/update', [TaController::class, 'update'])->name('ta.profile.update');
-    
+
     // For regular attendance
     Route::get('/attendances/{teaching_id}/edit', [TaController::class, 'editAttendance'])->name('attendances.edit');
     Route::put('/attendances/{teaching_id}', [TaController::class, 'updateAttendance'])->name('attendances.update');
     Route::delete('/attendances/{teaching_id}', [TaController::class, 'deleteAttendance'])->name('attendances.delete');
-    
+
     // For extra attendance
     Route::post('/extra-attendance', [TaController::class, 'storeExtraAttendance'])->name('extra-attendance.store');
     Route::get('/extra-attendance/{id}/edit', [TaController::class, 'editExtraAttendance'])->name('extra-attendance.edit');
@@ -100,6 +100,8 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
         Route::get('/{id}', [AdminController::class, 'showTARequest'])->name('show');
         Route::put('/{id}/process', [AdminController::class, 'processTARequest'])->name('process');
     });
+
+    Route::post('/admin/update-user-semester', [AdminController::class, 'updateUserSemester'])->name('layout.admin.updateUserSemester');
 });
 
 //Teacher Routes List

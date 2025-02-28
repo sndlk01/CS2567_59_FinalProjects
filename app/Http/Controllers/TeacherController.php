@@ -16,7 +16,8 @@ use App\Models\{
     Teaching,
     TeacherRequest,
     TeacherRequestsDetail,
-    TeacherRequestStudent
+    TeacherRequestStudent,
+    Semesters
 };
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, DB, Log};
@@ -37,6 +38,33 @@ class TeacherController extends Controller
         $this->tdbmService = $tdbmService;
     }
 
+    // เพิ่มในทั้ง TaController และ TeacherController
+    private function getActiveSemester()
+    {
+        // ลองดึงจาก session ก่อน
+        $activeSemesterId = session('user_active_semester_id');
+
+        // ถ้าไม่มีใน session ให้ดึงจากฐานข้อมูล
+        if (!$activeSemesterId) {
+            $setting = DB::table('setting_semesters')->where('key', 'user_active_semester_id')->first();
+
+            if ($setting) {
+                $activeSemesterId = $setting->value;
+                session(['user_active_semester_id' => $activeSemesterId]);
+            }
+        }
+
+        // ถ้ายังไม่มีค่า ให้ใช้ semester ล่าสุด
+        if (!$activeSemesterId) {
+            $semester = Semesters::orderBy('year', 'desc')
+                ->orderBy('semesters', 'desc')
+                ->first();
+        } else {
+            $semester = Semesters::find($activeSemesterId);
+        }
+
+        return $semester;
+    }
 
     public function indexTARequests()
     {
