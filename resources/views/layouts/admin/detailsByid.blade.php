@@ -38,7 +38,7 @@
                                 <p><strong>อีเมล:</strong> {{ $student->email }}</p>
                                 <p><strong>เบอร์โทรศัพท์:</strong> {{ $student->phone ?? 'ไม่ระบุ' }}</p>
 
-                                @if ($student->disbursements) {{-- เปลี่ยนเป็น disbursements --}}
+                                @if ($student->disbursements)
                                     <div class="mt-3">
                                         <p><strong>เอกสารสำคัญ:
                                                 @if ($student->disbursements->id)
@@ -68,7 +68,6 @@
                     </div>
 
                     <!-- ข้อมูลการลงเวลา -->
-                    <!-- ส่วนของฟิลเตอร์ -->
                     <div class="card-body">
                         @if (isset($semester) && $semester)
                             <h5 class="card-title">ข้อมูลการลงเวลาการสอน
@@ -81,19 +80,6 @@
 
                         <div class="mb-3">
                             <form method="GET" class="d-flex align-items-center gap-3">
-                                <!-- ตัวเลือกประเภทการลงเวลา -->
-                                <div class="d-flex align-items-center">
-                                    <label for="type" class="me-2">ประเภทโครงการ:</label>
-                                    <select name="type" id="type" class="form-select" style="width: 150px;">
-                                        <option value="all" {{ request('type', 'all') === 'all' ? 'selected' : '' }}>
-                                            ทั้งหมด</option>
-                                        <option value="N" {{ request('type') === 'N' ? 'selected' : '' }}>
-                                            โครงการปกติ</option>
-                                        <option value="S" {{ request('type') === 'S' ? 'selected' : '' }}>
-                                            โครงการพิเศษ</option>
-                                    </select>
-                                </div>
-
                                 <!-- ตัวเลือกเดือน -->
                                 <div class="d-flex align-items-center">
                                     <label for="month" class="me-2">เดือน:</label>
@@ -111,9 +97,23 @@
                             </form>
                         </div>
 
-                        <!-- แสดงข้อมูลแยกตาม Section -->
-                        <!-- แสดงข้อมูลแยกตาม Section -->
-                        @forelse($attendancesBySection as $section => $attendances)
+                        <!-- ข้อมูลโครงการปกติ -->
+                        <h5 class="mt-4 mb-3">ข้อมูลโครงการปกติ</h5>
+                        @php
+                            $regularAttendances = $attendancesBySection->map(function ($sectionAttendances) {
+                                return $sectionAttendances->filter(function ($attendance) {
+                                    if ($attendance['type'] === 'regular') {
+                                        return $attendance['data']->class->major->major_type !== 'S';
+                                    } else {
+                                        return $attendance['data']->classes->major->major_type !== 'S';
+                                    }
+                                });
+                            })->filter(function ($sectionAttendances) {
+                                return $sectionAttendances->isNotEmpty();
+                            });
+                        @endphp
+
+                        @forelse($regularAttendances as $section => $attendances)
                             <div class="card mb-4">
                                 <div class="card-header bg-light">
                                     <h6 class="mb-0">Section {{ $section }}</h6>
@@ -137,19 +137,7 @@
                                                 @foreach ($attendances as $attendance)
                                                     <tr>
                                                         <td>
-                                                            @if ($attendance['type'] === 'regular')
-                                                                @if ($attendance['data']->class->major && $attendance['data']->class->major->major_type === 'S')
-                                                                    <span class="badge bg-warning">โครงการพิเศษ</span>
-                                                                @else
-                                                                    <span class="badge bg-primary">โครงการปกติ</span>
-                                                                @endif
-                                                            @else
-                                                                @if ($attendance['data']->classes->major && $attendance['data']->classes->major->major_type === 'S')
-                                                                    <span class="badge bg-warning">โครงการพิเศษ</span>
-                                                                @else
-                                                                    <span class="badge bg-primary">โครงการปกติ</span>
-                                                                @endif
-                                                            @endif
+                                                            <span class="badge bg-primary">โครงการปกติ</span>
                                                         </td>
                                                         <td>
                                                             @if ($attendance['type'] === 'regular')
@@ -185,12 +173,8 @@
                                                         <td>
                                                             @if ($attendance['type'] === 'regular')
                                                                 @php
-                                                                    $start = \Carbon\Carbon::parse(
-                                                                        $attendance['data']->start_time,
-                                                                    );
-                                                                    $end = \Carbon\Carbon::parse(
-                                                                        $attendance['data']->end_time,
-                                                                    );
+                                                                    $start = \Carbon\Carbon::parse($attendance['data']->start_time);
+                                                                    $end = \Carbon\Carbon::parse($attendance['data']->end_time);
                                                                     $durationInHours = $end->diffInMinutes($start) / 60;
                                                                 @endphp
                                                                 {{ number_format($durationInHours, 2) }} ชั่วโมง
@@ -227,7 +211,125 @@
                             </div>
                         @empty
                             <div class="alert alert-info">
-                                ไม่พบข้อมูลการลงเวลาในช่วงเวลาที่เลือก
+                                ไม่พบข้อมูลการลงเวลาโครงการปกติในช่วงเวลาที่เลือก
+                            </div>
+                        @endforelse
+
+                        <!-- ข้อมูลโครงการพิเศษ -->
+                        <h5 class="mt-4 mb-3">ข้อมูลโครงการพิเศษ</h5>
+                        @php
+                            $specialAttendances = $attendancesBySection->map(function ($sectionAttendances) {
+                                return $sectionAttendances->filter(function ($attendance) {
+                                    if ($attendance['type'] === 'regular') {
+                                        return $attendance['data']->class->major->major_type === 'S';
+                                    } else {
+                                        return $attendance['data']->classes->major->major_type === 'S';
+                                    }
+                                });
+                            })->filter(function ($sectionAttendances) {
+                                return $sectionAttendances->isNotEmpty();
+                            });
+                        @endphp
+
+                        @forelse($specialAttendances as $section => $attendances)
+                            <div class="card mb-4">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0">Section {{ $section }}</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>ประเภท</th>
+                                                    <th>รูปแบบ</th>
+                                                    <th>วันที่</th>
+                                                    <th>เวลาสอน</th>
+                                                    <th>ชั่วโมงการสอน</th>
+                                                    <th>อาจารย์ประจำวิชา</th>
+                                                    <th>สถานะ</th>
+                                                    <th>รายละเอียด</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($attendances as $attendance)
+                                                    <tr>
+                                                        <td>
+                                                            <span class="badge bg-warning">โครงการพิเศษ</span>
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                @if ($attendance['data']->class_type === 'L')
+                                                                    <span class="badge bg-warning">LAB</span>
+                                                                @else
+                                                                    <span class="badge bg-secondary">LECTURE</span>
+                                                                @endif
+                                                            @else
+                                                                @if ($attendance['data']->class_type === 'L')
+                                                                    <span class="badge bg-warning">LAB</span>
+                                                                @else
+                                                                    <span class="badge bg-secondary">LECTURE</span>
+                                                                @endif
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                {{ \Carbon\Carbon::parse($attendance['data']->start_time)->format('d-m-Y') }}
+                                                            @else
+                                                                {{ \Carbon\Carbon::parse($attendance['data']->start_work)->format('d-m-Y') }}
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                {{ \Carbon\Carbon::parse($attendance['data']->start_time)->format('H:i') }}
+                                                                -
+                                                                {{ \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i') }}
+                                                            @else
+                                                                {{ \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') }}
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                @php
+                                                                    $start = \Carbon\Carbon::parse($attendance['data']->start_time);
+                                                                    $end = \Carbon\Carbon::parse($attendance['data']->end_time);
+                                                                    $durationInHours = $end->diffInMinutes($start) / 60;
+                                                                @endphp
+                                                                {{ number_format($durationInHours, 2) }} ชั่วโมง
+                                                            @else
+                                                                {{ number_format($attendance['data']->duration / 60, 2) }}
+                                                                ชั่วโมง
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                {{ $attendance['data']->teacher->position ?? '' }}
+                                                                {{ $attendance['data']->teacher->degree ?? '' }}
+                                                                {{ $attendance['data']->teacher->name ?? '' }}
+                                                            @else
+                                                                -
+                                                            @endif
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-success">อนุมัติแล้ว</span>
+                                                        </td>
+                                                        <td>
+                                                            @if ($attendance['type'] === 'regular')
+                                                                {{ $attendance['data']->attendance->note ?? '-' }}
+                                                            @else
+                                                                {{ $attendance['data']->detail ?? '-' }}
+                                                            @endif
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="alert alert-info">
+                                ไม่พบข้อมูลการลงเวลาโครงการพิเศษในช่วงเวลาที่เลือก
                             </div>
                         @endforelse
 
@@ -305,26 +407,14 @@
                                 <i class="fas fa-money-bill-wave"></i> จัดการอัตราค่าตอบแทน
                             </a>
 
-                            <a href="{{ route('layout.exports.pdf', ['id' => $student->id, 'month' => $selectedYearMonth, 'type' => $attendanceType]) }}"
+                            <a href="{{ route('layout.exports.pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}"
                                 class="btn btn-primary">
                                 Export PDF
                             </a>
-
-
-
-                            {{-- <a href="{{ url()->previous() }}" class="btn btn-secondary">
-                                ย้อนกลับ
-                            </a> --}}
                         </div>
-
                     </div>
-
                 </div>
-
-                <!-- ปุ่มย้อนกลับ -->
-
             </div>
         </div>
     </div>
-
 @endsection
