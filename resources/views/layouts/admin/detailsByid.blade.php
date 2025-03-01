@@ -421,14 +421,14 @@
 
                             <a href="{{ route('layout.exports.pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}"
                                 class="btn btn-primary">
-                                Export PDF
+                                <i class="fas fa-file-pdf"></i> ดาวน์โหลดแบบใบเบิกค่าตอบแทน
                             </a>
 
                             <a href="{{ route('layout.exports.result-pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}"
                                 class="btn btn-success">
-                                <i class="fas fa-file-pdf"></i> Export PDF (แบบตาราง)
+                                <i class="fas fa-file-pdf"></i> ดาวน์โหลดหลักฐานการจ่ายเงิน
                             </a>
-                            
+
                         </div>
                     </div>
                 </div>
