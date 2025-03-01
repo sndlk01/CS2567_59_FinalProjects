@@ -11,7 +11,6 @@
             src: url("{{ storage_path('fonts/THSarabunNew.ttf') }}") format('truetype');
         }
 
-        /* Bold */
         @font-face {
             font-family: 'THSarabunNew';
             font-style: normal;
@@ -19,7 +18,6 @@
             src: url("{{ storage_path('fonts/THSarabunNew Bold.ttf') }}") format('truetype');
         }
 
-        /* Italic */
         @font-face {
             font-family: 'THSarabunNew';
             font-style: italic;
@@ -27,7 +25,6 @@
             src: url("{{ storage_path('fonts/THSarabunNew Italic.ttf') }}") format('truetype');
         }
 
-        /* Bold Italic */
         @font-face {
             font-family: 'THSarabunNew';
             font-style: italic;
@@ -142,7 +139,6 @@
             text-align: right;
         }
         
-        /* Page break utility */
         .page-break {
             page-break-after: always;
         }
@@ -150,9 +146,7 @@
 </head>
 
 <body>
-    <!-- นำฟังก์ชันช่วยจัดการข้อมูล -->
     @php
-    // แยกข้อมูลการลงเวลาตามประเภทโครงการ (ปกติ/พิเศษ)
     $regularAttendances = collect();
     $specialAttendances = collect();
     
@@ -175,7 +169,7 @@
     }
     @endphp
 
-    <!-- หน้าที่ 1: โครงการปกติ (แสดงเฉพาะเมื่อมีข้อมูลโครงการปกติ) -->
+    <!-- โครงการปกติ แสดงเฉพาะเมื่อมีข้อมูลโครงการปกติ -->
     @if($hasRegularProject || $regularAttendances->isNotEmpty())
     <div class="center">
         <h3>แบบใบเบิกค่าตอบแทนผู้ช่วยสอนและผู้ช่วยปฏิบัติงาน</h3>
@@ -354,12 +348,11 @@
     </div>
     @endif
 
-    <!-- เพิ่ม Page Break เพื่อแยกหน้า เฉพาะเมื่อมีทั้งข้อมูลโครงการปกติและโครงการพิเศษ -->
     @if($hasRegularProject && $hasSpecialProject)
     <div class="page-break"></div>
     @endif
 
-    <!-- หน้าที่ 2: โครงการพิเศษ (แสดงเฉพาะเมื่อมีข้อมูลโครงการพิเศษ) -->
+    <!--  โครงการพิเศษ แสดงเฉพาะเมื่อมีข้อมูลโครงการพิเศษ -->
     @if($hasSpecialProject || $specialAttendances->isNotEmpty())
     <div class="center">
         <h3>แบบใบเบิกค่าตอบแทนผู้ช่วยสอนและผู้ช่วยปฏิบัติงาน</h3>
