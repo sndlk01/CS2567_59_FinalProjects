@@ -37,8 +37,8 @@
 
         * {
             font-family: 'THSarabunNew', sans-serif !important;
-            font-size: 14pt;
-            line-height: 1.3;
+            font-size: 12pt;
+            line-height: 0.8;
         }
 
 
@@ -60,7 +60,7 @@
         }
 
         h3 {
-            font-size: 16pt;
+            font-size: 14pt;
             margin-top: 5px;
             margin-bottom: 5px;
         }
@@ -75,7 +75,7 @@
         th,
         td {
             border: 1px solid black;
-            padding: 5px;
+            padding: 1px;
         }
 
         th {
@@ -86,7 +86,7 @@
 
         td {
             padding: 3px 5px;
-            font-size: 14pt;
+            font-size: 12pt;
         }
 
         .checkbox {
@@ -137,32 +137,34 @@
         .no-border td {
             border: none !important;
         }
+        
+        .text-end {
+            text-align: right;
+        }
     </style>
 </head>
 
 <body>
     <div class="center">
-        <h2>แบบใบเบิกค่าตอบแทนผู้ช่วยสอนและผู้ช่วยปฏิบัติงาน</h2>
+        <h3>แบบใบเบิกค่าตอบแทนผู้ช่วยสอนและผู้ช่วยปฏิบัติงาน</h3>
         <h3>วิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น</h3>
-        {{-- <div style="margin: 10px 0;">
+        <div style="margin: 10px 0; line-height: 1;">
             ภาคการศึกษา
-            (<span class="checkbox">{{ $semester == 'ต้น' ? '/' : ' ' }}</span>) ต้น
-            (<span class="checkbox">{{ $semester == 'ปลาย' ? '/' : ' ' }}</span>) ปลาย
-            (<span class="checkbox">{{ $semester == 'ฤดูร้อน' ? '/' : ' ' }}</span>) ฤดูร้อน
+            (<span>{{ $semester->semesters == 'ต้น' ? '/' : ' ' }}</span>) ต้น
+            (<span>{{ $semester->semesters == 'ปลาย' ? '/' : ' ' }}</span>) ปลาย
+            (<span>{{ $semester->semesters == 'ฤดูร้อน' ? '/' : ' ' }}</span>) ฤดูร้อน
             ปีการศึกษา {{ $year }}
-        </div> --}}
-        <div style="margin-bottom: 15px;">
+            <br>
             ประจำเดือน {{ $monthText }}
+            <br>
+            รายวิชาระดับ
+            (<span> </span>) ปริญญาตรี
+            (<span> </span>) บัณฑิตศึกษา
+            <br>
+            (<span> </span>) ภาคปกติ
+            (<span> </span>) โครงการพิเศษ
         </div>
     </div>
-
-    {{-- <div style="margin-bottom: 15px;">
-        รายวิชาระดับ
-        (<span class="checkbox">/</span>) ปริญญาตรี
-        (<span class="checkbox"> </span>) บัณฑิตศึกษา<br>
-        (<span class="checkbox"> </span>) ภาคปกติ
-        (<span class="checkbox">/</span>) โครงการพิเศษ
-    </div> --}}
 
     <table>
         <thead>
@@ -182,12 +184,21 @@
             </tr>
         </thead>
         <tbody>
-            @php $no = 1; @endphp
+            @php $no = 1; $isFirstRow = true; @endphp
             @foreach ($attendancesBySection as $section => $attendances)
                 @foreach ($attendances as $attendance)
                     <tr>
-                        <td style="text-align: center;">{{ $no++ }}</td>
-                        <td>{{ $student->name }}</td>
+                        <td style="text-align: center;">
+                            @if ($isFirstRow)
+                                {{ $no }}
+                            @endif
+                        </td>
+                        <td>
+                            @if ($isFirstRow)
+                                {{ $student->name }}
+                                @php $isFirstRow = false; @endphp
+                            @endif
+                        </td>
                         <td style="text-align: center;">ป.ตรี</td>
                         <td style="text-align: center;">
                             {{ \Carbon\Carbon::parse($attendance['type'] === 'regular' ? $attendance['data']->start_time : $attendance['data']->start_work)->format('d-m-y') }}
@@ -200,17 +211,17 @@
                             @endif
                         </td>
                         <td style="text-align: center;">
-                            @if ($attendance['type'] === 'regular')
-                                {{ $attendance['data']->class_type !== 'L' ? number_format($attendance['hours'], 2) : '-' }}
+                            @if ($attendance['data']->class_type !== 'L')
+                                {{ number_format($attendance['hours'], 2) }}
                             @else
-                                {{ $attendance['data']->class_type !== 'L' ? number_format($attendance['hours'], 2) : '-' }}
+                                -
                             @endif
                         </td>
                         <td style="text-align: center;">
-                            @if ($attendance['type'] === 'regular')
-                                {{ $attendance['data']->class_type === 'L' ? number_format($attendance['hours'], 2) : '-' }}
+                            @if ($attendance['data']->class_type === 'L')
+                                {{ number_format($attendance['hours'], 2) }}
                             @else
-                                {{ $attendance['data']->class_type === 'L' ? number_format($attendance['hours'], 2) : '-' }}
+                                -
                             @endif
                         </td>
                         <td>
@@ -225,70 +236,79 @@
             @endforeach
             <tr>
                 <td colspan="5" style="text-align: center;"><strong>รวมเวลาที่สอน</strong></td>
-                <td style="text-align: center;">{{ number_format($regularBroadcastHours + $regularLabHours, 2) }}</td>
-                <td style="text-align: center;">{{ number_format($specialTeachingHours, 2) }}</td>
+                <td style="text-align: center;">{{ number_format($regularBroadcastHours, 2) }}</td>
+                <td style="text-align: center;">{{ number_format($regularLabHours, 2) }}</td>
                 <td></td>
             </tr>
         </tbody>
     </table>
 
-    <!-- ส่วนตาราง no-border สำหรับแสดงรายละเอียดค่าตอบแทน -->
     <div class="mb-4">
         <table class="table no-border">
             <tbody>
                 <tr>
-                    <td>- ปริญญาตรี (ภาคปกติ)</td>
+                    <td><strong>จำนวนเงินที่ขอเบิก</strong></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td>ปริญญาตรี (ภาคปกติ)</td>
                     <td class="text-end">{{ number_format($regularBroadcastHours + $regularLabHours, 2) }}</td>
                     <td>ชั่วโมง</td>
                     <td>อัตราชั่วโมงละ</td>
-                    <td class="text-end">40.00</td>
+                    <td class="text-end">{{ number_format($compensationRates['regularLecture'], 2) }}</td>
                     <td>บาท</td>
                     <td>เป็นเงิน</td>
                     <td class="text-end">{{ number_format($regularPay, 2) }}</td>
                 </tr>
                 <tr>
-                    <td>- ปริญญาตรี (โครงการพิเศษ)</td>
-                    <td class="text-end">{{ number_format($specialTeachingHours, 2) }}</td>
+                    <td>ปริญญาตรี (โครงการพิเศษ)</td>
+                    <td class="text-end">{{ number_format($specialLectureHours + $specialLabHours, 2) }}</td>
                     <td>ชั่วโมง</td>
                     <td>อัตราชั่วโมงละ</td>
-                    <td class="text-end">50.00</td>
+                    <td class="text-end">{{ number_format($compensationRates['specialLecture'], 2) }}</td>
                     <td>บาท</td>
                     <td>เป็นเงิน</td>
                     <td class="text-end">{{ number_format($specialPay, 2) }}</td>
                 </tr>
                 <tr>
-                    <td colspan="6">รวมเป็นเงินทั้งสิ้น</td>
-                    <td class="text-end">{{ number_format($totalPay, 2) }} บาท</td>
-                    <td>= {{ $totalPayText }} =</td>
+                    <td colspan="6"><strong>รวมเป็นเงินทั้งสิ้น</strong></td>
+                    <td class="text-end"><strong>{{ number_format($totalPay, 2) }} บาท</strong></td>
+                    <td><strong>= {{ $totalPayText }} =</strong></td>
                 </tr>
             </tbody>
         </table>
     </div>
 
-    <div class="signature-section">
-        <div class="signature-box">
-            <div class="signature-line">ลงชื่อ ................................................</div>
-            <p>(................................................)</p>
-            <p>ผู้ปฏิบัติงาน</p>
-            <p>วันที่........เดือน....................พ.ศ............</p>
-        </div>
-        <div class="signature-box">
-            <div class="signature-line">ลงชื่อ ................................................</div>
-            <p>(................................................)</p>
-            <p>อาจารย์ผู้สอน</p>
-            <p>วันที่........เดือน....................พ.ศ............</p>
-        </div>
-        <div class="signature-box">
-            <div class="signature-line">ลงชื่อ ................................................</div>
-            <p>(................................................)</p>
-            <p>ตำแหน่ง หัวหน้าสาขาวิชาวิทยาการคอมพิวเตอร์</p>
-            <p>วันที่........เดือน....................พ.ศ............</p>
-        </div>
-    </div>
-
     <div class="clear"></div>
     <div style="margin-top: 20px;">
         <p>หมายเหตุ : ขอเบิกจ่ายเพียง {{ number_format($totalPay, 2) }} บาท</p>
+    </div>
+
+    <div class="signature-section">
+        <div class="signature-box">
+            <div class="signature-line">ลงชื่อ ................................................</div>
+            <p>({{ $student->name }})</p>
+            <p>ผู้ปฏิบัติงาน</p>
+            <p>วันที่ {{ $formattedDate['day'] }} {{ $formattedDate['month'] }} พ.ศ. {{ $formattedDate['year'] }}</p>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line">ลงชื่อ ................................................</div>
+            <p>({{ $teacherFullTitle }})</p>
+            <p>อาจารย์ผู้สอน</p>
+            <p>วันที่ {{ $formattedDate['day'] }} {{ $formattedDate['month'] }} พ.ศ. {{ $formattedDate['year'] }}</p>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line">ลงชื่อ ................................................</div>
+            <p>({{ $headName }})</p>
+            <p>ตำแหน่ง หัวหน้าสาขาวิชาวิทยาการคอมพิวเตอร์</p>
+            <p>วันที่ {{ $formattedDate['day'] }} {{ $formattedDate['month'] }} พ.ศ. {{ $formattedDate['year'] }}</p>
+        </div>
     </div>
 </body>
 

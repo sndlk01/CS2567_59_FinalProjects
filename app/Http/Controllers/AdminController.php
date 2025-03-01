@@ -528,7 +528,7 @@ class AdminController extends Controller
                 'regularPay' => $regularPay,
                 'specialPay' => $specialPay,
                 'totalPay' => $totalPay,
-                
+
                 'rates' => [
                     'regularLecture' => $regularLectureRate,
                     'regularLab' => $regularLabRate,
@@ -630,7 +630,7 @@ class AdminController extends Controller
             $selectedYearMonth = request('month');
             $attendanceType = request('type', 'all');
 
-            $ta = CourseTas::with(['student', 'course.semesters'])
+            $ta = CourseTas::with(['student', 'course.semesters', 'course.teachers'])
                 ->whereHas('student', function ($query) use ($id) {
                     $query->where('id', $id);
                 })
@@ -642,17 +642,41 @@ class AdminController extends Controller
 
             $student = $ta->student;
             $semester = $ta->course->semesters;
+
+            // ดึงข้อมูลอาจารย์ผู้สอนจากข้อมูลรายวิชา
+            $teacherName = $ta->course->teachers->name ?? 'อาจารย์ผู้สอน';
+            $teacherPosition = $ta->course->teachers->position ?? '';
+            $teacherDegree = $ta->course->teachers->degree ?? '';
+
+            // รวมคำนำหน้า ตำแหน่ง วุฒิ และชื่ออาจารย์
+            $teacherFullTitle = trim($teacherPosition . ' ' . $teacherDegree . '.' . ' ' . $teacherName);
+
+            // ใช้ค่าคงที่สำหรับชื่อหัวหน้าสาขาแทนการดึงจากฐานข้อมูล
+            $headName = 'ผศ.ดร.สายยัญ สายยศ';
+
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
+
+            // Format current date in Thai style
+            $currentDate = \Carbon\Carbon::now();
+            $thaiMonth = $currentDate->locale('th')->monthName;
+            $thaiYear = $currentDate->year + 543;
+            $formattedDate = [
+                'day' => $currentDate->day,
+                'month' => $thaiMonth,
+                'year' => $thaiYear
+            ];
 
             $monthText = $selectedDate->locale('th')->monthName . ' ' . ($selectedDate->year + 543);
             $year = $selectedDate->year + 543;
 
-            $regularBroadcastHours = 0;  // ชั่วโมงบรรยาย
-            $regularLabHours = 0;        // ชั่วโมงปฏิบัติการ
+            $regularBroadcastHours = 0;  // ชั่วโมงบรรยาย (regular lecture)
+            $regularLabHours = 0;        // ชั่วโมงปฏิบัติการ (regular lab)
+            $specialLectureHours = 0;    // ชั่วโมงบรรยายพิเศษ (special lecture)
+            $specialLabHours = 0;        // ชั่วโมงปฏิบัติการพิเศษ (special lab)
             $allAttendances = collect();
 
             if ($attendanceType === 'all' || $attendanceType === 'regular') {
-                $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
+                $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects', 'class.major'])
                     ->where('class_id', 'LIKE', $ta->course_id . '%')
                     ->whereYear('start_time', $selectedDate->year)
                     ->whereMonth('start_time', $selectedDate->month)
@@ -670,10 +694,23 @@ class AdminController extends Controller
                         $endTime = \Carbon\Carbon::parse($teaching->end_time);
                         $hours = $endTime->diffInMinutes($startTime) / 60;
 
-                        if ($teaching->class_type === 'L') {
-                            $regularLabHours += $hours;
-                        } else {
-                            $regularBroadcastHours += $hours;
+                        // ตรวจสอบประเภทของคลาส (ปกติหรือพิเศษ)
+                        $majorType = $teaching->class->major->major_type ?? 'N';
+                        $classType = $teaching->class_type === 'L' ? 'LAB' : 'LECTURE';
+
+                        // คำนวณชั่วโมงตามประเภท
+                        if ($majorType === 'N') { // ภาคปกติ
+                            if ($classType === 'LAB') {
+                                $regularLabHours += $hours;
+                            } else {
+                                $regularBroadcastHours += $hours;
+                            }
+                        } else { // ภาคพิเศษ
+                            if ($classType === 'LAB') {
+                                $specialLabHours += $hours;
+                            } else {
+                                $specialLectureHours += $hours;
+                            }
                         }
 
                         $allAttendances->push([
@@ -681,55 +718,16 @@ class AdminController extends Controller
                             'section' => $section,
                             'date' => $teaching->start_time,
                             'data' => $teaching,
-                            'hours' => $hours
-                        ]);
-                    }
-                }
-            }
-
-            $regularBroadcastHours = 0;
-            $regularLabHours = 0;
-            $specialTeachingHours = 0;
-            $allAttendances = collect();
-
-            if ($attendanceType === 'all' || $attendanceType === 'regular') {
-                $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects'])
-                    ->where('class_id', 'LIKE', $ta->course_id . '%')
-                    ->whereYear('start_time', $selectedDate->year)
-                    ->whereMonth('start_time', $selectedDate->month)
-                    ->whereHas('attendance', function ($query) {
-                        $query->where('approve_status', 'A');
-                    })
-                    ->get()
-                    ->groupBy(function ($teaching) {
-                        return $teaching->class->section_num;
-                    });
-
-                foreach ($teachings as $section => $sectionTeachings) {
-                    foreach ($sectionTeachings as $teaching) {
-                        $startTime = \Carbon\Carbon::parse($teaching->start_time);
-                        $endTime = \Carbon\Carbon::parse($teaching->end_time);
-                        $hours = $endTime->diffInMinutes($startTime) / 60;
-
-                        if ($teaching->class_type === 'L') {
-                            $regularLabHours += $hours;
-                        } else {
-                            $regularBroadcastHours += $hours;
-                        }
-
-                        $allAttendances->push([
-                            'type' => 'regular',
-                            'section' => $section,
-                            'date' => $teaching->start_time,
-                            'data' => $teaching,
-                            'hours' => $hours
+                            'hours' => $hours,
+                            'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
+                            'class_type' => $classType
                         ]);
                     }
                 }
             }
 
             if ($attendanceType === 'all' || $attendanceType === 'special') {
-                $extraAttendances = ExtraAttendances::with(['classes.course.subjects'])
+                $extraAttendances = ExtraAttendances::with(['classes.course.subjects', 'classes.major'])
                     ->where('student_id', $student->id)
                     ->where('approve_status', 'A')
                     ->whereYear('start_work', $selectedDate->year)
@@ -740,27 +738,61 @@ class AdminController extends Controller
                 foreach ($extraAttendances as $classId => $extras) {
                     foreach ($extras as $extra) {
                         $hours = $extra->duration / 60;
-                        $specialTeachingHours += $hours;
+                        $class = $extra->classes;
+
+                        // ตรวจสอบประเภทของคลาส (ปกติหรือพิเศษ)
+                        $majorType = $class && $class->major ? $class->major->major_type : 'N';
+                        $classType = $extra->class_type === 'L' ? 'LAB' : 'LECTURE';
+
+                        // คำนวณชั่วโมงตามประเภท
+                        if ($majorType === 'N') { // ภาคปกติ
+                            if ($classType === 'LAB') {
+                                $regularLabHours += $hours;
+                            } else {
+                                $regularBroadcastHours += $hours;
+                            }
+                        } else { // ภาคพิเศษ
+                            if ($classType === 'LAB') {
+                                $specialLabHours += $hours;
+                            } else {
+                                $specialLectureHours += $hours;
+                            }
+                        }
 
                         $allAttendances->push([
                             'type' => 'special',
-                            'section' => $extra->classes ? $extra->classes->section_num : 'N/A',
+                            'section' => $class ? $class->section_num : 'N/A',
                             'date' => $extra->start_work,
                             'data' => $extra,
-                            'hours' => $hours
+                            'hours' => $hours,
+                            'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
+                            'class_type' => $classType
                         ]);
                     }
                 }
             }
 
+            // ดึงอัตราค่าตอบแทนจากฐานข้อมูล
+            $regularRate = $this->getCompensationRate('regular', 'LECTURE'); // ใช้อัตราเดียวกันสำหรับภาคปกติทั้งหมด
+            $specialRate = $this->getCompensationRate('special', 'LECTURE'); // ใช้อัตราเดียวกันสำหรับภาคพิเศษทั้งหมด
+
             // คำนวณค่าตอบแทน
-            $regularPay = ($regularBroadcastHours + $regularLabHours) * 40;
-            $specialPay = $specialTeachingHours * 50;
+            $regularHours = $regularBroadcastHours + $regularLabHours;
+            $specialHours = $specialLectureHours + $specialLabHours;
+
+            $regularPay = $regularHours * $regularRate;
+            $specialPay = $specialHours * $specialRate;
             $totalPay = $regularPay + $specialPay;
 
             $totalPayText = $this->convertNumberToThaiBaht($totalPay);
 
             $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
+
+            // สร้างข้อมูลอัตราค่าตอบแทนสำหรับส่งไปยัง view
+            $compensationRates = [
+                'regularLecture' => $regularRate,
+                'specialLecture' => $specialRate
+            ];
 
             $pdf = PDF::loadView('exports.detailPDF', compact(
                 'student',
@@ -771,11 +803,21 @@ class AdminController extends Controller
                 'year',
                 'regularBroadcastHours',
                 'regularLabHours',
-                'specialTeachingHours',
+                'specialLectureHours',
+                'specialLabHours',
+                'regularHours',
+                'specialHours',
+                'compensationRates',
                 'regularPay',
                 'specialPay',
                 'totalPay',
-                'totalPayText'
+                'totalPayText',
+                'headName',
+                'formattedDate',
+                'teacherName',
+                'teacherPosition',
+                'teacherDegree',
+                'teacherFullTitle' // ส่งข้อมูลอาจารย์ไปยัง view
             ));
 
             $pdf->setPaper('A4');

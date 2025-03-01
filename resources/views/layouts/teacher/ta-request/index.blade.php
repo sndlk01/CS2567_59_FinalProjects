@@ -28,8 +28,8 @@
                                         <tbody>
                                             @foreach ($courses as $courseData)
                                             <tr>
-                                                <td>{{ $courseData['course']->subjects->subject_id }}</td>
-                                                <td>{{ $courseData['course']->subjects->name_en }}</td>
+                                                <td>{{ $courseData['course']->subjects->subject_id ?? 'N/A' }}</td>
+                                                <td>{{ $courseData['course']->subjects->name_en ?? 'N/A' }}</td>
                                                 <td>{{ $courseData['approved_tas']->count() }}</td>
                                                 <td>
                                                     @if ($courseData['approved_tas']->isNotEmpty())

@@ -231,44 +231,75 @@
                             </div>
                         @endforelse
 
+                        <!-- สรุปค่าตอบแทน -->
                         <div class="card mt-4">
                             <div class="card-header bg-light">
                                 <h6 class="mb-0">สรุปค่าตอบแทน</h6>
                             </div>
                             <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <p><strong>ค่าตอบแทนภาคบรรยายปกติ
-                                                ({{ number_format($compensation['regularLectureHours'], 2) }} ชั่วโมง × 
-                                                <span class="text-primary">{{ number_format($compensation['rates']['regularLecture'], 2) }} บาท</span>):</strong>
-                                            {{ number_format($compensation['regularLecturePay'], 2) }} บาท</p>
-                                        
-                                        <p><strong>ค่าตอบแทนภาคปฏิบัติการปกติ
-                                                ({{ number_format($compensation['regularLabHours'], 2) }} ชั่วโมง × 
-                                                <span class="text-primary">{{ number_format($compensation['rates']['regularLab'], 2) }} บาท</span>):</strong>
-                                            {{ number_format($compensation['regularLabPay'], 2) }} บาท</p>
-                                        
-                                        <p><strong>ค่าตอบแทนภาคบรรยายพิเศษ
-                                                ({{ number_format($compensation['specialLectureHours'], 2) }} ชั่วโมง × 
-                                                <span class="text-primary">{{ number_format($compensation['rates']['specialLecture'], 2) }} บาท</span>):</strong>
-                                            {{ number_format($compensation['specialLecturePay'], 2) }} บาท</p>
-                                        
-                                        <p><strong>ค่าตอบแทนภาคปฏิบัติการพิเศษ
-                                                ({{ number_format($compensation['specialLabHours'], 2) }} ชั่วโมง × 
-                                                <span class="text-primary">{{ number_format($compensation['rates']['specialLab'], 2) }} บาท</span>):</strong>
-                                            {{ number_format($compensation['specialLabPay'], 2) }} บาท</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <p><strong>จำนวนชั่วโมงรวม:</strong>
-                                            {{ number_format($compensation['regularHours'] + $compensation['specialHours'], 2) }}
-                                            ชั่วโมง</p>
-                                        <p><strong>ค่าตอบแทนรวมทั้งสิ้น:</strong>
-                                            {{ number_format($compensation['totalPay'], 2) }} บาท</p>
-                                    </div>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>ประเภทค่าตอบแทน</th>
+                                                <th class="text-center">จำนวนชั่วโมง</th>
+                                                <th class="text-center">อัตราค่าตอบแทน (บาท)</th>
+                                                <th class="text-end">จำนวนเงิน (บาท)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>คาบบรรยาย ภาคปกติ</td>
+                                                <td class="text-center">
+                                                    {{ number_format($compensation['regularLectureHours'], 2) }}</td>
+                                                <td class="text-center text-primary fw-bold">
+                                                    {{ number_format($compensation['rates']['regularLecture'], 2) }}</td>
+                                                <td class="text-end">
+                                                    {{ number_format($compensation['regularLecturePay'], 2) }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>คาบปฏิบัติการ ภาคปกติ</td>
+                                                <td class="text-center">
+                                                    {{ number_format($compensation['regularLabHours'], 2) }}</td>
+                                                <td class="text-center text-primary fw-bold">
+                                                    {{ number_format($compensation['rates']['regularLab'], 2) }}</td>
+                                                <td class="text-end">{{ number_format($compensation['regularLabPay'], 2) }}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>คาบบรรยาย ภาคพิเศษ</td>
+                                                <td class="text-center">
+                                                    {{ number_format($compensation['specialLectureHours'], 2) }}</td>
+                                                <td class="text-center text-primary fw-bold">
+                                                    {{ number_format($compensation['rates']['specialLecture'], 2) }}</td>
+                                                <td class="text-end">
+                                                    {{ number_format($compensation['specialLecturePay'], 2) }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>คาบปฏิบัติการ ภาคการพิเศษ</td>
+                                                <td class="text-center">
+                                                    {{ number_format($compensation['specialLabHours'], 2) }}</td>
+                                                <td class="text-center text-primary fw-bold">
+                                                    {{ number_format($compensation['rates']['specialLab'], 2) }}</td>
+                                                <td class="text-end">{{ number_format($compensation['specialLabPay'], 2) }}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot class="table-light fw-bold">
+                                            <tr>
+                                                <td colspan="2" class="text-end">จำนวนชั่วโมงรวม</td>
+                                                <td class="text-center">
+                                                    {{ number_format($compensation['regularHours'] + $compensation['specialHours'], 2) }}
+                                                    ชั่วโมง</td>
+                                                <td class="text-end">{{ number_format($compensation['totalPay'], 2) }} บาท
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="mt-3">
                             <a href="{{ route('admin.compensation-rates.index') }}" class="btn btn-info">
                                 <i class="fas fa-money-bill-wave"></i> จัดการอัตราค่าตอบแทน
@@ -278,14 +309,14 @@
                                 class="btn btn-primary">
                                 Export PDF
                             </a>
-                            
-                            
-                            
+
+
+
                             {{-- <a href="{{ url()->previous() }}" class="btn btn-secondary">
                                 ย้อนกลับ
                             </a> --}}
                         </div>
-          
+
                     </div>
 
                 </div>
