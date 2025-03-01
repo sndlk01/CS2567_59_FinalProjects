@@ -651,7 +651,7 @@ class AdminController extends Controller
             $teacherFullTitle = trim($teacherPosition . ' ' . $teacherDegree . '.' . ' ' . $teacherName);
 
             // ใช้ค่าคงที่สำหรับชื่อหัวหน้าสาขาแทนการดึงจากฐานข้อมูล
-            $headName = 'ผศ.ดร.สายยัญ สายยศ';
+            $headName = 'ผศ. ดร.คำรณ สุนัติ';
 
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
 
@@ -806,6 +806,178 @@ class AdminController extends Controller
         $announces = Announce::latest()->paginate(5);
         return view('layouts.admin.index', compact('announces'))
             ->with('i', (request()->input('page', 1) - 1) * 5);
+    }
+
+
+    public function exportResultPDF($id)
+    {
+        try {
+            $selectedYearMonth = request('month');
+
+            $ta = CourseTas::with(['student', 'course.semesters', 'course.teachers'])
+                ->whereHas('student', function ($query) use ($id) {
+                    $query->where('id', $id);
+                })
+                ->first();
+
+            if (!$ta) {
+                return back()->with('error', 'ไม่พบข้อมูลผู้ช่วยสอน');
+            }
+
+            $student = $ta->student;
+            $semester = $ta->course->semesters;
+
+            // ข้อมูลอาจารย์
+            $teacherName = $ta->course->teachers->name ?? 'อาจารย์ผู้สอน';
+            $teacherPosition = $ta->course->teachers->position ?? '';
+            $teacherDegree = $ta->course->teachers->degree ?? '';
+            $teacherFullTitle = trim($teacherPosition . ' ' . $teacherDegree . '.' . ' ' . $teacherName);
+
+            // ข้อมูลหัวหน้าสาขา
+            $headName = 'ผศ. ดร.คำรณ สุนัติ';
+
+            $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
+
+            // Format current date in Thai style
+            $currentDate = \Carbon\Carbon::now();
+            $thaiMonth = $currentDate->locale('th')->monthName;
+            $thaiYear = $currentDate->year + 543;
+            $formattedDate = [
+                'day' => $currentDate->day,
+                'month' => $thaiMonth,
+                'year' => $thaiYear
+            ];
+
+            $monthText = $selectedDate->locale('th')->monthName . ' ' . ($selectedDate->year + 543);
+            $year = $selectedDate->year + 543;
+
+            // ตัวแปรสำหรับเก็บข้อมูลการสอนทั้งหมด
+            $allAttendances = collect();
+
+            // ตัวแปรสำหรับตรวจสอบว่ามีข้อมูลโครงการปกติหรือโครงการพิเศษหรือไม่
+            $hasRegularProject = false;
+            $hasSpecialProject = false;
+
+            // ดึงข้อมูลการสอนปกติ (regular teaching)
+            $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects', 'class.major'])
+                ->where('class_id', 'LIKE', $ta->course_id . '%')
+                ->whereYear('start_time', $selectedDate->year)
+                ->whereMonth('start_time', $selectedDate->month)
+                ->whereHas('attendance', function ($query) {
+                    $query->where('approve_status', 'A');
+                })
+                ->get()
+                ->groupBy(function ($teaching) {
+                    return $teaching->class->section_num;
+                });
+
+            foreach ($teachings as $section => $sectionTeachings) {
+                foreach ($sectionTeachings as $teaching) {
+                    $startTime = \Carbon\Carbon::parse($teaching->start_time);
+                    $endTime = \Carbon\Carbon::parse($teaching->end_time);
+                    $hours = $endTime->diffInMinutes($startTime) / 60;
+
+                    // ตรวจสอบประเภทของคลาส (ปกติหรือพิเศษ)
+                    $majorType = $teaching->class->major->major_type ?? 'N';
+                    $classType = $teaching->class_type === 'L' ? 'LAB' : 'LECTURE';
+
+                    // ตรวจสอบและบันทึกการมีข้อมูลของแต่ละโครงการ
+                    if ($majorType === 'N') {
+                        $hasRegularProject = true;
+                    } else {
+                        $hasSpecialProject = true;
+                    }
+
+                    $allAttendances->push([
+                        'type' => 'regular',
+                        'section' => $section,
+                        'date' => $teaching->start_time,
+                        'data' => $teaching,
+                        'hours' => $hours,
+                        'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
+                        'class_type' => $classType
+                    ]);
+                }
+            }
+
+            // ดึงข้อมูลการสอนพิเศษ (extra teaching)
+            $extraAttendances = ExtraAttendances::with(['classes.course.subjects', 'classes.major'])
+                ->where('student_id', $student->id)
+                ->where('approve_status', 'A')
+                ->whereYear('start_work', $selectedDate->year)
+                ->whereMonth('start_work', $selectedDate->month)
+                ->get()
+                ->groupBy('class_id');
+
+            foreach ($extraAttendances as $classId => $extras) {
+                foreach ($extras as $extra) {
+                    $hours = $extra->duration / 60;
+                    $class = $extra->classes;
+
+                    // ตรวจสอบประเภทของคลาส (ปกติหรือพิเศษ)
+                    $majorType = $class && $class->major ? $class->major->major_type : 'N';
+                    $classType = $extra->class_type === 'L' ? 'LAB' : 'LECTURE';
+
+                    // ตรวจสอบและบันทึกการมีข้อมูลของแต่ละโครงการ
+                    if ($majorType === 'N') {
+                        $hasRegularProject = true;
+                    } else {
+                        $hasSpecialProject = true;
+                    }
+
+                    $allAttendances->push([
+                        'type' => 'special',
+                        'section' => $class ? $class->section_num : 'N/A',
+                        'date' => $extra->start_work,
+                        'data' => $extra,
+                        'hours' => $hours,
+                        'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
+                        'class_type' => $classType
+                    ]);
+                }
+            }
+
+            // ดึงอัตราค่าตอบแทนจากฐานข้อมูล
+            $regularRate = $this->getCompensationRate('regular', 'LECTURE'); // ใช้อัตราเดียวกันสำหรับภาคปกติทั้งหมด
+            $specialRate = $this->getCompensationRate('special', 'LECTURE'); // ใช้อัตราเดียวกันสำหรับภาคพิเศษทั้งหมด
+
+            // จัดเรียงข้อมูลการลงเวลาตาม section
+            $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
+
+            // สร้างข้อมูลอัตราค่าตอบแทนสำหรับส่งไปยัง view
+            $compensationRates = [
+                'regularLecture' => $regularRate,
+                'specialLecture' => $specialRate
+            ];
+
+            // กำหนดให้ PDF ใช้แนวนอน (Landscape)
+            $pdf = PDF::loadView('exports.resultPDF', compact(
+                'student',
+                'semester',
+                'attendancesBySection',
+                'selectedYearMonth',
+                'monthText',
+                'year',
+                'compensationRates',
+                'headName',
+                'formattedDate',
+                'teacherName',
+                'teacherPosition',
+                'teacherDegree',
+                'teacherFullTitle',
+                'hasRegularProject',  // เพิ่มตัวแปรสำหรับตรวจสอบว่ามีข้อมูลโครงการปกติหรือไม่
+                'hasSpecialProject'   // เพิ่มตัวแปรสำหรับตรวจสอบว่ามีข้อมูลโครงการพิเศษหรือไม่
+            ));
+
+            // กำหนดให้ PDF ใช้แนวนอน (Landscape)
+            $pdf->setPaper('A4', 'landscape');
+            $fileName = 'TA-Result-' . $student->student_id . '-' . $selectedYearMonth . '.pdf';
+
+            return $pdf->download($fileName);
+        } catch (\Exception $e) {
+            Log::error('PDF Export Error: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการสร้าง PDF: ' . $e->getMessage());
+        }
     }
 
     /**

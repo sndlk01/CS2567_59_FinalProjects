@@ -100,17 +100,19 @@
                         <!-- ข้อมูลโครงการปกติ -->
                         <h5 class="mt-4 mb-3">ข้อมูลโครงการปกติ</h5>
                         @php
-                            $regularAttendances = $attendancesBySection->map(function ($sectionAttendances) {
-                                return $sectionAttendances->filter(function ($attendance) {
-                                    if ($attendance['type'] === 'regular') {
-                                        return $attendance['data']->class->major->major_type !== 'S';
-                                    } else {
-                                        return $attendance['data']->classes->major->major_type !== 'S';
-                                    }
+                            $regularAttendances = $attendancesBySection
+                                ->map(function ($sectionAttendances) {
+                                    return $sectionAttendances->filter(function ($attendance) {
+                                        if ($attendance['type'] === 'regular') {
+                                            return $attendance['data']->class->major->major_type !== 'S';
+                                        } else {
+                                            return $attendance['data']->classes->major->major_type !== 'S';
+                                        }
+                                    });
+                                })
+                                ->filter(function ($sectionAttendances) {
+                                    return $sectionAttendances->isNotEmpty();
                                 });
-                            })->filter(function ($sectionAttendances) {
-                                return $sectionAttendances->isNotEmpty();
-                            });
                         @endphp
 
                         @forelse($regularAttendances as $section => $attendances)
@@ -173,8 +175,12 @@
                                                         <td>
                                                             @if ($attendance['type'] === 'regular')
                                                                 @php
-                                                                    $start = \Carbon\Carbon::parse($attendance['data']->start_time);
-                                                                    $end = \Carbon\Carbon::parse($attendance['data']->end_time);
+                                                                    $start = \Carbon\Carbon::parse(
+                                                                        $attendance['data']->start_time,
+                                                                    );
+                                                                    $end = \Carbon\Carbon::parse(
+                                                                        $attendance['data']->end_time,
+                                                                    );
                                                                     $durationInHours = $end->diffInMinutes($start) / 60;
                                                                 @endphp
                                                                 {{ number_format($durationInHours, 2) }} ชั่วโมง
@@ -218,17 +224,19 @@
                         <!-- ข้อมูลโครงการพิเศษ -->
                         <h5 class="mt-4 mb-3">ข้อมูลโครงการพิเศษ</h5>
                         @php
-                            $specialAttendances = $attendancesBySection->map(function ($sectionAttendances) {
-                                return $sectionAttendances->filter(function ($attendance) {
-                                    if ($attendance['type'] === 'regular') {
-                                        return $attendance['data']->class->major->major_type === 'S';
-                                    } else {
-                                        return $attendance['data']->classes->major->major_type === 'S';
-                                    }
+                            $specialAttendances = $attendancesBySection
+                                ->map(function ($sectionAttendances) {
+                                    return $sectionAttendances->filter(function ($attendance) {
+                                        if ($attendance['type'] === 'regular') {
+                                            return $attendance['data']->class->major->major_type === 'S';
+                                        } else {
+                                            return $attendance['data']->classes->major->major_type === 'S';
+                                        }
+                                    });
+                                })
+                                ->filter(function ($sectionAttendances) {
+                                    return $sectionAttendances->isNotEmpty();
                                 });
-                            })->filter(function ($sectionAttendances) {
-                                return $sectionAttendances->isNotEmpty();
-                            });
                         @endphp
 
                         @forelse($specialAttendances as $section => $attendances)
@@ -291,8 +299,12 @@
                                                         <td>
                                                             @if ($attendance['type'] === 'regular')
                                                                 @php
-                                                                    $start = \Carbon\Carbon::parse($attendance['data']->start_time);
-                                                                    $end = \Carbon\Carbon::parse($attendance['data']->end_time);
+                                                                    $start = \Carbon\Carbon::parse(
+                                                                        $attendance['data']->start_time,
+                                                                    );
+                                                                    $end = \Carbon\Carbon::parse(
+                                                                        $attendance['data']->end_time,
+                                                                    );
                                                                     $durationInHours = $end->diffInMinutes($start) / 60;
                                                                 @endphp
                                                                 {{ number_format($durationInHours, 2) }} ชั่วโมง
@@ -411,6 +423,12 @@
                                 class="btn btn-primary">
                                 Export PDF
                             </a>
+
+                            <a href="{{ route('layout.exports.result-pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}"
+                                class="btn btn-success">
+                                <i class="fas fa-file-pdf"></i> Export PDF (แบบตาราง)
+                            </a>
+                            
                         </div>
                     </div>
                 </div>
