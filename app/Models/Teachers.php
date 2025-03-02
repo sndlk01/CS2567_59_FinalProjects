@@ -8,16 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class Teachers extends Model
 {
     use HasFactory;
-
-    /**
-
-     *
-     * @var array
-     */
     protected $table = 'teachers';
 
     protected $primaryKey = 'teacher_id';
     protected $fillable = [
+        'teacher_id',
         'prefix',
         'position',
         'degree',
@@ -26,9 +21,8 @@ class Teachers extends Model
         'user_id'
     ];
 
-    /**
-     * Get the user that owns the employee.
-     */
+    public $incrementing = false;
+
     public function user()
     {
         return $this->belongsTo(User::class);
