@@ -418,26 +418,78 @@
                             <a href="{{ route('admin.compensation-rates.index') }}" class="btn btn-info">
                                 <i class="fas fa-money-bill-wave"></i> จัดการอัตราค่าตอบแทน
                             </a>
+                        </div>
 
-                            <a href="{{ route('layout.exports.pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}"
-                                class="btn btn-primary">
-                                <i class="fas fa-file-pdf"></i> ดาวน์โหลดแบบใบเบิกค่าตอบแทน
-                            </a>
-
-                            <a href="{{ route('layout.exports.result-pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}"
-                                class="btn btn-success">
-                                <i class="fas fa-file-pdf"></i> ดาวน์โหลดหลักฐานการจ่ายเงิน
-                            </a>
-
-                            <a href="{{ route('layout.exports.excel', ['id' => $student->id, 'month' => $selectedYearMonth]) }}"
-                                class="btn btn-warning">
-                                <i class="fas fa-file-excel"></i> ดาวน์โหลดข้อมูลเป็น Excel
-                            </a>
-
+                        <div class="card mt-3">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0"><i class="fas fa-download"></i> ดาวน์โหลดเอกสาร</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="form-group">
+                                            <label for="exportType">เลือกประเภทเอกสารที่ต้องการดาวน์โหลด:</label>
+                                            <select id="exportType" class="form-select">
+                                                <option value="">-- เลือกประเภทเอกสาร --</option>
+                                                <option value="pdf">แบบใบเบิกค่าตอบแทน (PDF)</option>
+                                                <option value="result-pdf">หลักฐานการจ่ายเงิน (PDF)</option>
+                                                <option value="excel">แบบใบเบิกค่าตอบแทน + หลักฐานการจ่ายเงิน (XLS)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>&nbsp;</label>
+                                            <button id="exportButton" class="btn btn-primary d-block w-100">
+                                                <i class="fas fa-download"></i> ดาวน์โหลดเอกสาร
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                               
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // เมื่อกดปุ่มดาวน์โหลด
+            document.getElementById('exportButton').addEventListener('click', function() {
+                // ดึงค่าประเภทเอกสารที่เลือก
+                const exportType = document.getElementById('exportType').value;
+                
+                if (!exportType) {
+                    alert('กรุณาเลือกประเภทเอกสารที่ต้องการดาวน์โหลด');
+                    return;
+                }
+                
+                // สร้าง URL สำหรับดาวน์โหลด
+                let url = '';
+                
+                switch (exportType) {
+                    case 'pdf':
+                        url = "{{ route('layout.exports.pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}";
+                        break;
+                    case 'result-pdf':
+                        url = "{{ route('layout.exports.result-pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}";
+                        break;
+                    case 'excel':
+                        url = "{{ route('layout.exports.excel', ['id' => $student->id, 'month' => $selectedYearMonth]) }}";
+                        break;
+                }
+                
+                // เปิด URL ในแท็บใหม่หรือดาวน์โหลดโดยตรง
+                if (url) {
+                    window.location.href = url;
+                }
+            });
+        });
+        </script>
 @endsection
+
+
