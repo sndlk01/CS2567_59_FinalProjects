@@ -429,6 +429,11 @@
                                 <i class="fas fa-file-pdf"></i> ดาวน์โหลดหลักฐานการจ่ายเงิน
                             </a>
 
+                            <a href="{{ route('layout.exports.excel', ['id' => $student->id, 'month' => $selectedYearMonth]) }}"
+                                class="btn btn-warning">
+                                <i class="fas fa-file-excel"></i> ดาวน์โหลดข้อมูลเป็น Excel
+                            </a>
+
                         </div>
                     </div>
                 </div>

@@ -96,6 +96,7 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
 
     Route::get('/ta/export-pdf/{id}', [AdminController::class, 'exportTaDetailPDF'])->name('layout.exports.pdf');
     Route::get('/exports/result-pdf/{id}', [AdminController::class, 'exportResultPDF'])->name('layout.exports.result-pdf');
+    Route::get('layout/exports/excel/{id}', [App\Http\Controllers\AdminController::class, 'exportTaDetailExcel'])->name('layout.exports.excel');
 
 
     Route::prefix('admin-ta-requests')->name('admin.ta-requests.')->group(function () {
