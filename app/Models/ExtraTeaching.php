@@ -9,6 +9,8 @@ class ExtraTeaching extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'extra_class_id';
+
     protected $fillable = [
         'title',
         'detail',
@@ -24,18 +26,33 @@ class ExtraTeaching extends Model
         'class_id',
     ];
 
-    public function teacher()
-    {
-        return $this->hasOne(Teachers::class);
-    }
+    // public function teacher()
+    // {
+    //     return $this->hasOne(Teachers::class);
+    // }
 
-    public function teaching()
+    // public function teaching()
+    // {
+    //     return $this->hasOne(Teaching::class);
+    // }
+
+    // public function class()
+    // {
+    //     return $this->hasOne(Classes::class);
+    // }
+
+    public function attendance()
     {
-        return $this->hasOne(Teaching::class);
+        return $this->hasOne(Attendances::class, 'extra_teaching_id', 'extra_class_id');
     }
 
     public function class()
     {
-        return $this->hasOne(Classes::class);
+        return $this->belongsTo(Classes::class, 'class_id', 'class_id');
+    }
+
+    public function teacher()
+    {
+        return $this->belongsTo(Teachers::class, 'teacher_id', 'teacher_id');
     }
 }

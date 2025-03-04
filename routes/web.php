@@ -55,8 +55,13 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     // Route to display the teaching data
     Route::get('/teaching/{id?}', action: [TaController::class, 'showTeachingData'])->name('layout.ta.teaching');
 
+    // For refresh teaching data
+    Route::get('/class/{id}/refresh-teachings', [TaController::class, 'refreshTeachings'])
+        ->name('class.refresh-teachings');
+
     // Route to display the attendance form for the selected teaching session
-    Route::get('/attendances/{teaching_id}', [TaController::class, 'showAttendanceForm'])->name('attendances.form');
+    Route::get('/attendances/form/{teaching_id}', [TaController::class, 'showAttendanceForm'])
+        ->name('attendances.form');
     // Route to handle attendance form submission
     Route::post('/attendances/{teaching_id}', [TaController::class, 'submitAttendance'])->name('attendances.submit');
 
@@ -68,6 +73,8 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::get('/attendances/{teaching_id}/edit', [TaController::class, 'editAttendance'])->name('attendances.edit');
     Route::put('/attendances/{teaching_id}', [TaController::class, 'updateAttendance'])->name('attendances.update');
     Route::delete('/attendances/{teaching_id}', [TaController::class, 'deleteAttendance'])->name('attendances.delete');
+    Route::put('/extra-teaching/{teaching_id}/attendance', [TaController::class, 'updateExtraTeachingAttendance'])->name('extra-teaching.attendance.update');
+    Route::delete('/attendances/extra/{teaching_id}', [TaController::class, 'deleteExtraTeachingAttendance'])->name('attendances.delete.extra');
 
     // For extra attendance
     Route::post('/extra-attendance', [TaController::class, 'storeExtraAttendance'])->name('extra-attendance.store');

@@ -17,22 +17,45 @@ class Attendances extends Model
         'note',
         'user_id',
         'teaching_id',
+        'extra_teaching_id',
+        'is_extra',
         'student_id',
         'approve_user_id',
     ];
 
+    // public function user()
+    // {
+    //     return $this->hasOne(User::class);
+    // }
+
+    // public function teaching()
+    // {
+    //     return $this->belongsTo(Teaching::class, 'teaching_id');
+    // }
+
+    // public function student()
+    // {
+    //     return $this->hasOne(Students::class);
+    // }
+
+
     public function user()
     {
-        return $this->hasOne(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function teaching()
     {
-        return $this->belongsTo(Teaching::class, 'teaching_id');
+        return $this->belongsTo(Teaching::class, 'teaching_id', 'teaching_id');
+    }
+
+    public function extraTeaching()
+    {
+        return $this->belongsTo(ExtraTeaching::class, 'extra_teaching_id', 'extra_class_id');
     }
 
     public function student()
     {
-        return $this->hasOne(Students::class);
+        return $this->belongsTo(Students::class, 'student_id', 'id');
     }
 }

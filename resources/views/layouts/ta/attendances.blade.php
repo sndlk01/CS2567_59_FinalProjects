@@ -22,7 +22,7 @@
                                 <h6>การเข้าสอน</h6>
                                 <form action="{{ route('attendances.submit', $teaching->teaching_id) }}" method="POST">
                                     @csrf
-
+                                    <input type="hidden" name="is_extra" value="{{ $isExtra ? '1' : '0' }}">
                                     <input type="hidden" name="selected_month" value="{{ request('selected_month') }}">
 
                                     <div class="mb-3">

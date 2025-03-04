@@ -22,7 +22,7 @@ return new class extends Migration
             $table->time('end_time');
             $table->integer('duration');
             $table->unsignedBigInteger('teacher_id');
-            $table->integer('holiday_id');
+            $table->integer('holiday_id')->nullable();
             $table->unsignedBigInteger('teaching_id');
             $table->unsignedBigInteger('class_id');
             $table->timestamps();
