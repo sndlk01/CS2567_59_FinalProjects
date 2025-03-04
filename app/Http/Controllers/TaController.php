@@ -138,7 +138,7 @@ class TaController extends Controller
     //                 return now()->between($startDate, $endDate);
     //             })->first();
 
-    //         if (!$currentSemester) {
+    //         if (!$currentSbpnemester) {
     //             Toastr::error('ไม่อยู่ในช่วงเวลารับสมัคร', 'เกิดข้อผิดพลาด!');
     //             return redirect()->back();
     //         }

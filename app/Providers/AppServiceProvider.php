@@ -11,7 +11,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton('excel.helper', function ($app) {
+            return new \App\Helpers\ExcelHelper();
+        });
     }
 
     /**

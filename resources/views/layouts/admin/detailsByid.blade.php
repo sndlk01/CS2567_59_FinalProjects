@@ -25,7 +25,7 @@
                                             ปริญญาโท
                                         @break
 
-                                        @case('doctoral')
+                                        @case('doctoral')   
                                             ปริญญาเอก
                                         @break
 
@@ -433,7 +433,8 @@
                                                 <option value="">-- เลือกประเภทเอกสาร --</option>
                                                 <option value="pdf">แบบใบเบิกค่าตอบแทน (PDF)</option>
                                                 <option value="result-pdf">หลักฐานการจ่ายเงิน (PDF)</option>
-                                                <option value="excel">แบบใบเบิกค่าตอบแทน + หลักฐานการจ่ายเงิน (XLS)</option>
+                                                {{-- <option value="excel">แบบใบเบิกค่าตอบแทน + หลักฐานการจ่ายเงิน (XLS)</option> --}}
+                                                <option value="template">ใช้แบบฟอร์มที่กำหนดเอง (XLS)</option>
                                             </select>
                                         </div>
                                     </div>
@@ -457,38 +458,38 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // เมื่อกดปุ่มดาวน์โหลด
-            document.getElementById('exportButton').addEventListener('click', function() {
-                // ดึงค่าประเภทเอกสารที่เลือก
-                const exportType = document.getElementById('exportType').value;
-                
-                if (!exportType) {
-                    alert('กรุณาเลือกประเภทเอกสารที่ต้องการดาวน์โหลด');
-                    return;
-                }
-                
-                // สร้าง URL สำหรับดาวน์โหลด
-                let url = '';
-                
-                switch (exportType) {
-                    case 'pdf':
-                        url = "{{ route('layout.exports.pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}";
-                        break;
-                    case 'result-pdf':
-                        url = "{{ route('layout.exports.result-pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}";
-                        break;
-                    case 'excel':
-                        url = "{{ route('layout.exports.excel', ['id' => $student->id, 'month' => $selectedYearMonth]) }}";
-                        break;
-                }
-                
-                // เปิด URL ในแท็บใหม่หรือดาวน์โหลดโดยตรง
-                if (url) {
-                    window.location.href = url;
-                }
-            });
-        });
+document.addEventListener('DOMContentLoaded', function() {
+    // เมื่อกดปุ่มดาวน์โหลด
+    document.getElementById('exportButton').addEventListener('click', function() {
+        // ดึงค่าประเภทเอกสารที่เลือก
+        const exportType = document.getElementById('exportType').value;
+        
+        if (!exportType) {
+            alert('กรุณาเลือกประเภทเอกสารที่ต้องการดาวน์โหลด');
+            return;
+        }
+        
+        // สร้าง URL สำหรับดาวน์โหลด
+        let url = '';
+        
+        switch (exportType) {
+            case 'pdf':
+                url = "{{ route('layout.exports.pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}";
+                break;
+            case 'result-pdf':
+                url = "{{ route('layout.exports.result-pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}";
+                break;
+            case 'template':
+                url = "{{ route('admin.export.template', ['id' => $student->id, 'month' => $selectedYearMonth]) }}";
+                break;
+        }
+        
+        // เปิด URL ในแท็บใหม่หรือดาวน์โหลดโดยตรง
+        if (url) {
+            window.location.href = url;
+        }
+    });
+});           
         </script>
 @endsection
 
