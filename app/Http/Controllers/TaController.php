@@ -354,7 +354,7 @@ class TaController extends Controller
                     'email' => $user->email,
                     'card_id' => $user->card_id,
                     'phone' => $user->phone,
-                    'degree_level' => 'bachelor'
+                    'degree_level' => $request->input('degree_level', 'bachelor')
                 ]
             );
 
