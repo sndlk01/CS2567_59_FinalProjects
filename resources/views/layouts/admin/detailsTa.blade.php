@@ -46,7 +46,21 @@
                                             <td>{{ $ta->student->student_id }}</td>
                                             <td>{{ $ta->student->name }}</td>
                                             {{-- <td>{{ $ta->student->lname }}</td> --}}
-                                            <td>{{ $ta->student->degree ?? 'ปริญญาตรี' }}</td>
+                                            <td>
+                                                @if (isset($ta->student->degree_level))
+                                                    @if ($ta->student->degree_level == 'bachelor')
+                                                        ปริญญาตรี
+                                                    @elseif($ta->student->degree_level == 'master')
+                                                        ปริญญาโท
+                                                    @elseif($ta->student->degree_level == 'doctoral')
+                                                        ปริญญาเอก
+                                                    @else
+                                                        {{ $student->degree_level }}
+                                                    @endif
+                                                @else
+                                                    ปริญญาตรี
+                                                @endif
+                                            </td>
                                             <td>
                                                 <a href="{{ route('admin.ta.profile', $ta->student->id) }}"
                                                     class="btn btn-primary btn-sm">
