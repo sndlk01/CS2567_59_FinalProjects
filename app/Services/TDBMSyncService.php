@@ -14,88 +14,16 @@ class TDBMSyncService
         $this->tdbmService = $tdbmService;
     }
 
-    private function logTransactionLevel($message)
-    {
-        Log::info($message . " - Transaction level: " . DB::transactionLevel());
-    }
-
-    // public function syncAll()
-    // {
-    //     $logFile = storage_path('logs/sync_' . date('Y-m-d') . '.log');
-    //     File::put($logFile, "Starting sync at " . date('Y-m-d H:i:s') . "\n");
-
-    //     try {
-    //         // Start a single transaction for everything
-    //         $this->logTransactionLevel("Before main transaction begin");
-    //         DB::beginTransaction();
-    //         $this->logTransactionLevel("After main transaction begin");
-
-    //         // ซิงค์ตามลำดับการพึ่งพา
-    //         $this->syncTeachers();
-    //         $this->logTransactionLevel("After syncTeachers");
-
-    //         $this->syncCurriculums();
-    //         $this->logTransactionLevel("After syncCurriculums");
-
-    //         $this->syncMajors();
-    //         $this->logTransactionLevel("After syncMajors");
-
-    //         $this->syncSubjects();
-    //         $this->logTransactionLevel("After syncSubjects");
-
-    //         $this->syncSemesters();
-    //         $this->logTransactionLevel("After syncSemesters");
-
-    //         $this->syncCourses();
-    //         $this->logTransactionLevel("After syncCourses");
-
-    //         $this->syncClasses();
-    //         $this->logTransactionLevel("After syncClasses");
-
-    //         $this->syncTeachings();
-    //         $this->logTransactionLevel("After syncTeachings");
-
-    //         $this->syncExtraTeachings();
-    //         $this->logTransactionLevel("After syncExtraTeachings");
-
-    //         // Commit everything at once
-    //         $this->logTransactionLevel("Before main transaction commit");
-    //         DB::commit();
-    //         $this->logTransactionLevel("After main transaction commit");
-
-    //         File::append($logFile, "Sync completed at " . date('Y-m-d H:i:s') . "\n");
-    //         return true;
-    //     } catch (\Exception $e) {
-    //         $this->logTransactionLevel("In exception handler before rollback");
-    //         if (DB::transactionLevel() > 0) {
-    //             DB::rollBack();
-    //         }
-    //         $this->logTransactionLevel("After rollback");
-
-    //         File::append($logFile, "Sync failed: " . $e->getMessage() . "\n");
-    //         throw $e;
-    //     }
-    // }
-
     public function syncAll()
     {
-        // $logFile = storage_path('logs/sync_' . date('Y-m-d') . '.log');
-        // File::put($logFile, "เริ่มการซิงค์ที่ " . date('Y-m-d H:i:s') . "\n");
-
         try {
-            // ตรวจสอบว่ามี transaction ที่ทำงานอยู่แล้วหรือไม่
-            // if (DB::transactionLevel() > 0) {
-            //     Log::warning("Transaction ทำงานอยู่แล้วตั้งแต่เริ่มต้น syncAll ระดับ: " . DB::transactionLevel());
-            // }
-
-            // เริ่ม transaction เดียวสำหรับทุกอย่าง
             DB::beginTransaction();
 
+            // เพิ่มล็อกเพื่อตรวจสอบ
             $logFile = storage_path('logs/sync_' . date('Y-m-d') . '.log');
-            File::put($logFile, "เริ่มการซิงค์ที่ " . date('Y-m-d H:i:s') . "\n");
-            // Log::info("เริ่ม Transaction แล้ว ระดับ: " . DB::transactionLevel());
+            File::put($logFile, "Starting sync at " . date('Y-m-d H:i:s') . "\n");
 
-            // ดำเนินการซิงค์...
+            // ซิงค์ตามลำดับการพึ่งพา
             $this->syncTeachers();
             $this->syncCurriculums();
             $this->syncMajors();
@@ -106,47 +34,14 @@ class TDBMSyncService
             $this->syncTeachings();
             $this->syncExtraTeachings();
 
-            // ตรวจสอบว่าเรายังมี transaction อยู่ก่อนที่จะ commit
-            if (DB::transactionLevel() == 0) {
-                Log::error("Transaction หายไปก่อนการ commit ใน syncAll!");
-                throw new \Exception("Transaction ถูกปิดก่อนเวลา");
-            }
-
             DB::commit();
-            Log::info("Transaction commit สำเร็จ");
 
-            File::append($logFile, "ซิงค์เสร็จสมบูรณ์ที่ " . date('Y-m-d H:i:s') . "\n");
+            File::append($logFile, "Sync completed at " . date('Y-m-d H:i:s') . "\n");
             return true;
         } catch (\Exception $e) {
-            Log::error("ในตัวจัดการข้อผิดพลาด: " . $e->getMessage());
-
-            if (DB::transactionLevel() > 0) {
-                DB::rollBack();
-                Log::info("Transaction ถูก rollback แล้ว");
-            } else {
-                Log::warning("ไม่มี transaction ที่ทำงานอยู่ให้ rollback");
-            }
-
-            File::append($logFile, "ซิงค์ล้มเหลว: " . $e->getMessage() . "\n");
+            DB::rollBack();
+            File::append($logFile, "Sync failed: " . $e->getMessage() . "\n");
             throw $e;
-        }
-    }
-
-    private function updateOrCreateRecord($model, $identifier, $data, $dependencies = [])
-    {
-        foreach ($dependencies as $key => $value) {
-            if (!$value) {
-                Log::warning("{$model} sync: Missing dependency {$key}");
-                return false;
-            }
-        }
-
-        try {
-            $record = $model::updateOrCreate($identifier, $data);
-            return $record;
-        } catch (\Exception $e) {
-            Log::error("{$model} sync failed: " . $e->getMessage());
-            return false;
         }
     }
 
@@ -566,7 +461,7 @@ class TDBMSyncService
                             'end_time' => $teaching['end_time'],
                             'duration' => $teaching['duration'],
                             'teacher_id' => $teaching['teacher_id'],
-                            'holiday_id' => $teaching['holiday_id'],
+                            'holiday_id' => $teaching['holiday_id'] ?? 0,
                             'teaching_id' => $teaching['teaching_id'],
                             'class_id' => $teaching['class_id']
                         ]

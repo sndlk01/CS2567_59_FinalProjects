@@ -492,45 +492,9 @@ class TaController extends Controller
                         'is_extra_teaching' => true
                     ];
                 });
-            // $formattedExtraTeachings = ExtraTeaching::with(['class', 'teacher'])
-            //     ->where('class_id', $id)
-            //     ->when($selectedMonth, function ($query) use ($selectedMonth) {
-            //         return $query->whereMonth('class_date', \Carbon\Carbon::parse("1-{$selectedMonth}-2024")->month);
-            //     })
-            //     ->get()
-            //     ->map(function ($extraTeaching) use ($classes, $teachers) {
-            //         $class = $classes->where('class_id', $extraTeaching->class_id)->first();
-            //         $teacher = $teachers->where('teacher_id', $extraTeaching->teacher_id)->first();
-
-            //         // ค้นหา attendance โดยใช้ extra_teaching_id
-            //         $attendance = Attendances::where('extra_teaching_id', $extraTeaching->extra_class_id)->first();
-
-            //         return (object) [
-            //             'id' => $extraTeaching->extra_class_id,
-            //             'start_time' => \Carbon\Carbon::parse($extraTeaching->class_date . ' ' . $extraTeaching->start_time),
-            //             'end_time' => \Carbon\Carbon::parse($extraTeaching->class_date . ' ' . $extraTeaching->end_time),
-            //             'duration' => $extraTeaching->duration,
-            //             'class_type' => 'E', // เป็นการสอนชดเชย
-            //             'class_id' => (object) [
-            //                 'title' => $class->title ?? 'N/A',
-            //             ],
-            //             'teacher_id' => (object) [
-            //                 'position' => $teacher->position ?? '',
-            //                 'degree' => $teacher->degree ?? '',
-            //                 'name' => $teacher->user->name ?? 'N/A',
-            //             ],
-            //             // อ้างอิงข้อมูล attendance จริงจากฐานข้อมูล
-            //             'attendance' => $attendance ? (object) [
-            //                 'status' => $attendance->status,
-            //                 'note' => $attendance->note,
-            //                 'approve_status' => $attendance->approve_status
-            //             ] : null,
-            //             'is_extra_attendance' => false,
-            //             'is_extra_teaching' => true
-            //         ];
-            //     });
 
             // 9. จัดการข้อมูล Extra Attendances
+            // สำหรับ Extra Attendances
             $formattedExtraAttendances = ExtraAttendances::where('class_id', $id)
                 ->when($selectedMonth, function ($query) use ($selectedMonth) {
                     return $query->whereMonth('start_work', \Carbon\Carbon::parse("1-{$selectedMonth}-2024")->month);
@@ -546,6 +510,7 @@ class TaController extends Controller
                     }
 
                     return (object) [
+                        // ใช้ prefix เพื่อระบุประเภทของข้อมูล (ทำให้เราสามารถแยกประเภทได้ในหน้า blade)
                         'id' => 'extra_' . $attendance->id,
                         'start_time' => $attendance->start_work,
                         'end_time' => \Carbon\Carbon::parse($attendance->start_work)
@@ -565,10 +530,10 @@ class TaController extends Controller
                             'note' => $attendance->detail,
                             'approve_status' => $attendance->approve_status ?? null
                         ],
-                        'is_extra_attendance' => true
+                        'is_extra_attendance' => true,
+                        'original_id' => $attendance->id // เก็บ ID จริงไว้ในกรณีที่ต้องการใช้โดยตรง
                     ];
                 });
-
             // 10. รวมและเรียงข้อมูล
             $allRecords = $formattedTeachings
                 ->concat($formattedExtraTeachings)
@@ -592,60 +557,116 @@ class TaController extends Controller
     }
 
     // function for update extra teaching data
+
     public function refreshTeachings($id, Request $request)
     {
         try {
             // Get the TDBM API Service
             $tdbmApiService = app(TDBMApiService::class);
 
-            // Fetch teachings for this specific class
-            $classTeachings = $tdbmApiService->getTeachings();
+            // ดึงเฉพาะข้อมูล extra teachings
             $classExtraTeachings = $tdbmApiService->getExtraTeachings();
 
             // Log ข้อมูลที่ได้จาก API
-            Log::info("Fetched teachings from API: " . count($classTeachings));
             Log::info("Fetched extra teachings from API: " . count($classExtraTeachings));
 
-            // Filter teachings for this class
-            $classTeachings = collect($classTeachings)->filter(function ($teaching) use ($id) {
-                return $teaching['class_id'] == $id;
-            })->toArray();
-
+            // Filter extra teachings เฉพาะสำหรับคลาสนี้
             $classExtraTeachings = collect($classExtraTeachings)->filter(function ($teaching) use ($id) {
                 return $teaching['class_id'] == $id;
             })->toArray();
 
-            Log::info("Filtered teachings for class $id: " . count($classTeachings));
             Log::info("Filtered extra teachings for class $id: " . count($classExtraTeachings));
+
+            // ถ้าไม่มีข้อมูลให้แสดงข้อความและกลับไปหน้าเดิม
+            if (empty($classExtraTeachings)) {
+                return redirect()
+                    ->route('layout.ta.teaching', ['id' => $id, 'selected_month' => $request->query('selected_month')])
+                    ->with('info', 'ไม่พบข้อมูลการสอนพิเศษใหม่สำหรับคลาสนี้');
+            }
+
+            // เตรียมข้อมูลสำหรับการตรวจสอบการอัปเดต
+            $updatedCount = 0;
+            $newCount = 0;
+            $skippedCount = 0;
 
             DB::beginTransaction();
 
-            // Update just the teachings for this class
-            foreach ($classTeachings as $teaching) {
-                Teaching::updateOrCreate(
-                    ['teaching_id' => $teaching['teaching_id']],
-                    [
-                        'start_time' => $teaching['start_time'],
-                        'end_time' => $teaching['end_time'],
-                        'duration' => $teaching['duration'],
-                        'class_type' => $teaching['class_type'],
-                        'status' => $teaching['status'],
-                        'class_id' => $teaching['class_id'],
-                        'teacher_id' => $teaching['teacher_id']
-                    ]
-                );
-            }
+            // ดึงข้อมูล extra teachings ที่มีอยู่แล้วในฐานข้อมูลเพื่อเปรียบเทียบ
+            $existingExtraTeachings = ExtraTeaching::where('class_id', $id)
+                ->get()
+                ->keyBy('extra_class_id')
+                ->toArray();
 
-            // Update just the extra teachings for this class
+            // Update เฉพาะ extra teachings สำหรับคลาสนี้
             foreach ($classExtraTeachings as $teaching) {
                 try {
                     // Log ข้อมูลที่จะใส่ในตาราง
-                    Log::info("Extra teaching data: ", $teaching);
+                    Log::info("Processing extra teaching data: ", $teaching);
 
-                    // กำหนดค่าเริ่มต้นให้กับทุกฟิลด์ที่จำเป็น
-                    ExtraTeaching::updateOrCreate(
-                        ['extra_class_id' => $teaching['extra_class_id']],
-                        [
+                    $extraClassId = $teaching['extra_class_id'];
+
+                    // ตรวจสอบว่ามีข้อมูลนี้อยู่แล้วหรือไม่
+                    if (isset($existingExtraTeachings[$extraClassId])) {
+                        // ตรวจสอบว่าข้อมูลมีการเปลี่ยนแปลงหรือไม่
+                        $existing = $existingExtraTeachings[$extraClassId];
+                        $hasChanges = false;
+
+                        // เปรียบเทียบฟิลด์สำคัญเพื่อตรวจสอบการเปลี่ยนแปลง
+                        $fieldsToCheck = [
+                            'title',
+                            'detail',
+                            'opt_status',
+                            'status',
+                            'class_date',
+                            'start_time',
+                            'end_time',
+                            'duration',
+                            'teacher_id',
+                            'holiday_id',
+                            'teaching_id'
+                        ];
+
+                        foreach ($fieldsToCheck as $field) {
+                            $newValue = $teaching[$field] ?? null;
+                            if ($field === 'holiday_id' && $newValue === null) {
+                                $newValue = 0; // กำหนดค่าเริ่มต้นสำหรับ holiday_id
+                            }
+
+                            if (isset($existing[$field]) && $existing[$field] != $newValue) {
+                                $hasChanges = true;
+                                break;
+                            }
+                        }
+
+                        if ($hasChanges) {
+                            // มีการเปลี่ยนแปลง ให้อัปเดต
+                            ExtraTeaching::where('extra_class_id', $extraClassId)
+                                ->update([
+                                    'title' => $teaching['title'] ?? 'No Title',
+                                    'detail' => $teaching['detail'] ?? 'No Detail',
+                                    'opt_status' => $teaching['opt_status'] ?? 'A',
+                                    'status' => $teaching['status'] ?? 'A',
+                                    'class_date' => $teaching['class_date'],
+                                    'start_time' => $teaching['start_time'],
+                                    'end_time' => $teaching['end_time'],
+                                    'duration' => $teaching['duration'],
+                                    'teacher_id' => $teaching['teacher_id'],
+                                    'holiday_id' => $teaching['holiday_id'] ?? 0,
+                                    'teaching_id' => $teaching['teaching_id'],
+                                    'class_id' => $teaching['class_id']
+                                ]);
+
+                            $updatedCount++;
+                            Log::info("Updated extra teaching ID: {$extraClassId}");
+                        } else {
+                            // ไม่มีการเปลี่ยนแปลง ข้ามไป
+                            $skippedCount++;
+                            Log::info("Skipped unchanged extra teaching ID: {$extraClassId}");
+                        }
+                    } else {
+                        // ไม่มีข้อมูลนี้ ให้สร้างใหม่
+                        ExtraTeaching::create([
+                            'extra_class_id' => $extraClassId,
                             'title' => $teaching['title'] ?? 'No Title',
                             'detail' => $teaching['detail'] ?? 'No Detail',
                             'opt_status' => $teaching['opt_status'] ?? 'A',
@@ -655,56 +676,49 @@ class TaController extends Controller
                             'end_time' => $teaching['end_time'],
                             'duration' => $teaching['duration'],
                             'teacher_id' => $teaching['teacher_id'],
-                            'holiday_id' => $teaching['holiday_id'] ?? 0, // กำหนดค่าเริ่มต้นเป็น 0
+                            'holiday_id' => $teaching['holiday_id'] ?? 0,
                             'teaching_id' => $teaching['teaching_id'],
                             'class_id' => $teaching['class_id']
-                        ]
-                    );
+                        ]);
+
+                        $newCount++;
+                        Log::info("Created new extra teaching ID: {$extraClassId}");
+                    }
                 } catch (\Exception $innerException) {
-                    Log::error("Error updating extra teaching {$teaching['extra_class_id']}: " . $innerException->getMessage());
+                    Log::error("Error processing extra teaching {$teaching['extra_class_id']}: " . $innerException->getMessage());
                     // ไม่ throw exception เพื่อให้โค้ดทำงานต่อไปได้สำหรับรายการอื่น
                 }
             }
 
             DB::commit();
 
+            // สร้างข้อความสรุป
+            $summaryMessage = "อัปเดตข้อมูลการสอนพิเศษสำเร็จ ";
+            if ($newCount > 0) {
+                $summaryMessage .= "สร้างใหม่ {$newCount} รายการ ";
+            }
+            if ($updatedCount > 0) {
+                $summaryMessage .= "อัปเดต {$updatedCount} รายการ ";
+            }
+            if ($skippedCount > 0) {
+                $summaryMessage .= "ข้ามที่ไม่มีการเปลี่ยนแปลง {$skippedCount} รายการ";
+            }
+
             // Redirect back with success message
             return redirect()
                 ->route('layout.ta.teaching', ['id' => $id, 'selected_month' => $request->query('selected_month')])
-                ->with('success', 'อัปเดตข้อมูลการสอนสำเร็จ');
+                ->with('success', $summaryMessage);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error refreshing teachings: ' . $e->getMessage());
+            Log::error('Error refreshing extra teachings: ' . $e->getMessage());
             Log::error($e->getTraceAsString()); // เพิ่ม stack trace เพื่อการแก้ไขปัญหา
             return redirect()
                 ->back()
-                ->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูลการสอน: ' . $e->getMessage());
+                ->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูลการสอนพิเศษ: ' . $e->getMessage());
         }
     }
 
-    // public function showAttendanceForm($teaching_id)
-    // {
-    //     try {
-    //         // ดึงข้อมูล teaching จาก local DB
-    //         $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
-
-    //         // ถ้ามี attendance แล้วให้ redirect กลับ
-    //         if ($teaching->attendance) {
-    //             return redirect()
-    //                 ->back()
-    //                 ->with('error', 'คุณได้ลงเวลาการสอนไปแล้ว');
-    //         }
-
-    //         return view('layouts.ta.attendances', compact('teaching'));
-    //     } catch (\Exception $e) {
-    //         Log::error('Error in showAttendanceForm: ' . $e->getMessage());
-    //         return redirect()
-    //             ->back()
-    //             ->with('error', 'เกิดข้อผิดพลาดในการแสดงฟอร์มลงเวลา');
-    //     }
-    // }
-
-
+    // function for display attendance form
     public function showAttendanceForm($teaching_id, Request $request)
     {
         try {
@@ -761,196 +775,7 @@ class TaController extends Controller
         }
     }
 
-    // public function submitAttendance(Request $request, $teaching_id)
-    // {
-    //     try {
-    //         DB::beginTransaction();
-
-    //         // Validate request
-    //         $request->validate([
-    //             'status' => 'required|in:เข้าปฏิบัติการสอน,ลา',
-    //             'note' => 'required|string|max:255',
-    //         ], [
-    //             'status.required' => 'กรุณาเลือกสถานะการเข้าสอน',
-    //             'note.required' => 'กรุณากรอกงานที่ปฏิบัติ',
-    //             'note.max' => 'งานที่ปฏิบัติต้องไม่เกิน 255 ตัวอักษร'
-    //         ]);
-
-    //         $user = Auth::user();
-    //         $student = Students::where('user_id', $user->id)->firstOrFail();
-    //         $teaching = Teaching::findOrFail($teaching_id);
-
-    //         // 1. Check if month is already approved
-    //         $selectedDate = \Carbon\Carbon::parse($teaching->start_time);
-
-    //         $isMonthApproved = Attendances::where('student_id', $student->id)
-    //             ->whereYear('created_at', $selectedDate->year)
-    //             ->whereMonth('created_at', $selectedDate->month)
-    //             ->where('approve_status', 'a')
-    //             ->exists();
-
-    //         // 2. เพิ่มเงื่อนไขนี้เพื่อไม่ให้ลงเวลาในเดือนที่ถูก approve แล้ว
-    //         if ($isMonthApproved) {
-    //             return redirect()
-    //                 ->back()
-    //                 ->with('error', 'ไม่สามารถลงเวลาได้เนื่องจากการลงเวลาของเดือนนี้ได้รับการอนุมัติแล้ว');
-    //         }
-
-    //         // ตรวจสอบว่ามีการลงเวลาไปแล้วหรือไม่
-    //         if ($teaching->attendance) {
-    //             return redirect()
-    //                 ->back()
-    //                 ->with('error', 'คุณได้ลงเวลาการสอนไปแล้ว');
-    //         }
-
-    //         // สร้าง attendance record
-    //         Attendances::create([
-    //             'status' => $request->status,
-    //             'note' => $request->note,
-    //             'teaching_id' => $teaching_id,
-    //             'user_id' => $user->id,
-    //             'student_id' => $student->id,
-    //             'approve_at' => null,
-    //             'approve_user_id' => null
-    //         ]);
-
-    //         DB::commit();
-
-    //         $selectedMonth = $request->input('selected_month');
-
-    //         // redirect กลับไปยังหน้า teaching พร้อมกับส่งค่าเดือนที่เลือกไว้
-    //         return redirect()
-    //             ->route('layout.ta.teaching', [
-    //                 'id' => $teaching->class_id,
-    //                 'month' => $selectedMonth
-    //             ])
-    //             ->with('success', 'บันทึกการลงเวลาสำเร็จ');
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         Log::error('Error in submitAttendance: ' . $e->getMessage());
-    //         return redirect()
-    //             ->back()
-    //             ->withInput()
-    //             ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
-    //     }
-    // }
-
-
-    // public function submitAttendance(Request $request, $teaching_id)
-    // {
-    //     try {
-    //         DB::beginTransaction();
-
-    //         // Validate request
-    //         $request->validate([
-    //             'status' => 'required|in:เข้าปฏิบัติการสอน,ลา',
-    //             'note' => 'required|string|max:255',
-    //         ]);
-
-    //         $isExtra = $request->input('is_extra', '0') === '1';
-    //         $user = Auth::user();
-    //         $student = Students::where('user_id', $user->id)->firstOrFail();
-
-    //         if ($isExtra) {
-    //             // สำหรับ extra teaching
-    //             $teaching = ExtraTeaching::where('extra_class_id', $teaching_id)->firstOrFail();
-    //             $selectedDate = \Carbon\Carbon::parse($teaching->class_date);
-    //             $classId = $teaching->class_id;
-
-    //             // ตรวจสอบว่ามีการลงเวลาไปแล้วหรือไม่
-    //             $exists = Attendances::where('extra_teaching_id', $teaching_id)
-    //                 ->exists();
-
-    //             if ($exists) {
-    //                 return redirect()
-    //                     ->back()
-    //                     ->with('error', 'คุณได้ลงเวลาการสอนชดเชยไปแล้ว');
-    //             }
-
-    //             // สร้าง attendance สำหรับ extra teaching ด้วยค่า extra_teaching_id
-    //             $attendanceData = [
-    //                 'status' => $request->status,
-    //                 'note' => $request->note,
-    //                 'teaching_id' => null,  // ชัดเจนว่าเป็น null
-    //                 'extra_teaching_id' => $teaching_id,  // ใช้ extra_teaching_id
-    //                 'user_id' => $user->id,
-    //                 'student_id' => $student->id,
-    //                 'is_extra' => true,
-    //                 'approve_at' => null,
-    //                 'approve_status' => null,
-    //                 'approve_user_id' => null
-    //             ];
-
-    //             // สร้าง log เพื่อตรวจสอบข้อมูลที่จะบันทึก
-    //             Log::info('Creating attendance for extra teaching with data:', $attendanceData);
-
-    //             Attendances::create($attendanceData);
-    //         } else {
-    //             // สำหรับ teaching ปกติ
-    //             $teaching = Teaching::findOrFail($teaching_id);
-    //             $selectedDate = \Carbon\Carbon::parse($teaching->start_time);
-    //             $classId = $teaching->class_id;
-
-    //             // ตรวจสอบว่ามีการลงเวลาไปแล้วหรือไม่
-    //             $exists = Attendances::where('teaching_id', $teaching_id)
-    //                 ->exists();
-
-    //             if ($exists) {
-    //                 return redirect()
-    //                     ->back()
-    //                     ->with('error', 'คุณได้ลงเวลาการสอนไปแล้ว');
-    //             }
-
-    //             // สร้าง attendance สำหรับ teaching ปกติด้วยค่า teaching_id
-    //             $attendanceData = [
-    //                 'status' => $request->status,
-    //                 'note' => $request->note,
-    //                 'teaching_id' => $teaching_id,
-    //                 'extra_teaching_id' => null,  // ชัดเจนว่าเป็น null
-    //                 'user_id' => $user->id,
-    //                 'student_id' => $student->id,
-    //                 'is_extra' => false,
-    //                 'approve_at' => null,
-    //                 'approve_status' => null,
-    //                 'approve_user_id' => null
-    //             ];
-
-    //             // สร้าง log เพื่อตรวจสอบข้อมูลที่จะบันทึก
-    //             Log::info('Creating attendance for regular teaching with data:', $attendanceData);
-
-    //             Attendances::create($attendanceData);
-    //         }
-
-    //         DB::commit();
-
-    //         $selectedMonth = $request->input('selected_month');
-
-    //         // redirect กลับไปยังหน้า teaching พร้อมกับส่งค่าเดือนที่เลือกไว้
-    //         return redirect()
-    //             ->route('layout.ta.teaching', [
-    //                 'id' => $classId,
-    //                 'month' => $selectedMonth
-    //             ])
-    //             ->with('success', 'บันทึกการลงเวลาสำเร็จ');
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         Log::error('Error in submitAttendance: ' . $e->getMessage() . ' at line ' . $e->getLine() . ' in file ' . $e->getFile());
-
-    //         // บันทึกข้อมูลเพิ่มเติมเกี่ยวกับตัวแปรที่เป็นปัญหา
-    //         if (isset($teaching_id)) {
-    //             Log::error('teaching_id: ' . $teaching_id);
-    //         }
-    //         if (isset($isExtra)) {
-    //             Log::error('isExtra: ' . ($isExtra ? 'true' : 'false'));
-    //         }
-
-    //         return redirect()
-    //             ->back()
-    //             ->withInput()
-    //             ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
-    //     }
-    // }
-
+    // function for submit attendance
     public function submitAttendance(Request $request, $teaching_id)
     {
         try {
@@ -1250,50 +1075,6 @@ class TaController extends Controller
     }
 
     // function for display form edit attendance
-    // public function editAttendance($teaching_id, Request $request)
-    // {
-    //     try {
-    //         $isExtra = $request->query('is_extra', false);
-
-    //         if ($isExtra) {
-    //             // Handle extra teaching attendance editing
-    //             $extraTeaching = ExtraTeaching::with(['attendance'])->findOrFail($teaching_id);
-
-    //             // Custom query to get attendance for extra teaching
-    //             $attendance = Attendances::where('extra_teaching_id', $teaching_id)->first();
-
-    //             if (!$attendance) {
-    //                 return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลาสำหรับการสอนชดเชย');
-    //             }
-
-    //             // Create a teaching object with similar structure to regular teaching
-    //             $teaching = (object)[
-    //                 'teaching_id' => $extraTeaching->extra_class_id,
-    //                 'start_time' => $extraTeaching->class_date . ' ' . $extraTeaching->start_time,
-    //                 'end_time' => $extraTeaching->class_date . ' ' . $extraTeaching->end_time,
-    //                 'duration' => $extraTeaching->duration,
-    //                 'class_type' => 'E',
-    //                 'class_id' => $extraTeaching->class_id,
-    //                 'is_extra' => true,
-    //                 'attendance' => $attendance
-    //             ];
-
-    //             return view('layouts.ta.edit-extra-teaching', compact('teaching', 'isExtra'));
-    //         } else {
-    //             // Original code for regular teaching
-    //             $teaching = Teaching::with(['attendance'])->findOrFail($teaching_id);
-
-    //             if (!$teaching->attendance) {
-    //                 return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลา');
-    //             }
-
-    //             return view('layouts.ta.edit-attendance', compact('teaching'));
-    //         }
-    //     } catch (\Exception $e) {
-    //         Log::error('Error in editAttendance: ' . $e->getMessage() . ' at line ' . $e->getLine() . ' in file ' . $e->getFile());
-    //         return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการแสดงฟอร์มแก้ไข: ' . $e->getMessage());
-    //     }
-    // }
     public function editAttendance($teaching_id, Request $request)
     {
         try {
@@ -1530,11 +1311,18 @@ class TaController extends Controller
     public function editExtraAttendance($id)
     {
         try {
-            $extraAttendance = ExtraAttendances::findOrFail($id);
+            // ใช้ find แทน findOrFail และเพิ่มการตรวจสอบเพื่อป้องกัน error
+            $extraAttendance = ExtraAttendances::find($id);
+
+            if (!$extraAttendance) {
+                Log::error("ExtraAttendance with ID {$id} not found");
+                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลาเพิ่มเติม');
+            }
+
             return view('layouts.ta.edit-extra-attendance', compact('extraAttendance'));
         } catch (\Exception $e) {
             Log::error('Error in editExtraAttendance: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการแสดงฟอร์มแก้ไข');
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการแสดงฟอร์มแก้ไข: ' . $e->getMessage());
         }
     }
 
@@ -1544,6 +1332,12 @@ class TaController extends Controller
         try {
             DB::beginTransaction();
 
+            // ค้นหาและตรวจสอบการมีอยู่ของข้อมูล
+            $extraAttendance = ExtraAttendances::find($id);
+            if (!$extraAttendance) {
+                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลาเพิ่มเติม');
+            }
+
             $request->validate([
                 'start_work' => 'required|date',
                 'class_type' => 'required|string|in:L,C',
@@ -1551,7 +1345,10 @@ class TaController extends Controller
                 'duration' => 'required|integer|min:1',
             ]);
 
-            $extraAttendance = ExtraAttendances::findOrFail($id);
+            // ตรวจสอบว่าได้รับการอนุมัติแล้วหรือไม่
+            if ($extraAttendance->approve_status === 'a') {
+                return redirect()->back()->with('error', 'ไม่สามารถแก้ไขการลงเวลาเพิ่มเติมได้เนื่องจากได้รับการอนุมัติแล้ว');
+            }
 
             $extraAttendance->update([
                 'start_work' => $request->start_work,
@@ -1571,7 +1368,7 @@ class TaController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in updateExtraAttendance: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล');
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล: ' . $e->getMessage());
         }
     }
 
@@ -1581,18 +1378,38 @@ class TaController extends Controller
         try {
             DB::beginTransaction();
 
-            $extraAttendance = ExtraAttendances::findOrFail($id);
+            // ค้นหาและตรวจสอบการมีอยู่ของข้อมูล
+            $extraAttendance = ExtraAttendances::find($id);
+            if (!$extraAttendance) {
+                return redirect()->back()->with('error', 'ไม่พบข้อมูลการลงเวลาเพิ่มเติม');
+            }
+
+            // ตรวจสอบว่าได้รับการอนุมัติแล้วหรือไม่
+            if ($extraAttendance->approve_status === 'a') {
+                return redirect()->back()->with('error', 'ไม่สามารถลบการลงเวลาเพิ่มเติมได้เนื่องจากได้รับการอนุมัติแล้ว');
+            }
+
+            // เก็บ class_id ไว้สำหรับการ redirect
+            $classId = $extraAttendance->class_id;
+
+            // ลบข้อมูล
             $extraAttendance->delete();
 
             DB::commit();
 
+            // รับค่า selected_month จาก request
+            $selectedMonth = request('selected_month');
+
             return redirect()
-                ->back()
+                ->route('layout.ta.teaching', [
+                    'id' => $classId,
+                    'month' => $selectedMonth
+                ])
                 ->with('success', 'ลบการลงเวลาเพิ่มเติมสำเร็จ');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error in deleteExtraAttendance: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการลบข้อมูล');
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการลบข้อมูล: ' . $e->getMessage());
         }
     }
 }

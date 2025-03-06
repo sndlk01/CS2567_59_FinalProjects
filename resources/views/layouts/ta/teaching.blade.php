@@ -64,7 +64,6 @@
                                             $previousClassTitle = $teaching->class_id->title;
                                         @endphp
                                     @endif
-                                    <!-- In teaching.blade.php -->
                                     <tr>
                                         <td>
                                             @if ($teaching->class_type === 'E' || ($teaching->is_extra_teaching ?? false))
@@ -116,6 +115,7 @@
 
                                                     @if (!$isApproved)
                                                         @if (isset($teaching->is_extra_teaching) && $teaching->is_extra_teaching)
+                                                            <!-- แก้ไขการลงเวลาสอนชดเชย (ExtraTeaching) -->
                                                             <a href="{{ route('attendances.edit', ['teaching_id' => $teaching->id, 'selected_month' => $selectedMonth, 'is_extra' => true]) }}"
                                                                 class="btn btn-warning btn-sm">
                                                                 <i class="bi bi-pencil-square"></i>
@@ -125,7 +125,19 @@
                                                                 data-bs-target="#deleteExtraModal{{ $teaching->id }}">
                                                                 <i class="bi bi-trash"></i>
                                                             </button>
+                                                        @elseif (isset($teaching->is_extra_attendance) && $teaching->is_extra_attendance)
+                                                            <!-- แก้ไขการลงเวลาเพิ่มเติม (ExtraAttendances) -->
+                                                            <a href="{{ route('extra-attendance.edit', ['id' => str_replace('extra_', '', $teaching->id), 'selected_month' => $selectedMonth]) }}"
+                                                                class="btn btn-warning btn-sm">
+                                                                <i class="bi bi-pencil-square"></i>
+                                                            </a>
+                                                            <button type="button" class="btn btn-danger btn-sm"
+                                                                data-bs-toggle="modal"
+                                                                data-bs-target="#deleteExtraAttendanceModal{{ str_replace('extra_', '', $teaching->id) }}">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
                                                         @else
+                                                            <!-- แก้ไขการลงเวลาปกติ (Teaching) -->
                                                             <a href="{{ route('attendances.edit', ['teaching_id' => $teaching->id, 'selected_month' => $selectedMonth]) }}"
                                                                 class="btn btn-warning btn-sm">
                                                                 <i class="bi bi-pencil-square"></i>
@@ -191,10 +203,10 @@
         </div>
     </div>
 
-    <!-- Add these modal definitions -->
+    <!-- Modals for Delete operations -->
     @foreach ($teachings as $teaching)
         @if (isset($teaching->is_extra_teaching) && $teaching->is_extra_teaching)
-            <!-- Delete Extra Teaching Attendance Modal -->
+            <!-- Delete ExtraTeaching Modal -->
             <div class="modal fade" id="deleteExtraModal{{ $teaching->id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog">
                     <div class="modal-content">
@@ -218,14 +230,42 @@
                     </div>
                 </div>
             </div>
+        @elseif (isset($teaching->is_extra_attendance) && $teaching->is_extra_attendance)
+            <!-- Delete ExtraAttendance Modal -->
+            <div class="modal fade" id="deleteExtraAttendanceModal{{ str_replace('extra_', '', $teaching->id) }}"
+                tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">ยืนยันการลบการลงเวลาเพิ่มเติม</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            คุณต้องการลบการลงเวลาเพิ่มเติมนี้ใช่หรือไม่?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                            <form
+                                action="{{ route('extra-attendance.delete', str_replace('extra_', '', $teaching->id)) }}"
+                                method="POST">
+                                @csrf
+                                @method('DELETE')
+                                <input type="hidden" name="selected_month" value="{{ $selectedMonth }}">
+                                <button type="submit" class="btn btn-danger">ลบ</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
         @elseif ($teaching->attendance)
-            <!-- Delete Regular Attendance Modal -->
+            <!-- Delete Regular Teaching Attendance Modal -->
             <div class="modal fade" id="deleteModal{{ $teaching->id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog">
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title">ยืนยันการลบ</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
                             คุณต้องการลบการลงเวลานี้ใช่หรือไม่?
