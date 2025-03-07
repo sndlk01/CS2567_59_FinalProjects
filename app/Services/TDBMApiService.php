@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 class TDBMApiService
 {
     private $baseUrl = 'https://tdbm.computing.kku.ac.th/api/get_data';
-    private $timeout = 180;
+    private $timeout = 180; // 3 minutes
 
     private function fetchPaginatedData($tableName, $page = 1, $perPage = 1000)
     {
