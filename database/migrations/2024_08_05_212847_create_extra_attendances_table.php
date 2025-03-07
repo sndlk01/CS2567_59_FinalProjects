@@ -22,7 +22,6 @@ return new class extends Migration
             $table->integer('approve_user_id')->nullable();
             $table->char('class_type', 1);
             $table->unsignedBigInteger('student_id');
-            // $table->unsignedBigInteger('course_id');
             $table->unsignedBigInteger('class_id');
             $table->timestamps();
 

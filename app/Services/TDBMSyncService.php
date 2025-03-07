@@ -14,84 +14,34 @@ class TDBMSyncService
         $this->tdbmService = $tdbmService;
     }
 
-    private function logTransactionLevel($message)
-    {
-        Log::info($message . " - Transaction level: " . DB::transactionLevel());
-    }
-
     public function syncAll()
     {
-        $logFile = storage_path('logs/sync_' . date('Y-m-d') . '.log');
-        File::put($logFile, "Starting sync at " . date('Y-m-d H:i:s') . "\n");
-
         try {
-            // Start a single transaction for everything
-            $this->logTransactionLevel("Before main transaction begin");
             DB::beginTransaction();
-            $this->logTransactionLevel("After main transaction begin");
+
+            // เพิ่มล็อกเพื่อตรวจสอบ
+            $logFile = storage_path('logs/sync_' . date('Y-m-d') . '.log');
+            File::put($logFile, "Starting sync at " . date('Y-m-d H:i:s') . "\n");
 
             // ซิงค์ตามลำดับการพึ่งพา
             $this->syncTeachers();
-            $this->logTransactionLevel("After syncTeachers");
-
             $this->syncCurriculums();
-            $this->logTransactionLevel("After syncCurriculums");
-
             $this->syncMajors();
-            $this->logTransactionLevel("After syncMajors");
-
             $this->syncSubjects();
-            $this->logTransactionLevel("After syncSubjects");
-
             $this->syncSemesters();
-            $this->logTransactionLevel("After syncSemesters");
-
             $this->syncCourses();
-            $this->logTransactionLevel("After syncCourses");
-
             $this->syncClasses();
-            $this->logTransactionLevel("After syncClasses");
-
             $this->syncTeachings();
-            $this->logTransactionLevel("After syncTeachings");
-
             $this->syncExtraTeachings();
-            $this->logTransactionLevel("After syncExtraTeachings");
 
-            // Commit everything at once
-            $this->logTransactionLevel("Before main transaction commit");
             DB::commit();
-            $this->logTransactionLevel("After main transaction commit");
 
             File::append($logFile, "Sync completed at " . date('Y-m-d H:i:s') . "\n");
             return true;
         } catch (\Exception $e) {
-            $this->logTransactionLevel("In exception handler before rollback");
-            if (DB::transactionLevel() > 0) {
-                DB::rollBack();
-            }
-            $this->logTransactionLevel("After rollback");
-
+            DB::rollBack();
             File::append($logFile, "Sync failed: " . $e->getMessage() . "\n");
             throw $e;
-        }
-    }
-
-    private function updateOrCreateRecord($model, $identifier, $data, $dependencies = [])
-    {
-        foreach ($dependencies as $key => $value) {
-            if (!$value) {
-                Log::warning("{$model} sync: Missing dependency {$key}");
-                return false;
-            }
-        }
-
-        try {
-            $record = $model::updateOrCreate($identifier, $data);
-            return $record;
-        } catch (\Exception $e) {
-            Log::error("{$model} sync failed: " . $e->getMessage());
-            return false;
         }
     }
 
@@ -104,200 +54,6 @@ class TDBMSyncService
         }
         return true;
     }
-
-    // private function syncTeachers()
-    // {
-    //     try {
-    //         $teachers = collect($this->tdbmService->getTeachers());
-    //         Log::info("Fetched " . $teachers->count() . " teachers from API");
-
-    //         // Get all users for reference
-    //         $users = User::all();
-    //         $usersByEmail = $users->keyBy('email')->toArray();
-    //         $usersById = $users->keyBy('id')->toArray();
-
-    //         Log::info("Found " . count($users) . " users in database");
-
-    //         // Don't truncate until we know we have valid data
-    //         $syncCount = 0;
-    //         $errorCount = 0;
-    //         $validTeachers = [];
-
-    //         // Validate all teacher data first
-    //         foreach ($teachers as $teacher) {
-    //             if (!$this->validateApiData($teacher, ['teacher_id', 'name'])) {
-    //                 Log::warning("Teacher data validation failed: " . json_encode($teacher));
-    //                 $errorCount++;
-    //                 continue;
-    //             }
-
-    //             // Find a matching user
-    //             $userId = null;
-
-    //             // Try to match by account_user_id first
-    //             if (isset($teacher['account_user_id']) && $teacher['account_user_id']) {
-    //                 if (isset($usersById[$teacher['account_user_id']])) {
-    //                     $userId = $teacher['account_user_id'];
-    //                 }
-    //             }
-
-    //             // If no match, try by email
-    //             if (!$userId && !empty($teacher['email'])) {
-    //                 if (isset($usersByEmail[$teacher['email']])) {
-    //                     $userId = $usersByEmail[$teacher['email']]['id'];
-    //                 }
-    //             }
-
-    //             // If still no match and we have a default admin user
-    //             if (!$userId) {
-    //                 // Get the lowest ID user as default (usually admin)
-    //                 $defaultUser = $users->sortBy('id')->first();
-    //                 if ($defaultUser) {
-    //                     $userId = $defaultUser->id;
-    //                     Log::warning("No user match found for teacher: {$teacher['name']} (ID: {$teacher['teacher_id']}). Using default user ID: {$userId}");
-    //                 } else {
-    //                     Log::error("No users found in the database. Cannot sync teachers.");
-    //                     throw new \Exception("No users in database for teacher mapping");
-    //                 }
-    //             }
-
-    //             // Add to valid teachers array with the matched user_id
-    //             $teacher['matched_user_id'] = $userId;
-    //             $validTeachers[] = $teacher;
-    //         }
-
-    //         // If we have valid teachers to sync, proceed with truncate and insert
-    //         if (count($validTeachers) > 0) {
-    //             // Now it's safe to truncate because we've validated all data
-    //             DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-    //             Teachers::truncate();
-
-    //             // Insert all valid teachers
-    //             foreach ($validTeachers as $teacher) {
-    //                 Teachers::create([
-    //                     'teacher_id' => $teacher['teacher_id'],
-    //                     'prefix' => $teacher['prefix'] ?? '',
-    //                     'position' => $teacher['position'] ?? '',
-    //                     'degree' => $teacher['degree'] ?? '',
-    //                     'name' => $teacher['name'],
-    //                     'email' => $teacher['email'] ?? null,
-    //                     'user_id' => $teacher['matched_user_id']
-    //                 ]);
-    //                 $syncCount++;
-    //             }
-
-    //             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-
-    //             Log::info("Teachers sync completed successfully: {$syncCount} synced, {$errorCount} errors");
-    //         } else {
-    //             throw new \Exception("No valid teachers to sync");
-    //         }
-    //     } catch (\Exception $e) {
-    //         Log::error("Teacher sync failed: " . $e->getMessage());
-    //         throw $e;
-    //     }
-    // }
-
-
-    // private function syncTeachers()
-    // {
-    //     try {
-    //         $teachers = collect($this->tdbmService->getTeachers());
-    //         Log::info("Fetched " . $teachers->count() . " teachers from API");
-
-    //         // Get all users with their emails (case-insensitive key)
-    //         $users = User::all();
-    //         $usersByEmail = [];
-    //         foreach ($users as $user) {
-    //             if ($user->email) {
-    //                 $usersByEmail[strtolower($user->email)] = $user;
-    //             }
-    //         }
-
-    //         Log::info("Found " . count($users) . " users in database");
-
-    //         $syncCount = 0;
-    //         $errorCount = 0;
-    //         $validTeachers = [];
-
-    //         // Validate all teacher data first
-    //         foreach ($teachers as $teacher) {
-    //             if (!$this->validateApiData($teacher, ['teacher_id', 'name'])) {
-    //                 Log::warning("Teacher data validation failed: " . json_encode($teacher));
-    //                 $errorCount++;
-    //                 continue;
-    //             }
-
-    //             // Find a matching user by email only
-    //             $userId = null;
-    //             $matchFound = false;
-
-    //             if (!empty($teacher['email'])) {
-    //                 $teacherEmail = strtolower($teacher['email']);
-    //                 if (isset($usersByEmail[$teacherEmail])) {
-    //                     $userId = $usersByEmail[$teacherEmail]->id;
-    //                     $matchFound = true;
-    //                     Log::info("Teacher {$teacher['name']} matched with user ID: {$userId} by email: {$teacher['email']}");
-    //                 } else {
-    //                     Log::warning("Teacher {$teacher['name']} has email {$teacher['email']} but no matching user found");
-    //                 }
-    //             } else {
-    //                 Log::info("Teacher {$teacher['name']} (ID: {$teacher['teacher_id']}) has no email, setting user_id to null");
-    //             }
-
-    //             // Add to valid teachers array with the matched user_id (or null)
-    //             $teacher['matched_user_id'] = $userId;
-    //             $validTeachers[] = $teacher;
-    //         }
-
-    //         // If we have valid teachers to sync, proceed with truncate and insert
-    //         if (count($validTeachers) > 0) {
-    //             // Now it's safe to truncate because we've validated all data
-    //             DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-    //             Teachers::truncate();
-
-    //             // Insert all valid teachers
-    //             foreach ($validTeachers as $teacher) {
-    //                 try {
-    //                     // Check if we need to set user_id as null
-    //                     $userData = [
-    //                         'teacher_id' => $teacher['teacher_id'],
-    //                         'prefix' => $teacher['prefix'] ?? '',
-    //                         'position' => $teacher['position'] ?? '',
-    //                         'degree' => $teacher['degree'] ?? '',
-    //                         'name' => $teacher['name'],
-    //                         'email' => $teacher['email'] ?? null
-    //                     ];
-
-    //                     // Only add user_id if it's not null
-    //                     if ($teacher['matched_user_id'] !== null) {
-    //                         $userData['user_id'] = $teacher['matched_user_id'];
-    //                     } else {
-    //                         // This is a critical change - for teachers without a matching user, we need a default
-    //                         // since your schema doesn't allow null for user_id
-    //                         $userData['user_id'] = 1; // Using admin user as fallback
-    //                         Log::warning("Setting default user_id=1 for teacher: {$teacher['name']} (ID: {$teacher['teacher_id']})");
-    //                     }
-
-    //                     Teachers::create($userData);
-    //                     $syncCount++;
-    //                 } catch (\Exception $e) {
-    //                     Log::error("Failed to create teacher record: " . $e->getMessage());
-    //                     $errorCount++;
-    //                 }
-    //             }
-
-    //             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-
-    //             Log::info("Teachers sync completed successfully: {$syncCount} synced, {$errorCount} errors");
-    //         } else {
-    //             throw new \Exception("No valid teachers to sync");
-    //         }
-    //     } catch (\Exception $e) {
-    //         Log::error("Teacher sync failed: " . $e->getMessage());
-    //         throw $e;
-    //     }
-    // }
 
     private function syncTeachers()
     {
@@ -705,7 +461,7 @@ class TDBMSyncService
                             'end_time' => $teaching['end_time'],
                             'duration' => $teaching['duration'],
                             'teacher_id' => $teaching['teacher_id'],
-                            'holiday_id' => $teaching['holiday_id'],
+                            'holiday_id' => $teaching['holiday_id'] ?? 0,
                             'teaching_id' => $teaching['teaching_id'],
                             'class_id' => $teaching['class_id']
                         ]

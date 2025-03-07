@@ -38,15 +38,25 @@ class Teaching extends Model
     }
 
     // สร้างความสัมพันธ์ไปยัง Classes
-    public function class()
-    {
-        return $this->belongsTo(Classes::class, 'class_id');
-    }
+    // public function class()
+    // {
+    //     return $this->belongsTo(Classes::class, 'class_id');
+    // }
 
     // สร้างความสัมพันธ์ไปยัง Teachers
-    public function teacher()
+    // public function teacher()
+    // {
+    //     return $this->belongsTo(Teachers::class, 'teacher_id');
+    // }
+
+    // public function attendance()
+    // {
+    //     return $this->hasOne(Attendances::class, 'teaching_id', 'teaching_id');
+    // }
+
+    public function extra_teaching()
     {
-        return $this->belongsTo(Teachers::class, 'teacher_id');
+        return $this->hasMany(ExtraTeaching::class);
     }
 
     public function attendance()
@@ -60,9 +70,14 @@ class Teaching extends Model
         return $this->hasMany(Attendances::class, 'teaching_id', 'teaching_id');
     }
 
-    public function extra_teaching()
+    public function class()
     {
-        return $this->hasMany(ExtraTeaching::class);
+        return $this->belongsTo(Classes::class, 'class_id', 'class_id');
+    }
+
+    public function teacher()
+    {
+        return $this->belongsTo(Teachers::class, 'teacher_id', 'teacher_id');
     }
 
     public function getAttendanceForUser($userId)

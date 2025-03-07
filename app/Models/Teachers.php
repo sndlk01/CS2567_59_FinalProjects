@@ -8,12 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class Teachers extends Model
 {
     use HasFactory;
-
-    /**
-
-     *
-     * @var array
-     */
     protected $table = 'teachers';
 
     protected $primaryKey = 'teacher_id';
@@ -29,9 +23,6 @@ class Teachers extends Model
 
     public $incrementing = false;
 
-    /**
-     * Get the user that owns the employee.
-     */
     public function user()
     {
         return $this->belongsTo(User::class);
