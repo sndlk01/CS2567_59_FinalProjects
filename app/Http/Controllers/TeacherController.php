@@ -2,25 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Courses;
-use App\Models\Students;
-use App\Models\Subjects;
-use App\Models\Teachers;
-use App\Models\Attendances;
-use App\Models\ExtraAttendances;
+use App\Models\{
+    Attendances,
+    Classes,
+    Courses,
+    CourseTaClasses,
+    CourseTas,
+    ExtraAttendances,
+    Requests,
+    Students,
+    Subjects,
+    Teachers,
+    Teaching,
+    TeacherRequest,
+    TeacherRequestsDetail,
+    TeacherRequestStudent,
+    Semesters
+};
 use Illuminate\Http\Request;
-use App\Models\CourseTas;
-use App\Models\Classes;
-use App\Models\Requests;
-use App\Models\Teaching;
-use App\Models\TeacherRequest;
-use App\Models\TeacherRequestsDetail;
-use App\Models\TeacherRequestStudent;
-use App\Models\CourseTaClasses;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\{Auth, DB, Log};
 use App\Services\TDBMApiService;
-use Illuminate\Support\Facades\DB;
+
 
 class TeacherController extends Controller
 {
@@ -36,14 +38,54 @@ class TeacherController extends Controller
         $this->tdbmService = $tdbmService;
     }
 
+    // เพิ่มในทั้ง TaController และ TeacherController
+    private function getActiveSemester()
+    {
+        // ลองดึงจาก session ก่อน
+        $activeSemesterId = session('user_active_semester_id');
+
+        // ถ้าไม่มีใน session ให้ดึงจากฐานข้อมูล
+        if (!$activeSemesterId) {
+            $setting = DB::table('setting_semesters')->where('key', 'user_active_semester_id')->first();
+
+            if ($setting) {
+                $activeSemesterId = $setting->value;
+                session(['user_active_semester_id' => $activeSemesterId]);
+            }
+        }
+
+        // ถ้ายังไม่มีค่า ให้ใช้ semester ล่าสุด
+        if (!$activeSemesterId) {
+            $semester = Semesters::orderBy('year', 'desc')
+                ->orderBy('semesters', 'desc')
+                ->first();
+        } else {
+            $semester = Semesters::find($activeSemesterId);
+        }
+
+        return $semester;
+    }
 
     public function indexTARequests()
     {
         try {
             $teacher = Auth::user()->teacher;
 
-            // Load courses with their TAs and requests
+            // หาเทอมปัจจุบัน
+            $currentSemester = collect($this->tdbmService->getSemesters())
+                ->filter(function ($semester) {
+                    $startDate = \Carbon\Carbon::parse($semester['start_date']);
+                    $endDate = \Carbon\Carbon::parse($semester['end_date']);
+                    $now = \Carbon\Carbon::now();
+                    return $now->between($startDate, $endDate);
+                })->first();
+
+            if (!$currentSemester) {
+                return back()->with('error', 'ไม่พบข้อมูลภาคการศึกษาปัจจุบัน');
+            }
+
             $courses = Courses::where('owner_teacher_id', $teacher->teacher_id)
+                ->where('semester_id', $currentSemester['semester_id']) // เพิ่มเงื่อนไขเทอมปัจจุบัน
                 ->with([
                     'subjects',
                     'course_tas.student',
@@ -52,20 +94,12 @@ class TeacherController extends Controller
                 ])
                 ->get()
                 ->map(function ($course) {
-                    // Get only approved TAs
                     $approvedTAs = $course->course_tas->filter(function ($ta) {
                         return $ta->courseTaClasses->flatMap->requests
                             ->where('status', 'A')
                             ->isNotEmpty();
                     });
 
-                    // Get pending request
-                    $pendingRequest = $course->teacherRequests
-                        ->where('status', 'W')
-                        ->sortByDesc('created_at')
-                        ->first();
-
-                    // Get latest request
                     $latestRequest = $course->teacherRequests
                         ->sortByDesc('created_at')
                         ->first();
@@ -73,12 +107,12 @@ class TeacherController extends Controller
                     return [
                         'course' => $course,
                         'approved_tas' => $approvedTAs,
-                        'pending_request' => $pendingRequest,
                         'latest_request' => $latestRequest
                     ];
                 });
 
             $requests = TeacherRequest::where('teacher_id', $teacher->teacher_id)
+                ->whereIn('course_id', $courses->pluck('course.course_id'))
                 ->with([
                     'details.students.courseTa.student',
                     'course.subjects'
@@ -87,7 +121,6 @@ class TeacherController extends Controller
                 ->get();
 
             return view('layouts.teacher.ta-request.index', compact('courses', 'requests'));
-
         } catch (\Exception $e) {
             Log::error('Error in indexTARequests: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
@@ -104,8 +137,8 @@ class TeacherController extends Controller
                 ->where('course_id', $course_id);
         })->get();
 
-        \Log::info('Course: ' . json_encode($course));
-        \Log::info('Available Students: ' . json_encode($availableStudents));
+        Log::info('Course: ' . json_encode($course));
+        Log::info('Available Students: ' . json_encode($availableStudents));
 
         return view('layouts.teacher.ta-request.create', compact('course', 'availableStudents'));
     }
@@ -166,7 +199,6 @@ class TeacherController extends Controller
             DB::commit();
             return redirect()->route('teacher.ta-requests.index')
                 ->with('success', 'บันทึกคำร้องขอ TA สำเร็จ');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()
@@ -258,7 +290,6 @@ class TeacherController extends Controller
             DB::commit();
             return redirect()->route('teacher.ta-requests.show', $id)
                 ->with('success', 'อัพเดตคำร้องสำเร็จ');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating TA request: ' . $e->getMessage());
@@ -287,7 +318,7 @@ class TeacherController extends Controller
 
             return view('layouts.teacher.ta-request.show', compact('request', 'teacher', 'course', 'details'));
         } catch (\Exception $e) {
-            \Log::error('Error in showTARequest: ' . $e->getMessage());
+            Log::error('Error in showTARequest: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
@@ -365,7 +396,7 @@ class TeacherController extends Controller
                 return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
             }
 
-            // สร้างรายการเดือน
+            // สร้างรายการเดือน (คงไว้เหมือนเดิม)
             $monthsInSemester = [];
             if ($start->year === $end->year) {
                 for ($m = $start->month; $m <= $end->month; $m++) {
@@ -386,24 +417,38 @@ class TeacherController extends Controller
             $selectedYearMonth = request('month', $start->format('Y-m'));
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
 
-            // ดึงข้อมูลการลงเวลาปกติ
-            $teachings = Teaching::with([
-                'attendance' => function ($query) {
-                    $query->select('id', 'teaching_id', 'student_id', 'status', 'note', 'approve_status', 'approve_note');
-                },
-                'teacher',
-                'class'
-            ])
-                ->where('class_id', 'LIKE', $ta->course_id . '%')
-                ->whereBetween('start_time', [$start, $end])
-                ->whereYear('start_time', $selectedDate->year)
-                ->whereMonth('start_time', $selectedDate->month)
-                ->whereHas('attendance')
+            // ดึงข้อมูลการลงเวลาปกติของนักศึกษาที่เลือก
+            // แก้ไขจากการกรองตาม created_at เป็นการไม่กรองเดือน
+            $attendances = Attendances::where('student_id', $student->id)->get();
+
+            // เตรียม teaching_ids ที่นักศึกษาลงเวลา
+            $teachingIds = $attendances->pluck('teaching_id')->toArray();
+
+            // ดึงข้อมูลการสอนตาม teaching_ids ที่ได้
+            $teachings = Teaching::with(['teacher', 'class'])
+                ->whereIn('teaching_id', $teachingIds)
                 ->get();
 
-            // ดึงข้อมูลการลงเวลาพิเศษ
+            // กรองตามเดือนที่เลือกโดยใช้ start_time ของ teaching แทน created_at ของ attendance
+            $filteredTeachings = $teachings->filter(function ($teaching) use ($selectedDate) {
+                return \Carbon\Carbon::parse($teaching->start_time)->format('Y-m') === $selectedDate->format('Y-m');
+            });
+
+            // สร้าง collection ใหม่ที่มี attendance ของนักศึกษาที่เลือกเท่านั้น
+            $formattedTeachings = collect();
+
+            foreach ($filteredTeachings as $teaching) {
+                $attendance = $attendances->where('teaching_id', $teaching->teaching_id)->first();
+                if ($attendance) {
+                    // สร้าง object ใหม่ที่มีทั้งข้อมูล teaching และ attendance
+                    $teachingWithAttendance = clone $teaching;
+                    $teachingWithAttendance->attendance = $attendance;
+                    $formattedTeachings->push($teachingWithAttendance);
+                }
+            }
+
+            // ดึงข้อมูลการลงเวลาพิเศษเฉพาะของนักศึกษาที่เลือก
             $extraAttendances = ExtraAttendances::where('student_id', $student->id)
-                ->where('class_id', 'LIKE', $ta->course_id . '%')
                 ->whereYear('start_work', $selectedDate->year)
                 ->whereMonth('start_work', $selectedDate->month)
                 ->with([
@@ -413,11 +458,10 @@ class TeacherController extends Controller
                 ])
                 ->get();
 
-            // ตรวจสอบว่าเดือนนี้มีการอนุมัติแล้วหรือไม่
-            $isMonthApproved = false;
-            $approvalNote = null;
+            // ใช้ $formattedTeachings เป็น $teachings
+            $teachings = $formattedTeachings;
 
-            // ตรวจสอบจากทั้งสองตาราง
+            // ตรวจสอบสถานะการอนุมัติ
             $normalAttendanceApproved = Attendances::where('student_id', $student->id)
                 ->whereYear('created_at', $selectedDate->year)
                 ->whereMonth('created_at', $selectedDate->month)
@@ -430,11 +474,11 @@ class TeacherController extends Controller
                 ->where('approve_status', 'a')
                 ->exists();
 
-            // ถ้าทั้งสองตารางมีการอนุมัติแล้ว
-            if ($normalAttendanceApproved && $extraAttendanceApproved) {
-                $isMonthApproved = true;
+            $isMonthApproved = $normalAttendanceApproved || $extraAttendanceApproved;
+            $approvalNote = null;
 
-                // ดึงหมายเหตุการอนุมัติล่าสุดจากทั้งสองตาราง
+            if ($isMonthApproved) {
+                // ดึงหมายเหตุการอนุมัติล่าสุด
                 $latestNormalApproval = Attendances::where('student_id', $student->id)
                     ->whereYear('created_at', $selectedDate->year)
                     ->whereMonth('created_at', $selectedDate->month)
@@ -449,7 +493,6 @@ class TeacherController extends Controller
                     ->latest()
                     ->first();
 
-                // เลือกหมายเหตุจากรายการที่อนุมัติล่าสุด
                 if ($latestNormalApproval && $latestExtraApproval) {
                     $approvalNote = $latestNormalApproval->approve_at > $latestExtraApproval->approve_at
                         ? $latestNormalApproval->approve_note
@@ -471,9 +514,9 @@ class TeacherController extends Controller
                 'isMonthApproved',
                 'approvalNote'
             ));
-
         } catch (\Exception $e) {
-            Log::error($e->getMessage());
+            Log::error('Exception in taDetail: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
@@ -537,13 +580,11 @@ class TeacherController extends Controller
 
                 DB::commit();
                 return back()->with('success', 'อนุมัติการลงเวลาประจำเดือนเรียบร้อยแล้ว');
-
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error('Error during approval: ' . $e->getMessage());
                 return back()->with('error', 'เกิดข้อผิดพลาดในการอนุมัติ: ' . $e->getMessage());
             }
-
         } catch (\Exception $e) {
             Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการประมวลผล: ' . $e->getMessage());
@@ -559,7 +600,6 @@ class TeacherController extends Controller
             $allCourses = collect($tdbmService->getCourses());
             $allSubjects = collect($tdbmService->getSubjects());
 
-            // Get current semester courses with TAs
             $teacherCourses = $allCourses->where('owner_teacher_id', $localTeacher->teacher_id);
 
             $subjectsWithTAs = CourseTas::whereIn('course_id', $teacherCourses->pluck('course_id'))
@@ -592,7 +632,6 @@ class TeacherController extends Controller
             }
 
             return view('layouts.teacher.subject', ['subjects' => array_values($subjects)]);
-
         } catch (\Exception $e) {
             Log::error($e->getMessage());
             return response()->json(['status' => 'error', 'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูล'], 500);
@@ -654,7 +693,7 @@ class TeacherController extends Controller
 
             Log::info('Formatted Course TAs count: ' . $formattedCourseTas->count());
 
-            return view('teacherHome', ['courseTas' => $formattedCourseTas]);
+            return view('layouts.teacher.teacherHome', ['courseTas' => $formattedCourseTas]);
         } catch (\Exception $e) {
             Log::error('Error in showTARequests: ' . $e->getMessage());
             return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
@@ -673,11 +712,9 @@ class TeacherController extends Controller
             foreach ($courseTaIds as $index => $courseTaId) {
                 $courseTa = CourseTas::findOrFail($courseTaId);
 
-                // Get or create course_ta_classes
                 $courseTaClasses = CourseTaClasses::where('course_ta_id', $courseTaId)->get();
 
                 if ($courseTaClasses->isEmpty()) {
-                    // Create a new class if none exists
                     $courseTaClass = CourseTaClasses::create([
                         'course_ta_id' => $courseTaId,
                         'class_id' => $courseTa->course_id
@@ -686,7 +723,6 @@ class TeacherController extends Controller
                 }
 
                 foreach ($courseTaClasses as $courseTaClass) {
-                    // Create or update request
                     Requests::updateOrCreate(
                         ['course_ta_class_id' => $courseTaClass->id],
                         [
@@ -700,7 +736,6 @@ class TeacherController extends Controller
 
             DB::commit();
             return redirect()->back()->with('success', 'อัพเดทสถานะสำเร็จ');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating TA request status: ' . $e->getMessage());

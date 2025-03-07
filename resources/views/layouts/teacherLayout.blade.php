@@ -42,15 +42,6 @@
         <div class="collapse navbar-collapse  w-auto " id="sidenav-collapse-main">
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url('/ta-requests') }}">
-                        <div class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
-                            <i class="ni ni-send text-primary text-sm opacity-10"></i>
-                        </div>
-                        <span class="nav-link-text ms-1">ยื่นคำร้องขอผู้ช่วยสอน</span>
-                    </a>
-                </li>
-
-                <li class="nav-item">
                     <a class="nav-link " href="{{ url('/teacherreq') }}">
                         <div
                             class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
@@ -59,6 +50,18 @@
                         <span class="nav-link-text ms-1">คำร้องการสมัครผู้ช่วยสอน</span>
                     </a>
                 </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url('/ta-requests') }}">
+                        <div
+                            class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
+                            <i class="ni ni-send text-primary text-sm opacity-10"></i>
+                        </div>
+                        <span class="nav-link-text ms-1">ยื่นคำร้องขอผู้ช่วยสอน</span>
+                    </a>
+                </li>
+
+
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url('/subject') }}">
                         <div
@@ -108,7 +111,7 @@
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb bg-transparent mb-0 pb-0 pt-1 px-0 me-sm-6 me-5">
                         <li class="breadcrumb-item text-sm">
-                            <a class="opacity-5 text-white" href="{{ url('/teacherreq')}} ">Teacher</a>
+                            <a class="opacity-5 text-white" href="{{ url('/teacherreq') }} ">Teacher</a>
                         </li>
                         <li class="breadcrumb-item text-sm text-white active" aria-current="page">@yield('break')</li>
                         <li class="breadcrumb-item text-sm text-white active" aria-current="page">@yield('break2')</li>

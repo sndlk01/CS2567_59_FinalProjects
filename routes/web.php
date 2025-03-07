@@ -10,26 +10,27 @@ use App\Http\Controllers\DisbursementsController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\CompensationRateController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Auth::routes();
 
-Route::get('/', [HomeController::class, 'index'])->name('home');
+// Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/', [TaController::class, 'showAnnounces'])->name('home');
 
 // login with google
 Route::get('/auth/google/', [GoogleAuthController::class, 'redirect'])->name('google-auth');
 Route::get('/auth/google/call-back', [GoogleAuthController::class, 'callbackGoogle']);
 
-// update profile
+// Route to display the input form for the account
 Route::get('/complete-profile', [ProfileController::class, 'showCompleteProfileForm'])->name('complete.profile');
 Route::post('/complete-profile', [ProfileController::class, 'saveCompleteProfile'])->name('save.profile');
 
 //Ta Routes List
 Route::middleware(['auth', 'user-access:user'])->group(function () {
 
-    Route::get('/home', [HomeController::class, 'index'])->name('home');
+    // Route::get('/home', [HomeController::class, 'index'])->name('home');
     Route::get('/home', [TaController::class, 'showAnnounces'])->name('home');
 
     // Route to display the request form
@@ -43,7 +44,7 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
 
     // Route to display the disbursement form
     // Route::get('/disbursements', [TaController::class, 'disbursements'])->name('layout.ta.disbursements');
-    Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layo ut.ta.disbursements');
+    Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layout.ta.disbursements');
     Route::post('/disbursements', [DisbursementsController::class, 'uploads'])->name('layout.ta.disbursements');
     Route::get('/ta/documents/download/{id}', [DisbursementsController::class, 'downloadDocument'])->name('layout.ta.download-document');
 
@@ -60,15 +61,15 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     // Route to handle attendance form submission
     Route::post('/attendances/{teaching_id}', [TaController::class, 'submitAttendance'])->name('attendances.submit');
 
-    // Route to display profile page and update profile
+    // Route to display profile page edit and update profile
     Route::get('/ta/profile', [TaController::class, 'edit'])->name('ta.profile');
     Route::put('/ta/profile/update', [TaController::class, 'update'])->name('ta.profile.update');
-    
+
     // For regular attendance
     Route::get('/attendances/{teaching_id}/edit', [TaController::class, 'editAttendance'])->name('attendances.edit');
     Route::put('/attendances/{teaching_id}', [TaController::class, 'updateAttendance'])->name('attendances.update');
     Route::delete('/attendances/{teaching_id}', [TaController::class, 'deleteAttendance'])->name('attendances.delete');
-    
+
     // For extra attendance
     Route::post('/extra-attendance', [TaController::class, 'storeExtraAttendance'])->name('extra-attendance.store');
     Route::get('/extra-attendance/{id}/edit', [TaController::class, 'editExtraAttendance'])->name('extra-attendance.edit');
@@ -79,7 +80,7 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
 //Admin Routes List
 Route::middleware(['auth', 'user-access:admin'])->group(function () {
 
-    Route::get('/admin', [HomeController::class, 'adminHome'])->name('admin.home');
+    Route::get('/admin', [AdminController::class, 'adminHome'])->name('admin.home');
     // Route::get('/admin', [RequestsController::class, 'showCourseTas'])->name('admin.home');
     // Route::get('/statusrequest', [RequestsController::class, 'showCourseTas'])->name('layout.ta.statusRequest');
 
@@ -88,25 +89,42 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
     Route::get('/admin/tausers', [AdminController::class, 'taUsers'])->name('layout.admin.taUsers');
     Route::get('/admin/detailsta', [AdminController::class, 'detailsTa'])->name('layout.admin.detailsTa');
     Route::get('/admin/detailsta/id', [AdminController::class, 'detailsByid'])->name('layout.admin.detailsByid');
-    Route::get('/fetchdata', [ApiController::class, 'fetchData']);
     Route::get('/admin/detailsta/{course_id}', [AdminController::class, 'showTaDetails'])->name('layout.admin.detailsTa');
     Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
     Route::get('/layout/ta/download-document/{id}', [AdminController::class, 'downloadDocument'])
         ->name('layout.ta.download-document');
 
     Route::get('/ta/export-pdf/{id}', [AdminController::class, 'exportTaDetailPDF'])->name('layout.exports.pdf');
+    Route::get('/exports/result-pdf/{id}', [AdminController::class, 'exportResultPDF'])->name('layout.exports.result-pdf');
+   // Route::get('layout/exports/excel/{id}', [App\Http\Controllers\AdminController::class, 'exportTaDetailExcel'])->name('layout.exports.excel');
 
+    Route::get('/admin/ta/export-template/{id}', [App\Http\Controllers\AdminController::class, 'exportFromTemplate'])
+    ->name('admin.export.template');
+    
     Route::prefix('admin-ta-requests')->name('admin.ta-requests.')->group(function () {
         Route::get('/', [AdminController::class, 'taRequests'])->name('index');
         Route::get('/{id}', [AdminController::class, 'showTARequest'])->name('show');
         Route::put('/{id}/process', [AdminController::class, 'processTARequest'])->name('process');
     });
+
+    Route::prefix('admin/compensation-rates')->name('admin.compensation-rates.')->group(function () {
+        Route::get('/', [CompensationRateController::class, 'index'])->name('index');
+        Route::get('/create', [CompensationRateController::class, 'create'])->name('create');
+        Route::post('/', [CompensationRateController::class, 'store'])->name('store');
+        Route::get('/{rate}/edit', [CompensationRateController::class, 'edit'])->name('edit');
+        Route::put('/{rate}', [CompensationRateController::class, 'update'])->name('update');
+    });
+
+
+
+    
+    Route::post('/admin/update-user-semester', [AdminController::class, 'updateUserSemester'])->name('layout.admin.updateUserSemester');
 });
 
 //Teacher Routes List
 Route::middleware(['auth', 'user-access:teacher'])->group(function () {
 
-    Route::get('/teacherreq', [HomeController::class, 'teacherHome'])->name('teacher.home');
+    // Route::get('/teacherreq', [HomeController::class, 'teacherHome'])->name('teacher.home');
     Route::get('/teacherreq', [TeacherController::class, 'showTARequests'])->name('teacher.home');
     Route::post('/teacherreq', [TeacherController::class, 'updateTARequestStatus'])->name('teacher.home');
     Route::get('/subject', [TeacherController::class, 'subjectTeacher'])->name('layout.teacher.subject');

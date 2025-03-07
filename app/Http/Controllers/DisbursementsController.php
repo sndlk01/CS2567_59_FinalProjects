@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Disbursements;
 use App\Models\Students;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class DisbursementsController extends Controller
@@ -51,7 +52,6 @@ class DisbursementsController extends Controller
 
             $disbursement = Disbursements::firstOrNew(['student_id' => $student->id]);
 
-            // Delete old file if exists
             if ($disbursement->uploadfile && Storage::disk('public')->exists($disbursement->uploadfile)) {
                 Storage::disk('public')->delete($disbursement->uploadfile);
             }
@@ -61,7 +61,6 @@ class DisbursementsController extends Controller
                 $fileName = time() . '_' . $file->getClientOriginalName();
                 $path = $file->storeAs('assets/fileUploads', $fileName, 'public');
                 $disbursement->uploadfile = $path;
-                // $disbursement->original_filename = $file->getClientOriginalName(); // Add this if you have the column
             }
 
             $disbursement->bookbank_id = $request->bookbank_id;
@@ -81,26 +80,31 @@ class DisbursementsController extends Controller
     public function downloadDocument($id)
     {
         try {
-            // ตรวจสอบสิทธิ์ user
+            if (!Auth::check()) {
+                return redirect()->route('login')->with('error', 'Please log in to access this page.');
+            }
+    
             $user = Auth::user();
+    
             $student = Students::where('user_id', $user->id)->first();
+            if (!$student) {
+                return redirect()->back()->with('error', 'Student record not found.');
+            }
+    
             $disbursement = Disbursements::findOrFail($id);
-
-            // ตรวจสอบว่าเป็นเจ้าของเอกสาร
-            if (!$student || $disbursement->student_id !== $student->id) {
-                return redirect()->back()->with('error', 'ไม่มีสิทธิ์เข้าถึงเอกสารนี้');
+    
+            if ($disbursement->student_id !== $student->id) {
+                return redirect()->back()->with('error', 'You do not have permission to access this document.');
             }
-
-            // ตรวจสอบว่าไฟล์มีอยู่จริง
+    
             if (!Storage::disk('public')->exists($disbursement->uploadfile)) {
-                return back()->with('error', 'ไม่พบไฟล์เอกสาร');
+                return back()->with('error', 'File not found.');
             }
-
-            // ดาวน์โหลดไฟล์
+    
             return Storage::disk('public')->download($disbursement->uploadfile);
-
+    
         } catch (\Exception $e) {
-            \Log::error('Document download error: ' . $e->getMessage());
+            Log::error('Document download error: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร');
         }
     }

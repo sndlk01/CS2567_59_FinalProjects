@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use \Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User;
 
 class ProfileController extends Controller
 {
@@ -38,17 +39,26 @@ class ProfileController extends Controller
             'phone' => $request->input('phone'),
         ]);
 
-        // // ตรวจสอบว่ามีการกรอกรหัสผ่านใหม่หรือไม่ และอัปเดตรหัสผ่าน
-        // if ($request->filled('password')) {
-        //     $user->password = bcrypt($request->input('password')); // เข้ารหัสรหัสผ่านก่อนบันทึก
-        //     $user->save(); // ต้องเรียก save เพื่อบันทึกการเปลี่ยนแปลงรหัสผ่าน
+        // solution 2
+        // $user = User::find($user_id); // ตรวจสอบว่ามี user_id หรือไม่
+
+        // if (!$user) {
+        //     return redirect()->back()->with('error', 'User not found');
         // }
+
+        // $user->update([
+        //     'prefix' => $request->input('prefix'),
+        //     'name' => $request->input('name'),
+        //     'student_id' => $request->input('student_id'),
+        //     'card_id' => $request->input('card_id'),
+        //     'phone' => $request->input('phone'),
+        // ]);
 
         if ($request->filled('password')) {
             $user->password = bcrypt($request->input('password')); // เข้ารหัสรหัสผ่าน
         }
         $user->save(); // บันทึกข้อมูลทั้งหมดหลังอัปเดต
-        
+
 
         // ส่งกลับหน้า home พร้อมกับข้อความสำเร็จ
         return redirect()->intended('home')->with('success', 'Profile updated successfully.');

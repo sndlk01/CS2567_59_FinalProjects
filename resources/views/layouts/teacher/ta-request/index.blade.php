@@ -28,8 +28,8 @@
                                         <tbody>
                                             @foreach ($courses as $courseData)
                                             <tr>
-                                                <td>{{ $courseData['course']->subjects->subject_id }}</td>
-                                                <td>{{ $courseData['course']->subjects->name_en }}</td>
+                                                <td>{{ $courseData['course']->subjects->subject_id ?? 'N/A' }}</td>
+                                                <td>{{ $courseData['course']->subjects->name_en ?? 'N/A' }}</td>
                                                 <td>{{ $courseData['approved_tas']->count() }}</td>
                                                 <td>
                                                     @if ($courseData['approved_tas']->isNotEmpty())
@@ -46,7 +46,7 @@
                                                     @if ($courseData['latest_request'])
                                                         @switch($courseData['latest_request']->status)
                                                             @case('W')
-                                                                <span class="badge bg-warning">รอดำเนินการ</span>
+                                                                <span class="badge bg-success">ยื่นคำร้องแล้ว</span>
                                                                 @break
                                                             @case('A')
                                                                 <span class="badge bg-success">อนุมัติแล้ว</span>
@@ -60,15 +60,17 @@
                                                     @endif
                                                 </td>
                                                 <td>
-                                                    @if ((!$courseData['latest_request'] || $courseData['latest_request']->status === 'R') && $courseData['latest_request']?->status !== 'A')
+                                                    @if ($courseData['approved_tas']->count() > 0 && (!$courseData['latest_request'] || $courseData['latest_request']->status === 'R') && $courseData['latest_request']?->status !== 'A')
                                                         <a href="{{ route('teacher.ta-requests.create', ['course_id' => $courseData['course']->course_id]) }}"
                                                             class="btn btn-primary btn-sm">
                                                             ยื่นคำร้อง
                                                         </a>
+                                                    @elseif ($courseData['approved_tas']->count() === 0)
+                                                        <span class="text-muted">ไม่มี TA ในรายวิชานี้</span>
                                                     @endif
                                                 </td>
                                             </tr>
-                                        @endforeach
+                                            @endforeach
                                         </tbody>
                                     </table>
                                 </div>
@@ -97,14 +99,13 @@
                                                     <td>{{ $request->created_at->format('d/m/Y') }}</td>
                                                     <td>
                                                         @if ($request->course && $request->course->subjects)
-                                                            {{-- เปลี่ยนจาก subject เป็น subjects --}}
                                                             {{ $request->course->subjects->name_en }}
                                                         @endif
                                                     </td>
                                                     <td>
                                                         @switch($request->status)
                                                             @case('W')
-                                                                <span class="badge bg-warning">รอดำเนินการ</span>
+                                                                <span class="badge bg-success">ยื่นคำร้องแล้ว</span>
                                                             @break
 
                                                             @case('A')

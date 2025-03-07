@@ -53,9 +53,20 @@ class Teaching extends Model
     {
         return $this->hasOne(Attendances::class, 'teaching_id', 'teaching_id');
     }
+    
+    // เพิ่มความสัมพันธ์แบบ one-to-many
+    public function attendances()
+    {
+        return $this->hasMany(Attendances::class, 'teaching_id', 'teaching_id');
+    }
 
     public function extra_teaching()
     {
         return $this->hasMany(ExtraTeaching::class);
+    }
+
+    public function getAttendanceForUser($userId)
+    {
+        return $this->attendances()->where('user_id', $userId)->first();
     }
 }

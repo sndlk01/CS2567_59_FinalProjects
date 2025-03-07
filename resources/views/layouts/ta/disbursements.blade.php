@@ -76,7 +76,7 @@
                                 @enderror
                             </div>
 
-                            <button type="submit" class="btn btn-success">ยืนยันการสมัคร</button>
+                            <button type="submit" class="btn btn-success">บันทึกข้อมูล</button>
                         </form>
                     </div>
                 </div>
