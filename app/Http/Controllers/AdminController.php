@@ -1017,7 +1017,7 @@ class AdminController extends Controller
         }
     }
 
-    public function processTARequest(Request $request, $id)
+   public function processTARequest(Request $request, $id)
     {
         $validated = $request->validate([
             'status' => 'required|in:A,R',
