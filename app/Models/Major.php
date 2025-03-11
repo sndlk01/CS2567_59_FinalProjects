@@ -37,6 +37,6 @@ class Major extends Model
 
     public function classes()
     {
-        return $this->belongsTo(Classes::class);
+        return $this->hasMany(Classes::class, 'major_id', 'major_id');
     }
 }

@@ -86,48 +86,17 @@
                             <!-- ส่วนของการเลือกวิชา -->
                             <div class="mb-3">
                                 <label class="form-label">เลือกรายวิชาและเซคชันที่ต้องการสมัคร</label>
+
+                                <!-- เพิ่มส่วนแสดงรายวิชาที่เลือก -->
+                                <div class="selected-subjects-container mb-2">
+                                    <label class="form-label">วิชาที่คุณเลือก:</label>
+                                    <div id="selectedSubjects" class="border rounded p-2 bg-light">ยังไม่ได้เลือกวิชา</div>
+                                </div>
+
                                 <input type="text" id="subjectSearch" class="form-control mb-3"
                                     placeholder="ค้นหารายวิชา...">
                                 <div class="subject-container"
                                     style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
-                                    {{-- @foreach ($subjectsWithSections as $index => $item)
-                                        <div class="subject-item mb-3">
-                                            <div class="form-check">
-                                                <input class="form-check-input subject-checkbox" type="checkbox"
-                                                    name="applications[{{ $index }}][subject_id]"
-                                                    value="{{ $item['subject']['subject_id'] }}"
-                                                    id="subject{{ $item['subject']['subject_id'] }}">
-                                                <label class="form-check-label"
-                                                    for="subject{{ $item['subject']['subject_id'] }}">
-                                                    {{ $item['subject']['subject_id'] }}
-                                                    {{ $item['subject']['subject_name_th'] }}
-                                                    <br>
-                                                    <small
-                                                        class="text-muted">{{ $item['subject']['subject_name_en'] }}</small>
-                                                </label>
-                                            </div>
-                                            <div class="sections-container ml-4 mt-2" style="display: none;">
-                                                @foreach ($item['sections'] as $section)
-                                                    <div class="form-check">
-                                                        <input class="form-check-input section-checkbox" type="checkbox"
-                                                            name="applications[{{ $index }}][sections][]"
-                                                            value="{{ is_array($section) ? $section['section_num'] : $section }}"
-                                                            id="section-{{ $item['subject']['subject_id'] }}-{{ is_array($section) ? $section['section_num'] : $section }}">
-                                                        <label class="form-check-label"
-                                                            for="section-{{ $item['subject']['subject_id'] }}-{{ is_array($section) ? $section['section_num'] : $section }}">
-                                                            Section
-                                                            {{ is_array($section) ? $section['section_num'] : $section }}
-                                                            @if (is_array($section) && isset($section['major_name']))
-                                                                - {{ $section['major_name'] }}
-                                                            @elseif(isset($section['major']))
-                                                                - {{ $section['major'] }}
-                                                            @endif
-                                                        </label>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    @endforeach --}}
                                     @foreach ($subjectsWithSections as $index => $item)
                                         <div class="subject-item mb-3">
                                             <div class="form-check">
@@ -149,11 +118,19 @@
                                                     <div class="form-check">
                                                         <input class="form-check-input section-checkbox" type="checkbox"
                                                             name="applications[{{ $index }}][sections][]"
-                                                            value="{{ $section }}"
-                                                            id="section-{{ $item['subject']['subject_id'] }}-{{ $section }}">
+                                                            value="{{ $section['section_num'] }}"
+                                                            id="section-{{ $item['subject']['subject_id'] }}-{{ $section['section_num'] }}">
                                                         <label class="form-check-label"
-                                                            for="section-{{ $item['subject']['subject_id'] }}-{{ $section }}">
-                                                            Section {{ $section }}
+                                                            for="section-{{ $item['subject']['subject_id'] }}-{{ $section['section_num'] }}">
+                                                            Section {{ $section['section_num'] }}
+                                                            @if (count($section['major_info']) > 0)
+                                                                @foreach ($section['major_info'] as $majorInfo)
+                                                                    <small class="ms-1 text-muted">
+                                                                        {{ $majorInfo['major_name'] }}
+                                                                        ({{ $majorInfo['major_type_name'] }})
+                                                                    </small>
+                                                                @endforeach
+                                                            @endif
                                                         </label>
                                                     </div>
                                                 @endforeach
@@ -184,6 +161,7 @@
                                 </div>
                             @endif
                         </form>
+
                         {{-- javaScript สำหรับการเลือกรายวิชาผู้ช่วยสอน --}}
                         <script>
                             // ตรวจจับการเปลี่ยนแปลงการเลือก checkbox
@@ -194,23 +172,22 @@
                                 });
                             });
 
+                            // function for update selected subjects
                             function updateSelectedSubjects() {
                                 const selectedCheckboxes = Array.from(document.querySelectorAll('.subject-checkbox:checked'));
-                                // const selectedSubjects = selectedCheckboxes.map(checkbox => checkbox.nextElementSibling.textContent.trim()).join(', ');
-                                const selectedSubjects = selectedCheckboxes.map(checkbox => checkbox.value).join(', ');
 
                                 if (selectedCheckboxes.length > 0) {
-                                    document.getElementById('selectedSubjects').textContent = selectedSubjects;
-                                } else {
-                                    document.getElementById('selectedSubjects').textContent = 'ยังไม่ได้เลือกวิชา';
-                                }
-
-                                // ตรวจสอบถ้าเลือกเกิน 3 วิชา
-                                if (selectedCheckboxes.length > 3) {
-                                    alert('คุณสามารถเลือกวิชาได้ไม่เกิน 3 วิชา');
-                                    selectedCheckboxes.forEach(checkbox => {
-                                        checkbox.checked = false; // ยกเลิกการเลือก
+                                    // ดึงชื่อวิชาจากแต่ละ checkbox ที่ถูกเลือก
+                                    const selectedSubjectsArray = selectedCheckboxes.map(checkbox => {
+                                        const label = checkbox.closest('.form-check').querySelector('.form-check-label');
+                                        const subjectText = label.textContent.trim().split('\n')[0].trim();
+                                        return subjectText;
                                     });
+
+                                    // เชื่อมต่อด้วยเครื่องหมายจุลภาค (,)
+                                    const selectedSubjectsText = selectedSubjectsArray.join(', ');
+                                    document.getElementById('selectedSubjects').textContent = selectedSubjectsText;
+                                } else {
                                     document.getElementById('selectedSubjects').textContent = 'ยังไม่ได้เลือกวิชา';
                                 }
                             }
@@ -245,8 +222,10 @@
                                             sectionsContainer.style.display = 'none';
                                             alert('คุณสามารถเลือกได้ไม่เกิน 3 วิชา');
                                         }
+                                        updateSelectedSubjects();
                                     });
                                 });
+                                updateSelectedSubjects();
                             });
                         </script>
 

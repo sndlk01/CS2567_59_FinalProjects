@@ -77,7 +77,11 @@ class TaController extends Controller
         // Get data from local database for current semester
         $subjects = Subjects::all();
         $courses = Courses::where('semester_id', $currentSemester->semester_id)->get();
-        $studentClasses = Classes::where('semester_id', $currentSemester->semester_id)->get();
+
+        // เพิ่ม with('major') เพื่อดึงข้อมูลของสาขาไปด้วย
+        $studentClasses = Classes::with('major')
+            ->where('semester_id', $currentSemester->semester_id)
+            ->get();
 
         // Filter subjects with sections for current semester
         $subjectsWithSections = $subjects
@@ -86,11 +90,34 @@ class TaController extends Controller
             })
             ->map(function ($subject) use ($courses, $studentClasses) {
                 $course = $courses->where('subject_id', $subject->subject_id)->first();
-                $sections = $studentClasses->where('course_id', $course->course_id)
-                    ->pluck('section_num')
-                    ->unique()
-                    ->values()
-                    ->toArray();
+
+                // สร้าง array เก็บข้อมูล section พร้อมกับข้อมูลสาขา
+                $sectionsWithMajor = [];
+
+                // กลุ่ม class ตาม section_num
+                $sectionGroups = $studentClasses->where('course_id', $course->course_id)
+                    ->groupBy('section_num');
+
+                foreach ($sectionGroups as $sectionNum => $classes) {
+                    $sectionInfo = [
+                        'section_num' => $sectionNum,
+                        'major_info' => []
+                    ];
+
+                    // เก็บข้อมูล major สำหรับแต่ละ class ใน section นี้
+                    foreach ($classes as $class) {
+                        if ($class->major) {
+                            $majorType = $class->major->major_type == 'N' ? 'ภาคปกติ' : 'โครงการพิเศษ';
+                            $sectionInfo['major_info'][] = [
+                                'major_name' => $class->major->name_th,
+                                'major_type_code' => $class->major->major_type,
+                                'major_type_name' => $majorType
+                            ];
+                        }
+                    }
+
+                    $sectionsWithMajor[] = $sectionInfo;
+                }
 
                 return [
                     'subject' => [
@@ -98,7 +125,7 @@ class TaController extends Controller
                         'subject_name_en' => $subject->name_en,
                         'subject_name_th' => $subject->name_th
                     ],
-                    'sections' => $sections
+                    'sections' => $sectionsWithMajor
                 ];
             })->values();
 
@@ -127,7 +154,8 @@ class TaController extends Controller
 
             // 2. Get data from local database
             $courses = Courses::all();
-            $studentClasses = Classes::all();
+            // $studentClasses = Classes::all();
+            $studentClasses = Classes::with('major')->get();
             $subjects = Subjects::all();
 
             // 3. Get latest semester

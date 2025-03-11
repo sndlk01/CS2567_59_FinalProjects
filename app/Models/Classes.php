@@ -53,7 +53,7 @@ class Classes extends Model
 
     public function major()
     {
-        return $this->belongsTo(Major::class, 'major_id');
+        return $this->belongsTo(Major::class, 'major_id', 'major_id');
     }
 
     // สร้างความสัมพันธ์กับ Teaching
