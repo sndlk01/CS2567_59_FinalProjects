@@ -125,11 +125,10 @@
                                                             Section {{ $section['section_num'] }}
                                                             @if (count($section['major_info']) > 0)
                                                                 @foreach ($section['major_info'] as $majorInfo)
-                                                                    <span
-                                                                        class="badge {{ $majorInfo['major_type_code'] == 'N' ? 'bg-primary' : 'bg-warning text-dark' }}">
+                                                                    <small class="ms-1 text-muted">
                                                                         {{ $majorInfo['major_name'] }}
                                                                         ({{ $majorInfo['major_type_name'] }})
-                                                                    </span>
+                                                                    </small>
                                                                 @endforeach
                                                             @endif
                                                         </label>
@@ -162,6 +161,7 @@
                                 </div>
                             @endif
                         </form>
+
                         {{-- javaScript สำหรับการเลือกรายวิชาผู้ช่วยสอน --}}
                         <script>
                             // ตรวจจับการเปลี่ยนแปลงการเลือก checkbox
