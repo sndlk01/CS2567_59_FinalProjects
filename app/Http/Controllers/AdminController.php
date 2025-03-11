@@ -41,8 +41,6 @@ class AdminController extends Controller
         $this->middleware('auth');
     }
 
-
-
     public function adminHome()
     {
         $coursesWithTAs = Courses::whereHas('course_tas.courseTaClasses.requests', function ($query) {
@@ -86,30 +84,6 @@ class AdminController extends Controller
             });
         return view('layouts.admin.adminHome', compact('requests'));
     }
-
-    // public function taUsers()
-    // {
-    //     $coursesWithTAs = Courses::whereHas('course_tas.courseTaClasses.requests', function ($query) {
-    //         $query->where('status', 'A')  // เช็คสถานะว่าอนุมัติ
-    //             ->whereNotNull('approved_at');  // และมีวันที่อนุมัติ
-    //     }) 
-    //         ->with([
-    //             'subjects',  // ข้อมูลวิชา
-    //             'teachers',  // ข้อมูลอาจารย์
-    //             'course_tas.student',  // ข้อมูลนักศึกษา TA
-    //             'course_tas.courseTaClasses.requests' => function ($query) {
-    //                 $query->where('status', 'A')
-    //                     ->whereNotNull('approved_at');
-    //             }
-    //         ])
-    //         ->get();
-
-    //     // Debug ข้อมูล
-    //     Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
-
-    //     return view('layouts.admin.taUsers', compact('coursesWithTAs'));
-    // }
-
 
     public function taUsers(Request $request)
     {
@@ -1279,7 +1253,7 @@ class AdminController extends Controller
                         \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                         : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                         \Carbon\Carbon::parse($attendance['data']->start_work)
-                            ->addMinutes($attendance['data']->duration)->format('H:i');
+                        ->addMinutes($attendance['data']->duration)->format('H:i');
 
                     $lectureHours = 0;
                     $labHours = 0;
@@ -1374,7 +1348,7 @@ class AdminController extends Controller
                             \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                             : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                             \Carbon\Carbon::parse($attendance['data']->start_work)
-                                ->addMinutes($attendance['data']->duration)->format('H:i');
+                            ->addMinutes($attendance['data']->duration)->format('H:i');
 
                         $lectureHours = 0;
                         $labHours = 0;
@@ -1428,7 +1402,6 @@ class AdminController extends Controller
                 $specialSheet->setCellValue('I' . $rateRow, number_format($specialPay, 2));
 
                 $totalRow = 20;
-
             }
 
             if ($specialAttendances->isNotEmpty() || $specialPay > 0) {
@@ -1448,7 +1421,7 @@ class AdminController extends Controller
 
 
                     $specialEvidenceSheet->setCellValue('E7', '( ) โครงการปกติ');
-                     $specialEvidenceSheet->setCellValue('H7', '(/) โครงการพิเศษ');
+                    $specialEvidenceSheet->setCellValue('H7', '(/) โครงการพิเศษ');
 
                     $specialEvidenceSheet->setCellValue('B10', $student->name);
                     $specialEvidenceSheet->setCellValue('C10', 'ป.ตรี');
@@ -1459,8 +1432,6 @@ class AdminController extends Controller
                     $specialEvidenceSheet->setCellValue('F10', number_format($specialPay, 2));
 
                     $specialEvidenceSheet->setCellValue('A17', '(' . $this->convertNumberToThaiBaht($specialPay) . ')');
-
-                   
                 } else {
                     $specialEvidenceSheet = $spreadsheet->createSheet();
                     $specialEvidenceSheet->setTitle('หลักฐาน-พิเศษ');
@@ -1512,9 +1483,8 @@ class AdminController extends Controller
             $writer->save($tempPath);
 
             return response()->download($tempPath, $fileName)->deleteFileAfterSend(true);
-
         } catch (\Exception $e) {
-            \Log::error('Template Export Error: ' . $e->getMessage());
+            Log::error('Template Export Error: ' . $e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการสร้างไฟล์ Excel: ' . $e->getMessage());
         }
     }

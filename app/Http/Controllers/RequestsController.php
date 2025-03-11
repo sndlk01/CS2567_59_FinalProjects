@@ -27,6 +27,33 @@ class RequestsController extends Controller
         $this->tdbmService = $tdbmService;
     }
 
+    private function getActiveSemester()
+    {
+        // ลองดึงจาก session ก่อน
+        $activeSemesterId = session('user_active_semester_id');
+
+        // ถ้าไม่มีใน session ให้ดึงจากฐานข้อมูล
+        if (!$activeSemesterId) {
+            $setting = DB::table('setting_semesters')->where('key', 'user_active_semester_id')->first();
+
+            if ($setting) {
+                $activeSemesterId = $setting->value;
+                session(['user_active_semester_id' => $activeSemesterId]);
+            }
+        }
+
+        // ถ้ายังไม่มีค่า ให้ใช้ semester ล่าสุด
+        if (!$activeSemesterId) {
+            $semester = Semesters::orderBy('year', 'desc')
+                ->orderBy('semesters', 'desc')
+                ->first();
+        } else {
+            $semester = Semesters::find($activeSemesterId);
+        }
+
+        return $semester;
+    }
+
     public function showTARequests()
     {
         try {
@@ -38,9 +65,7 @@ class RequestsController extends Controller
             }
 
             // ดึงภาคการศึกษาล่าสุด
-            $currentSemester = Semesters::orderBy('year', 'desc')
-                ->orderBy('semesters', 'desc')
-                ->first();
+            $currentSemester = $this->getActiveSemester();
 
             if (!$currentSemester) {
                 return redirect()->back()->with('error', 'ไม่พบข้อมูลภาคการศึกษา');
@@ -74,15 +99,19 @@ class RequestsController extends Controller
                     ];
                 })->values();
 
-            // ดึงข้อมูลคำขอ
+            // ดึงข้อมูลคำขอสำหรับภาคการศึกษาที่กำหนดเท่านั้น
             $requests = CourseTas::with([
                 'student',
                 'course.subjects',
+                'course.semesters', // เพิ่มความสัมพันธ์กับ semesters
                 'courseTaClasses.requests' => function ($query) {
                     $query->latest();
                 }
             ])
                 ->where('student_id', $student->id)
+                ->whereHas('course', function ($query) use ($currentSemester) {
+                    $query->where('semester_id', $currentSemester->semester_id);
+                }) // เพิ่มการกรองด้วย semester_id
                 ->get()
                 ->map(function ($courseTa) {
                     $latestRequest = $courseTa->courseTaClasses->flatMap->requests->sortByDesc('created_at')->first();
