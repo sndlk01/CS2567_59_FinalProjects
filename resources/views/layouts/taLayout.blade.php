@@ -20,7 +20,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     {{-- Bootstrap --}}
     {{-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous"> --}}
-
+    {{-- Flatpickr --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
     <style>
         .g-sidenav-show {
             font-family: "Noto Sans Thai", sans-serif;
@@ -93,7 +95,7 @@
                     <ol class="breadcrumb bg-transparent mb-0 pb-0 pt-1 px-0 me-sm-6 me-5">
                         <li class="breadcrumb-item text-sm">
                             <a class="opacity-5 text-white" href="javascript:;">TA</a>
-                            </li>
+                        </li>
                         <li class="breadcrumb-item text-sm text-white active" aria-current="page">@yield('break')</li>
                     </ol>
                     {{-- <h6 class="font-weight-bolder text-white mb-0">Teacher</h6> --}}
@@ -169,6 +171,9 @@
             Scrollbar.init(document.querySelector('#sidenav-scrollbar'), options);
         }
     </script>
+    <!-- For Flatpickr -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
     <!-- Fonts Awesome Icon -->
     <script src="https://kit.fontawesome.com/2db00bb8e9.js" crossorigin="anonymous"></script>
     <!-- Control Center for Soft Dashboard: parallax effects, scripts for the example pages etc -->

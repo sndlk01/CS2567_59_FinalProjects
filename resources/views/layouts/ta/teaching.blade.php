@@ -298,11 +298,20 @@
                     @csrf
                     <div class="modal-body">
                         <!-- วันที่ -->
+                        {{-- flatpickr --}}
                         <div class="mb-3">
+                            <label for="start_work" class="form-label">วันที่ปฏิบัติงาน</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="start_work" name="start_work"
+                                    placeholder="เลือกวันเวลา" required>
+                                <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                            </div>
+                        </div>
+                        {{-- <div class="mb-3">
                             <label for="start_work" class="form-label">วันที่ปฏิบัติงาน</label>
                             <input type="datetime-local" class="form-control" id="start_work" name="start_work"
                                 required>
-                        </div>
+                        </div> --}}
 
                         <!-- ประเภทรายวิชาที่ปฏิบัติ -->
                         <div class="mb-3">
@@ -339,4 +348,23 @@
             </div>
         </div>
     </div>
+
+    {{-- for flatpickr --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            flatpickr("#start_work", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                locale: "th",
+                time_24hr: true,
+                minuteIncrement: 15,
+                allowInput: true,
+                placeholder: "เลือกวันและเวลา",
+                disableMobile: false,
+                position: "right", // กำหนดตำแหน่งให้อยู่ทางขวา
+                // ถ้าต้องการขยับเพิ่มเติม สามารถใช้ positionElement
+                positionElement: document.querySelector('#start_work')
+            });
+        });
+    </script>
 @endsection

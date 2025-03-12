@@ -37,7 +37,7 @@ class TaController extends Controller
         $this->tdbmService = $tdbmService;
     }
 
-    // เพิ่มในทั้ง TaController และ TeacherController
+    // function for get actie semesters
     private function getActiveSemester()
     {
         // ลองดึงจาก session ก่อน
@@ -953,6 +953,7 @@ class TaController extends Controller
         }
     }
 
+    // function for edit profile
     public function edit()
     {
         $user = Auth::user();
@@ -965,6 +966,7 @@ class TaController extends Controller
         return view('layouts.ta.profile', compact('user', 'student'));
     }
 
+    // function for update profile
     public function update(Request $request)
     {
         $request->validate([
@@ -1030,6 +1032,72 @@ class TaController extends Controller
     }
 
     // ส่วนของการลงเวลาปฏิบัติงานเพิ่มเติม
+    // public function storeExtraAttendance(Request $request)
+    // {
+    //     try {
+    //         $request->validate([
+    //             'start_work' => 'required|date',
+    //             'class_type' => 'required|string|in:L,C',
+    //             'detail' => 'required|string|max:255',
+    //             'duration' => 'required|integer|min:1',
+    //             'student_id' => 'required|exists:students,id',
+    //             'class_id' => 'required|exists:classes,class_id',
+    //         ], [
+    //             'start_work.required' => 'กรุณาระบุวันที่ปฏิบัติงาน',
+    //             'class_type.required' => 'กรุณาเลือกประเภทรายวิชา',
+    //             'detail.required' => 'กรุณากรอกรายละเอียดการปฏิบัติงาน',
+    //             'duration.required' => 'กรุณาระบุระยะเวลาการปฏิบัติงาน'
+    //         ]);
+
+    //         DB::beginTransaction();
+
+    //         $selectedDate = \Carbon\Carbon::parse($request->start_work);
+
+    //         $isMonthApproved = Attendances::where('student_id', $request->student_id)
+    //             ->whereYear('created_at', $selectedDate->year)
+    //             ->whereMonth('created_at', $selectedDate->month)
+    //             ->where('approve_status', 'a')
+    //             ->exists();
+
+    //         // 3. เพิ่มเงื่อนไขนี้เพื่อไม่ให้ลงเวลาเพิ่มในเดือนที่ถูก approve แล้ว
+    //         if ($isMonthApproved) {
+    //             return redirect()
+    //                 ->back()
+    //                 ->with('error', 'ไม่สามารถลงเวลาเพิ่มเติมได้เนื่องจากการลงเวลาของเดือนนี้ได้รับการอนุมัติแล้ว');
+    //         }
+
+    //         $extraAttendance = ExtraAttendances::create([
+    //             'start_work' => $request->start_work,
+    //             'class_type' => $request->class_type,
+    //             'detail' => $request->detail,
+    //             'duration' => $request->duration,
+    //             'student_id' => $request->student_id,
+    //             'class_id' => $request->class_id,
+    //             'approve_status' => null,
+    //             'approve_at' => null,
+    //             'approve_user_id' => null,
+    //             'approve_note' => null
+    //         ]);
+
+    //         DB::commit();
+
+    //         return redirect()
+    //             ->route('layout.ta.teaching', [
+    //                 'id' => $request->class_id,
+    //                 'month' => $request->input('selected_month')
+    //             ])
+    //             ->with('success', 'บันทึกการลงเวลาเพิ่มเติมสำเร็จ');
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Error in storeExtraAttendance: ' . $e->getMessage());
+    //         return redirect()
+    //             ->back()
+    //             ->withInput()
+    //             ->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
+    //     }
+    // }
+
+    // function for storing extra attendance entries
     public function storeExtraAttendance(Request $request)
     {
         try {
@@ -1051,19 +1119,84 @@ class TaController extends Controller
 
             $selectedDate = \Carbon\Carbon::parse($request->start_work);
 
+            // Check if the month is already approved
             $isMonthApproved = Attendances::where('student_id', $request->student_id)
                 ->whereYear('created_at', $selectedDate->year)
                 ->whereMonth('created_at', $selectedDate->month)
                 ->where('approve_status', 'a')
                 ->exists();
 
-            // 3. เพิ่มเงื่อนไขนี้เพื่อไม่ให้ลงเวลาเพิ่มในเดือนที่ถูก approve แล้ว
             if ($isMonthApproved) {
                 return redirect()
                     ->back()
                     ->with('error', 'ไม่สามารถลงเวลาเพิ่มเติมได้เนื่องจากการลงเวลาของเดือนนี้ได้รับการอนุมัติแล้ว');
             }
 
+            // Calculate end time based on start time and duration
+            $startTime = \Carbon\Carbon::parse($request->start_work);
+            $endTime = $startTime->copy()->addMinutes($request->duration);
+
+            // Check for overlap with regular teaching sessions
+            $overlappingTeaching = Teaching::where('class_id', $request->class_id)
+                ->where(function ($query) use ($startTime, $endTime) {
+                    $query->whereBetween('start_time', [$startTime, $endTime])
+                        ->orWhereBetween('end_time', [$startTime, $endTime])
+                        ->orWhere(function ($q) use ($startTime, $endTime) {
+                            $q->where('start_time', '<=', $startTime)
+                                ->where('end_time', '>=', $endTime);
+                        });
+                })
+                ->first();
+
+            if ($overlappingTeaching) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', 'เวลาที่เลือกซ้ำซ้อนกับตารางสอนปกติที่มีอยู่แล้ว');
+            }
+
+            // Check for overlap with extra teaching sessions
+            $overlappingExtraTeaching = ExtraTeaching::where('class_id', $request->class_id)
+                ->where(function ($query) use ($startTime, $endTime) {
+                    // Create datetime objects for comparison
+                    $query->where(function ($q) use ($startTime, $endTime) {
+                        $q->whereRaw(
+                            "CONCAT(class_date, ' ', start_time) <= ? AND CONCAT(class_date, ' ', end_time) >= ?",
+                            [$endTime->format('Y-m-d H:i:s'), $startTime->format('Y-m-d H:i:s')]
+                        );
+                    });
+                })
+                ->first();
+
+            if ($overlappingExtraTeaching) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', 'เวลาที่เลือกซ้ำซ้อนกับตารางสอนชดเชยที่มีอยู่แล้ว');
+            }
+
+            // Check for overlap with other extra attendances
+            $overlappingExtraAttendance = ExtraAttendances::where('class_id', $request->class_id)
+                ->where('student_id', $request->student_id)
+                ->where(function ($query) use ($startTime, $endTime) {
+                    $query->where(function ($q) use ($startTime, $endTime) {
+                        $durationInSeconds = 'duration * 60'; // Convert minutes to seconds
+                        $q->whereRaw(
+                            "start_work <= ? AND DATE_ADD(start_work, INTERVAL $durationInSeconds SECOND) >= ?",
+                            [$endTime->format('Y-m-d H:i:s'), $startTime->format('Y-m-d H:i:s')]
+                        );
+                    });
+                })
+                ->first();
+
+            if ($overlappingExtraAttendance) {
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->with('error', 'เวลาที่เลือกซ้ำซ้อนกับการลงเวลาเพิ่มเติมที่มีอยู่แล้ว');
+            }
+
+            // Create the extra attendance record if no conflicts
             $extraAttendance = ExtraAttendances::create([
                 'start_work' => $request->start_work,
                 'class_type' => $request->class_type,
