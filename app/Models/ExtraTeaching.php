@@ -11,6 +11,8 @@ class ExtraTeaching extends Model
 
     protected $primaryKey = 'extra_class_id';
 
+    public $incrementing = false;
+
     protected $fillable = [
         'title',
         'detail',

@@ -362,6 +362,7 @@ class TaController extends Controller
             $selectedMonth = $request->query('month');
             $user = Auth::user();
             $student = Students::where('user_id', $user->id)->first();
+            $extraTeachingIdMapping = cache()->get('extra_teaching_id_mapping', []);
 
             DB::beginTransaction();
 
@@ -494,12 +495,17 @@ class TaController extends Controller
                     return $query->whereMonth('class_date', \Carbon\Carbon::parse("1-{$selectedMonth}-2024")->month);
                 })
                 ->get()
-                ->map(function ($extraTeaching) use ($classes, $teachers, $student) {
+                ->map(function ($extraTeaching) use ($classes, $teachers, $student, $extraTeachingIdMapping) {
                     $class = $classes->where('class_id', $extraTeaching->class_id)->first();
                     $teacher = $teachers->where('teacher_id', $extraTeaching->teacher_id)->first();
+                    // ค้นหา attendance โดยใช้ local ID แทน API ID
+                    $localExtraTeachingId = $extraTeaching->extra_class_id;
 
-                    // แก้ตรงนี้: เพิ่มการกรองตาม student_id
-                    $attendance = Attendances::where('extra_teaching_id', $extraTeaching->extra_class_id)
+                    // เพิ่มการกรองตาม student_id
+                    // $attendance = Attendances::where('extra_teaching_id', $extraTeaching->extra_class_id)
+                    //     ->where('student_id', $student->id)
+                    //     ->first();
+                    $attendance = Attendances::where('extra_teaching_id', $localExtraTeachingId)
                         ->where('student_id', $student->id)
                         ->first();
 
