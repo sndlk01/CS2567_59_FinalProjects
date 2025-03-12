@@ -26,21 +26,6 @@ class ExtraTeaching extends Model
         'class_id',
     ];
 
-    // public function teacher()
-    // {
-    //     return $this->hasOne(Teachers::class);
-    // }
-
-    // public function teaching()
-    // {
-    //     return $this->hasOne(Teaching::class);
-    // }
-
-    // public function class()
-    // {
-    //     return $this->hasOne(Classes::class);
-    // }
-
     public function attendance()
     {
         return $this->hasOne(Attendances::class, 'extra_teaching_id', 'extra_class_id');
