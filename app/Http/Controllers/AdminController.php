@@ -309,8 +309,11 @@ class AdminController extends Controller
                 ->where('student_id', $student_id)
                 ->firstOrFail();
 
+            $course = $ta->course;
+
             $student = $ta->student;
             $semester = $ta->course->semesters;
+
 
             $start = \Carbon\Carbon::parse($semester->start_date)->startOfDay();
             $end = \Carbon\Carbon::parse($semester->end_date)->endOfDay();
@@ -497,14 +500,103 @@ class AdminController extends Controller
 
             $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
 
+
+            // คำนวณจำนวนนักศึกษาทั้งหมดในรายวิชา
+            $course = Courses::with('classes')->find($ta->course_id);
+            $totalStudents = $course ? $course->classes->sum('enrolled_num') : 0;
+
+            // คำนวณงบประมาณรายวิชา
+            $totalBudget = $totalStudents * 300; // 300 บาทต่อคน
+
+            // จำนวน TA ทั้งหมดในรายวิชา
+            $totalTAs = CourseTas::where('course_id', $ta->course_id)->count();
+
+            // งบประมาณต่อ TA
+            $budgetPerTA = $totalTAs > 0 ? $totalBudget / $totalTAs : 0;
+
+            // ดึงข้อมูลการเบิกจ่ายของ TA คนนี้
+            // หากมีตาราง CompensationTransaction ให้ใช้การดึงข้อมูลต่อไปนี้
+            $totalUsedByTA = 0;
+            try {
+                $totalUsedByTA = CompensationTransaction::where('student_id', $student_id)
+                    ->where('course_id', $ta->course_id)
+                    ->sum('actual_amount');
+            } catch (\Exception $e) {
+                // กรณีไม่มีตาราง CompensationTransaction ยังไม่ต้องทำอะไร
+                Log::info('CompensationTransaction table might not exist yet: ' . $e->getMessage());
+            }
+
+            // คำนวณงบประมาณคงเหลือ
+            $remainingBudgetForTA = $budgetPerTA - $totalUsedByTA;
+
+            // ตรวจสอบว่าค่าตอบแทนของเดือนนี้เกินงบประมาณที่เหลือหรือไม่
+            $isExceeded = $totalPay > $remainingBudgetForTA;
+
+            $degreeLevel = $student->degree_level ?? 'undergraduate';
+            $isFixedPayment = false;
+            $fixedAmount = null;
+
+            $degreeLevel = $student->degree_level ?? 'undergraduate';
+            $isGraduate = in_array($degreeLevel, ['master', 'doctoral', 'graduate']);
+            // ในเมธอด taDetail หรือ getMonthlyCompensationData
+            if ($isGraduate && ($compensation['specialLectureHours'] > 0 || $compensation['specialLabHours'] > 0)) {
+                // ดึงอัตราเหมาจ่ายจากฐานข้อมูล
+                try {
+                    $fixedRate = CompensationRate::where('teaching_type', 'special')
+                        ->where('degree_level', 'graduate')
+                        ->where('is_fixed_payment', true)
+                        ->where('status', 'active')
+                        ->first();
+
+                    Log::debug("Found fixed rate record: ", ['record' => $fixedRate ? $fixedRate->toArray() : 'none']);
+
+                    if ($fixedRate && $fixedRate->fixed_amount > 0) {
+                        $isFixedPayment = true;
+                        $fixedAmount = $fixedRate->fixed_amount;
+                        // ปรับค่าตอบแทนให้เป็นแบบเหมาจ่าย
+                        $compensation['specialPay'] = $fixedAmount;
+                        $totalPay = $compensation['regularPay'] + $fixedAmount;
+                        $compensation['totalPay'] = $totalPay;
+
+                        Log::debug("Using fixed payment: {$fixedAmount}");
+                    } else {
+                        Log::debug("No valid fixed amount found in database");
+                        $isFixedPayment = true;
+                        $fixedAmount = 4000; // ค่าเริ่มต้น 4,000 บาท
+                        $compensation['specialPay'] = $fixedAmount;
+                        $totalPay = $compensation['regularPay'] + $fixedAmount;
+                        $compensation['totalPay'] = $totalPay;
+
+                        Log::debug("Using default fixed payment: {$fixedAmount}");
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Error getting fixed rate: " . $e->getMessage());
+                    $isFixedPayment = false;
+                    $fixedAmount = 0;
+                }
+            }
+
+
+
+            // ส่งข้อมูลทั้งหมดไปยัง view
             return view('layouts.admin.detailsById', compact(
                 'student',
+                'course',
                 'semester',
                 'attendancesBySection',
                 'monthsInSemester',
                 'selectedYearMonth',
                 'attendanceType',
-                'compensation'
+                'compensation',
+                'totalStudents',
+                'totalBudget',
+                'totalTAs',
+                'budgetPerTA',
+                'totalUsedByTA',
+                'remainingBudgetForTA',
+                'isExceeded',
+                'isFixedPayment',
+                'fixedAmount'
             ));
         } catch (\Exception $e) {
             Log::error($e->getMessage());
@@ -991,7 +1083,7 @@ class AdminController extends Controller
         }
     }
 
-   public function processTARequest(Request $request, $id)
+    public function processTARequest(Request $request, $id)
     {
         $validated = $request->validate([
             'status' => 'required|in:A,R',
@@ -1253,7 +1345,7 @@ class AdminController extends Controller
                         \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                         : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                         \Carbon\Carbon::parse($attendance['data']->start_work)
-                        ->addMinutes($attendance['data']->duration)->format('H:i');
+                            ->addMinutes($attendance['data']->duration)->format('H:i');
 
                     $lectureHours = 0;
                     $labHours = 0;
@@ -1348,7 +1440,7 @@ class AdminController extends Controller
                             \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                             : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                             \Carbon\Carbon::parse($attendance['data']->start_work)
-                            ->addMinutes($attendance['data']->duration)->format('H:i');
+                                ->addMinutes($attendance['data']->duration)->format('H:i');
 
                         $lectureHours = 0;
                         $labHours = 0;

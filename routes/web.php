@@ -11,6 +11,7 @@ use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ApiController;
 use App\Http\Controllers\CompensationRateController;
+use App\Http\Controllers\CourseBudgetController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -122,9 +123,30 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
         Route::put('/{rate}', [CompensationRateController::class, 'update'])->name('update');
     });
 
-
-
     
+    Route::prefix('admin/course-budgets')->name('admin.course-budgets.')->group(function () {
+        // แสดงรายการงบประมาณรายวิชาทั้งหมด
+        Route::get('/', [CourseBudgetController::class, 'index'])->name('index');
+        
+        // คำนวณงบประมาณรายวิชา
+        Route::post('/calculate', [CourseBudgetController::class, 'calculateBudget'])->name('calculate');
+        
+        // แสดงรายละเอียดงบประมาณรายวิชา
+        Route::get('/{course_id}/details', [CourseBudgetController::class, 'courseBudgetDetails'])->name('details');
+        
+        // คำนวณค่าตอบแทนและแสดงตัวอย่าง
+        Route::post('/compensation/calculate', [CourseBudgetController::class, 'calculateCompensation'])->name('compensation.calculate');
+        
+        // บันทึกการเบิกจ่ายค่าตอบแทน
+        Route::post('/compensation/save', [CourseBudgetController::class, 'saveCompensation'])->name('compensation.save');
+        
+        // ยกเลิกรายการเบิกจ่าย
+        Route::delete('/compensation/{id}/cancel', [CourseBudgetController::class, 'cancelTransaction'])->name('compensation.cancel');
+    });
+
+
+    Route::get('/admin/ta/{student_id}/budget', [CourseBudgetController::class, 'taBudgetDetail'])->name('ta.budget');
+
     Route::post('/admin/update-user-semester', [AdminController::class, 'updateUserSemester'])->name('layout.admin.updateUserSemester');
 });
 
