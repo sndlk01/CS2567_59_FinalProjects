@@ -200,12 +200,21 @@ class AdminController extends Controller
                 return back()->with('error', 'ไม่พบภาคการศึกษาที่เลือก');
             }
 
-            DB::table('setting_semesters')->updateOrInsert(
-                ['key' => 'user_active_semester_id'],
-                ['value' => $semesterId, 'updated_at' => now()]
-            );
+            // อัปเดตค่าใน setting_semesters
+            DB::table('setting_semesters')
+                ->updateOrInsert(
+                    ['key' => 'user_active_semester_id'],
+                    [
+                        'value' => $semesterId,
+                        'updated_at' => now()
+                    ]
+                );
 
+            // อัปเดต session
             session(['user_active_semester_id' => $semesterId]);
+
+            // Log debug information
+            Log::info('User Active Semester Updated: ' . $semesterId);
 
             return back()->with('success', 'บันทึกการเลือกภาคการศึกษาสำหรับผู้ใช้งานเรียบร้อยแล้ว');
         } catch (\Exception $e) {
@@ -742,13 +751,6 @@ class AdminController extends Controller
         $textBaht = \App\Helpers\ThaiNumberHelper::convertToText($numberText);
         return $textBaht . 'ถ้วน';
     }
-    public function index()
-    {
-        $announces = Announce::latest()->paginate(5);
-        return view('layouts.admin.index', compact('announces'))
-            ->with('i', (request()->input('page', 1) - 1) * 5);
-    }
-
 
     public function exportResultPDF($id)
     {
@@ -907,12 +909,25 @@ class AdminController extends Controller
         }
     }
 
+    public function index()
+    {
+        $announces = Announce::with('semester')
+            ->latest()
+            ->paginate(5);
+
+        return view('layouts.admin.index', compact('announces'))
+            ->with('i', (request()->input('page', 1) - 1) * 5);
+    }
+
     /**
      * Show the form for creating a new resource.
      */
     public function create()
     {
-        return view('layouts.admin.create');
+        $semesters = Semesters::orderBy('year', 'desc')
+            ->orderBy('semesters', 'desc')
+            ->get();
+        return view('layouts.admin.create', compact('semesters'));
     }
 
     /**
@@ -923,13 +938,19 @@ class AdminController extends Controller
         $request->validate([
             'title' => 'required',
             'description' => 'required',
+            'semester_id' => 'required|exists:semesters,semester_id',
         ]);
 
-        Announce::create($request->all());
+        Announce::create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'semester_id' => $request->semester_id,
+            'is_active' => $request->has('is_active')
+        ]);
 
         return redirect()
             ->route('announces.index')
-            ->with('success', 'announce created successfully.');
+            ->with('success', 'ประกาศถูกสร้างเรียบร้อย');
     }
 
     /**
@@ -945,7 +966,11 @@ class AdminController extends Controller
      */
     public function edit(Announce $announce)
     {
-        return view('layouts.admin.edit', compact('announce'));
+        $semesters = Semesters::orderBy('year', 'desc')
+            ->orderBy('semesters', 'desc')
+            ->get();
+
+        return view('layouts.admin.edit', compact('announce', 'semesters'));
     }
 
     public function update(Request $request, Announce $announce)
@@ -953,13 +978,19 @@ class AdminController extends Controller
         $request->validate([
             'title' => 'required',
             'description' => 'required',
+            'semester_id' => 'required|exists:semesters,semester_id',
         ]);
 
-        $announce->update($request->all());
+        $announce->update([
+            'title' => $request->title,
+            'description' => $request->description,
+            'semester_id' => $request->semester_id,
+            'is_active' => $request->has('is_active')
+        ]);
 
         return redirect()
             ->route('announces.index')
-            ->with('success', 'announce updated successfully');
+            ->with('success', 'ประกาศถูกอัปเดตเรียบร้อย');
     }
 
     /**
@@ -991,7 +1022,7 @@ class AdminController extends Controller
         }
     }
 
-   public function processTARequest(Request $request, $id)
+    public function processTARequest(Request $request, $id)
     {
         $validated = $request->validate([
             'status' => 'required|in:A,R',

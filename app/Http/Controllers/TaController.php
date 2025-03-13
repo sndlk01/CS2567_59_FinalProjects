@@ -45,7 +45,9 @@ class TaController extends Controller
 
         // ถ้าไม่มีใน session ให้ดึงจากฐานข้อมูล
         if (!$activeSemesterId) {
-            $setting = DB::table('setting_semesters')->where('key', 'user_active_semester_id')->first();
+            $setting = DB::table('setting_semesters')
+                ->where('key', 'user_active_semester_id')
+                ->first();
 
             if ($setting) {
                 $activeSemesterId = $setting->value;
@@ -61,6 +63,9 @@ class TaController extends Controller
         } else {
             $semester = Semesters::find($activeSemesterId);
         }
+
+        // Log debug information
+        Log::info('Active Semester ID: ' . ($semester ? $semester->semester_id : 'Not Found'));
 
         return $semester;
     }
@@ -132,12 +137,30 @@ class TaController extends Controller
         return view('layouts.ta.request', compact('subjectsWithSections', 'currentSemester'));
     }
 
+    // function for show announces
     public function showAnnounces()
     {
-        $announces = Announce::orderBy('created_at', 'desc')->get();
+        // ใช้ getActiveSemester() เพื่อให้สอดคล้องกับวิธีอื่นๆ
+        $currentSemester = $this->getActiveSemester();
+
+        // ตรวจสอบว่า $currentSemester ไม่เป็น null
+        if (!$currentSemester) {
+            Log::error('No active semester found');
+            return view('layouts.ta.home', ['announces' => collect()]);
+        }
+
+        $announces = Announce::where('semester_id', $currentSemester->semester_id)
+            ->where('is_active', true)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Log debug information
+        Log::info('Announces for semester ' . $currentSemester->semester_id . ': ' . $announces->count());
+
         return view('layouts.ta.home', compact('announces'));
     }
 
+    // function for display subject list and Apply for TA
     public function apply(Request $request)
     {
         try {
