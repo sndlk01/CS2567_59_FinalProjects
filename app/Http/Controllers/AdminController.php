@@ -508,29 +508,35 @@ class AdminController extends Controller
             // คำนวณงบประมาณรายวิชา
             $totalBudget = $totalStudents * 300; // 300 บาทต่อคน
 
-            // จำนวน TA ทั้งหมดในรายวิชา
-            $totalTAs = CourseTas::where('course_id', $ta->course_id)->count();
-
-            // งบประมาณต่อ TA
-            $budgetPerTA = $totalTAs > 0 ? $totalBudget / $totalTAs : 0;
-
-            // ดึงข้อมูลการเบิกจ่ายของ TA คนนี้
-            // หากมีตาราง CompensationTransaction ให้ใช้การดึงข้อมูลต่อไปนี้
-            $totalUsedByTA = 0;
+            // ดึงข้อมูลการเบิกจ่ายทั้งหมดของรายวิชา (ทุก TA)
+            $totalUsed = 0;
             try {
-                $totalUsedByTA = CompensationTransaction::where('student_id', $student_id)
-                    ->where('course_id', $ta->course_id)
+                $totalUsed = CompensationTransaction::where('course_id', $ta->course_id)
                     ->sum('actual_amount');
             } catch (\Exception $e) {
                 // กรณีไม่มีตาราง CompensationTransaction ยังไม่ต้องทำอะไร
                 Log::info('CompensationTransaction table might not exist yet: ' . $e->getMessage());
             }
 
-            // คำนวณงบประมาณคงเหลือ
-            $remainingBudgetForTA = $budgetPerTA - $totalUsedByTA;
+            // คำนวณงบประมาณคงเหลือของรายวิชา
+            $remainingBudget = $totalBudget - $totalUsed;
 
             // ตรวจสอบว่าค่าตอบแทนของเดือนนี้เกินงบประมาณที่เหลือหรือไม่
-            $isExceeded = $totalPay > $remainingBudgetForTA;
+            $isExceeded = $totalPay > $remainingBudget;
+
+            // สำหรับการแสดงผลข้อมูลเพิ่มเติม (อาจไม่จำเป็นต้องใช้)
+            $totalTAs = CourseTas::where('course_id', $ta->course_id)->count();
+            $budgetPerTA = $totalTAs > 0 ? $totalBudget / $totalTAs : 0;
+
+            // ดึงข้อมูลการเบิกจ่ายเฉพาะของ TA คนนี้ (เพื่อแสดงประวัติการเบิกจ่าย)
+            $totalUsedByTA = 0;
+            try {
+                $totalUsedByTA = CompensationTransaction::where('student_id', $student_id)
+                    ->where('course_id', $ta->course_id)
+                    ->sum('actual_amount');
+            } catch (\Exception $e) {
+                Log::info('Error getting TA transactions: ' . $e->getMessage());
+            }
 
             $degreeLevel = $student->degree_level ?? 'undergraduate';
             $isFixedPayment = false;
@@ -591,9 +597,9 @@ class AdminController extends Controller
                 'totalStudents',
                 'totalBudget',
                 'totalTAs',
-                'budgetPerTA',
+                // 'budgetPerTA',
                 'totalUsedByTA',
-                'remainingBudgetForTA',
+                'remainingBudget',
                 'isExceeded',
                 'isFixedPayment',
                 'fixedAmount'

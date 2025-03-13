@@ -104,11 +104,11 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
 
     Route::get('/ta/export-pdf/{id}', [AdminController::class, 'exportTaDetailPDF'])->name('layout.exports.pdf');
     Route::get('/exports/result-pdf/{id}', [AdminController::class, 'exportResultPDF'])->name('layout.exports.result-pdf');
-   // Route::get('layout/exports/excel/{id}', [App\Http\Controllers\AdminController::class, 'exportTaDetailExcel'])->name('layout.exports.excel');
+    // Route::get('layout/exports/excel/{id}', [App\Http\Controllers\AdminController::class, 'exportTaDetailExcel'])->name('layout.exports.excel');
 
     Route::get('/admin/ta/export-template/{id}', [App\Http\Controllers\AdminController::class, 'exportFromTemplate'])
-    ->name('admin.export.template');
-    
+        ->name('admin.export.template');
+
     Route::prefix('admin-ta-requests')->name('admin.ta-requests.')->group(function () {
         Route::get('/', [AdminController::class, 'taRequests'])->name('index');
         Route::get('/{id}', [AdminController::class, 'showTARequest'])->name('show');
@@ -123,23 +123,23 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
         Route::put('/{rate}', [CompensationRateController::class, 'update'])->name('update');
     });
 
-    
+
     Route::prefix('admin/course-budgets')->name('admin.course-budgets.')->group(function () {
         // แสดงรายการงบประมาณรายวิชาทั้งหมด
         Route::get('/', [CourseBudgetController::class, 'index'])->name('index');
-        
+
         // คำนวณงบประมาณรายวิชา
         Route::post('/calculate', [CourseBudgetController::class, 'calculateBudget'])->name('calculate');
-        
+
         // แสดงรายละเอียดงบประมาณรายวิชา
         Route::get('/{course_id}/details', [CourseBudgetController::class, 'courseBudgetDetails'])->name('details');
-        
+
         // คำนวณค่าตอบแทนและแสดงตัวอย่าง
         Route::post('/compensation/calculate', [CourseBudgetController::class, 'calculateCompensation'])->name('compensation.calculate');
-        
+
         // บันทึกการเบิกจ่ายค่าตอบแทน
         Route::post('/compensation/save', [CourseBudgetController::class, 'saveCompensation'])->name('compensation.save');
-        
+
         // ยกเลิกรายการเบิกจ่าย
         Route::delete('/compensation/{id}/cancel', [CourseBudgetController::class, 'cancelTransaction'])->name('compensation.cancel');
     });
@@ -162,57 +162,7 @@ Route::middleware(['auth', 'user-access:teacher'])->group(function () {
     Route::get('/subject/subjectDetail/taDetail/{student_id}', [TeacherController::class, 'taDetail'])->name('teacher.taDetail');
     Route::post('/teacher/approve-month/{ta_id}', [TeacherController::class, 'approveMonthlyAttendance'])
         ->name('teacher.approve-month');
-
-    Route::prefix('ta-requests')->name('teacher.ta-requests.')->group(function () {
-        // แสดงรายการคำร้องทั้งหมด
-        Route::get('/', [TeacherController::class, 'indexTARequests'])
-            ->name('index');
-
-        // หน้าสร้างคำร้องใหม่
-        Route::get('/create/{course_id}', [TeacherController::class, 'createTARequest'])
-            ->name('create');
-
-        // บันทึกคำร้อง
-        Route::post('/', [TeacherController::class, 'storeTARequest'])
-            ->name('store');
-
-        // แก้ไขคำร้อง
-        Route::get('/{id}/edit', [TeacherController::class, 'edit'])
-            ->name('edit');
-
-        // อัพเดตคำร้อง
-        Route::put('/{id}', [TeacherController::class, 'update'])
-            ->name('update');
-
-        // แสดงรายละเอียดคำร้อง - ต้องอยู่ท้ายสุดเพราะใช้ parameter
-        Route::get('/{request}', [TeacherController::class, 'showTARequest'])
-            ->name('show');
-    });
-    Route::prefix('ta-requests')->name('teacher.ta-requests.')->group(function () {
-        // แสดงรายการคำร้องทั้งหมด
-        Route::get('/', [TeacherController::class, 'indexTARequests'])
-            ->name('index');
-
-        // หน้าสร้างคำร้องใหม่
-        Route::get('/create/{course_id}', [TeacherController::class, 'createTARequest'])
-            ->name('create');
-
-        // บันทึกคำร้อง
-        Route::post('/', [TeacherController::class, 'storeTARequest'])
-            ->name('store');
-
-        // แก้ไขคำร้อง
-        Route::get('/{id}/edit', [TeacherController::class, 'edit'])
-            ->name('edit');
-
-        // อัพเดตคำร้อง
-        Route::put('/{id}', [TeacherController::class, 'update'])
-            ->name('update');
-
-        // แสดงรายละเอียดคำร้อง - ต้องอยู่ท้ายสุดเพราะใช้ parameter
-        Route::get('/{request}', [TeacherController::class, 'showTARequest'])
-            ->name('show');
-    });
+    // ลบส่วนที่ซ้ำซ้อนนี้ (เก็บไว้แค่ 1 ชุด)
     Route::prefix('ta-requests')->name('teacher.ta-requests.')->group(function () {
         // แสดงรายการคำร้องทั้งหมด
         Route::get('/', [TeacherController::class, 'indexTARequests'])

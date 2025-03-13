@@ -133,7 +133,7 @@ class CourseBudgetController extends Controller
 
         // คำนวณงบประมาณต่อ TA
         $totalTAs = $course->course_tas->count();
-        $budgetPerTA = $totalTAs > 0 ? $budget->total_budget / $totalTAs : 0;
+        $budgetPerTA = $budget->remaining_budget;
 
         // ดึงประวัติการเบิกจ่ายค่าตอบแทนทั้งหมดของรายวิชานี้
         $transactions = CompensationTransaction::where('course_id', $courseId)
@@ -145,9 +145,8 @@ class CourseBudgetController extends Controller
         // รวมยอดเบิกจ่ายของแต่ละ TA
         $taCompensations = [];
         foreach ($course->course_tas as $ta) {
-            $taTransactions = $transactions->where('student_id', $ta->student->id);
-            $totalUsed = $taTransactions->sum('actual_amount');
-            $remainingBudget = $budgetPerTA - $totalUsed;
+            $totalUsed = $transactions->sum('actual_amount');
+            $remainingBudget = $budget->remaining_budget;
 
             $taCompensations[$ta->student->id] = [
                 'student' => $ta->student,
@@ -184,8 +183,9 @@ class CourseBudgetController extends Controller
 
         try {
             $compensationData = $this->getMonthlyCompensationData($studentId, $courseId, $yearMonth);
+            //dd($compensationData);
 
-            return view('layouts.admin.course-budgets.compensation-preview', compact('compensationData'));
+            return view('layouts.admin.compensation-preview', compact('compensationData'));
         } catch (\Exception $e) {
             Log::error('Error calculating compensation: ' . $e->getMessage());
             return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการคำนวณค่าตอบแทน: ' . $e->getMessage());
@@ -335,19 +335,9 @@ class CourseBudgetController extends Controller
             $courseBudget = CourseBudget::where('course_id', $courseId)->first();
         }
 
-        // จำนวน TA ทั้งหมดในรายวิชา
-        $totalTAs = CourseTas::where('course_id', $courseId)->count();
-
-        // งบประมาณต่อ TA (หารเท่าๆ กัน)
-        $budgetPerTA = $totalTAs > 0 ? $courseBudget->total_budget / $totalTAs : 0;
-
-        // ยอดที่ TA คนนี้เบิกไปแล้วทั้งหมด
-        $totalUsedByTA = CompensationTransaction::where('student_id', $studentId)
-            ->where('course_id', $courseId)
+        $totalUsed = CompensationTransaction::where('course_id', $courseId)
             ->sum('actual_amount');
-
-        // งบประมาณคงเหลือของ TA คนนี้
-        $remainingBudgetForTA = $budgetPerTA - $totalUsedByTA;
+            $remainingBudgetForTA = $courseBudget->remaining_budget ?? 0;
 
         // คำนวณค่าตอบแทนจากชั่วโมงการสอนในเดือนที่เลือก
         $startDate = Carbon::createFromFormat('Y-m', $yearMonth)->startOfMonth();
@@ -445,6 +435,8 @@ class CourseBudgetController extends Controller
         // หากเป็น TA บัณฑิตและสอนภาคพิเศษ ให้ใช้การจ่ายแบบเหมาจ่าย
         $isFixedPayment = false;
         $fixedAmount = null;
+        $courseBudget = CourseBudget::firstOrNew(['course_id' => $courseId]);
+        $remainingBudgetForTA = $courseBudget->remaining_budget ?? 0;
 
         if ($degreeLevel === 'graduate' && ($specialLectureHours > 0 || $specialLabHours > 0)) {
             // ดึงอัตราเหมาจ่ายจากฐานข้อมูล
@@ -466,6 +458,8 @@ class CourseBudgetController extends Controller
             }
         }
 
+        
+
         return [
             'student' => $student,
             'course' => $course,
@@ -474,10 +468,10 @@ class CourseBudgetController extends Controller
             'year' => Carbon::createFromFormat('Y-m', $yearMonth)->year + 543,
             'student_count ' => $courseBudget->student_count,
             'total_budget' => $courseBudget->total_budget,
-            'total_tas' => $totalTAs,
-            'budget_per_ta' => $budgetPerTA,
-            'total_used_by_ta' => $totalUsedByTA,
-            'remaining_budget_for_ta' => $remainingBudgetForTA,
+            // 'total_tas' => $totalTAs,
+            // 'budget_per_ta' => $budgetPerTA,
+            // 'total_used_by_ta' => $totalUsedByTA,
+            'remainingBudgetForTA' => $remainingBudgetForTA,
             'hours' => [
                 'regularLecture' => $regularLectureHours,
                 'regularLab' => $regularLabHours,
