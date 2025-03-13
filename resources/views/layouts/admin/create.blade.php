@@ -22,8 +22,8 @@
 
                             <div class="mb-3">
                                 <label for="description" class="form-label">รายละเอียด</label>
-                                <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description"
-                                    rows="3">{{ old('description') }}</textarea>
+                                <textarea class="form-control ckeditor @error('description') is-invalid @enderror" id="description" name="description"
+                                    rows="10">{{ old('description') }}</textarea>
                                 @error('description')
                                     <div class="invalid-feedback">
                                         {{ $message }}
@@ -67,3 +67,55 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
+    {{-- <script src="https://cdn.ckeditor.com/4.25.1/standard/ckeditor.js"></script> --}}
+    {{-- <script src="https://cdn.ckeditor.com/4.25.1/full/ckeditor.js"></script> --}}
+    <script>
+        CKEDITOR.disableAutoInline = true;
+        // ปิดคำเตือนเวอร์ชัน
+        CKEDITOR.env.isCompatible = true;
+        CKEDITOR.replace('description', {
+            language: 'th',
+            height: 300,
+            toolbar: [{
+                    name: 'clipboard',
+                    items: ['Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo']
+                },
+                {
+                    name: 'editing',
+                    items: ['Find', 'Replace', '-', 'SelectAll']
+                },
+                {
+                    name: 'basicstyles',
+                    items: ['Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-',
+                        'RemoveFormat'
+                    ]
+                },
+                {
+                    name: 'paragraph',
+                    items: ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'JustifyLeft',
+                        'JustifyCenter', 'JustifyRight', 'JustifyBlock'
+                    ]
+                },
+                {
+                    name: 'links',
+                    items: ['Link', 'Unlink']
+                },
+                {
+                    name: 'insert',
+                    items: ['Table', 'HorizontalRule', 'SpecialChar']
+                },
+                {
+                    name: 'styles',
+                    items: ['Styles', 'Format', 'Font', 'FontSize']
+                },
+                {
+                    name: 'colors',
+                    items: ['TextColor', 'BGColor']
+                },
+            ]
+        });
+    </script>
+@endpush
