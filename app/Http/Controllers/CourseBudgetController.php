@@ -18,9 +18,9 @@ use Illuminate\Support\Facades\Log;
 
 class CourseBudgetController extends Controller
 {
-    /**
-     * แสดงรายการงบประมาณรายวิชา
-     */
+
+
+     //งบวิชา
     public function index()
     {
         $courses = Courses::with(['subjects', 'classes', 'course_tas'])
@@ -46,9 +46,7 @@ class CourseBudgetController extends Controller
         return view('layouts.admin.course-budgets.index', compact('courses'));
     }
 
-    /**
-     * คำนวณงบประมาณรายวิชา
-     */
+    //คำนวนงบวิชา
     public function calculateBudget(Request $request)
     {
         $request->validate([
@@ -68,33 +66,26 @@ class CourseBudgetController extends Controller
         }
     }
 
-    /**
-     * คำนวณและบันทึกงบประมาณรายวิชา
-     */
+    //คำนวน บันทึกงบวิชา
     private function calculateAndSaveCourseBudget($courseId)
     {
         try {
-            // ดึงข้อมูลรายวิชาและทุกตอนเรียนที่เกี่ยวข้อง
+            // ดึงข้อมูลรายวิชา
             $course = Courses::with('classes')->findOrFail($courseId);
 
-            // รวมจำนวนนักศึกษาจากทุกตอนเรียน
             $totalStudents = $course->classes->sum('enrolled_num');
 
-            // คำนวณงบประมาณรวม
             $totalBudget = $totalStudents * 300; // 300 บาทต่อคน
 
-            // ตรวจสอบว่ามีข้อมูลงบประมาณอยู่แล้วหรือไม่
             $courseBudget = CourseBudget::where('course_id', $courseId)->first();
 
             if ($courseBudget) {
-                // อัปเดตข้อมูลงบประมาณที่มีอยู่แล้ว
                 $usedBudget = $courseBudget->used_budget;
                 $courseBudget->student_count = $totalStudents;
                 $courseBudget->total_budget = $totalBudget;
                 $courseBudget->remaining_budget = $totalBudget - $usedBudget;
                 $courseBudget->save();
             } else {
-                // สร้างข้อมูลงบประมาณใหม่
                 $courseBudget = new CourseBudget();
                 $courseBudget->course_id = $courseId;
                 $courseBudget->student_count = $totalStudents;
@@ -113,36 +104,30 @@ class CourseBudgetController extends Controller
             ];
         } catch (\Exception $e) {
             Log::error('Error calculating course budget: ' . $e->getMessage());
-            throw $e; // ส่งต่อข้อผิดพลาดเพื่อให้เมธอดที่เรียกใช้จัดการต่อ
+            throw $e; 
         }
     }
 
-    /**
-     * แสดงรายละเอียดการเบิกจ่ายค่าตอบแทนรายวิชา
-     */
+
     public function courseBudgetDetails($courseId)
     {
         $course = Courses::with(['subjects', 'course_tas.student'])->findOrFail($courseId);
         $budget = CourseBudget::where('course_id', $courseId)->first();
 
         if (!$budget) {
-            // คำนวณงบประมาณอัตโนมัติถ้ายังไม่มีข้อมูล
             $budgetData = $this->calculateAndSaveCourseBudget($courseId);
             $budget = CourseBudget::where('course_id', $courseId)->first();
         }
 
-        // คำนวณงบประมาณต่อ TA
         $totalTAs = $course->course_tas->count();
         $budgetPerTA = $budget->remaining_budget;
 
-        // ดึงประวัติการเบิกจ่ายค่าตอบแทนทั้งหมดของรายวิชานี้
         $transactions = CompensationTransaction::where('course_id', $courseId)
             ->with('student')
             ->orderBy('month_year', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // รวมยอดเบิกจ่ายของแต่ละ TA
         $taCompensations = [];
         foreach ($course->course_tas as $ta) {
             $totalUsed = $transactions->sum('actual_amount');
@@ -195,12 +180,7 @@ class CourseBudgetController extends Controller
     /**
      * บันทึกการเบิกจ่ายค่าตอบแทน
      */
-    /**
-     * บันทึกการเบิกจ่ายค่าตอบแทน
-     */
-    /**
-     * บันทึกการเบิกจ่ายค่าตอบแทน
-     */
+
     public function saveCompensation(Request $request)
     {
         $validated = $request->validate([

@@ -48,7 +48,7 @@ class CompensationRateController extends Controller
             if ($request->has('is_fixed_payment')) {
                 $data['is_fixed_payment'] = true;
                 $data['fixed_amount'] = $request->fixed_amount;
-                $data['rate_per_hour'] = null; // เก็บค่า null
+                $data['rate_per_hour'] = null; 
             } else {
                 $data['is_fixed_payment'] = false;
                 $data['fixed_amount'] = null;
