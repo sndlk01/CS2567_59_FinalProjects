@@ -37,23 +37,6 @@ class Teaching extends Model
         return $this->belongsTo(ClassType::class);
     }
 
-    // สร้างความสัมพันธ์ไปยัง Classes
-    // public function class()
-    // {
-    //     return $this->belongsTo(Classes::class, 'class_id');
-    // }
-
-    // สร้างความสัมพันธ์ไปยัง Teachers
-    // public function teacher()
-    // {
-    //     return $this->belongsTo(Teachers::class, 'teacher_id');
-    // }
-
-    // public function attendance()
-    // {
-    //     return $this->hasOne(Attendances::class, 'teaching_id', 'teaching_id');
-    // }
-
     public function extra_teaching()
     {
         return $this->hasMany(ExtraTeaching::class);
@@ -63,7 +46,7 @@ class Teaching extends Model
     {
         return $this->hasOne(Attendances::class, 'teaching_id', 'teaching_id');
     }
-    
+
     // เพิ่มความสัมพันธ์แบบ one-to-many
     public function attendances()
     {

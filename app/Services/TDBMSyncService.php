@@ -387,38 +387,109 @@ class TDBMSyncService
         }
     }
 
+    // private function syncTeachings()
+    // {
+    //     try {
+    //         $teachings = collect($this->tdbmService->getTeachings());
+
+    //         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+    //         foreach ($teachings as $teaching) {
+    //             // Verify dependencies
+    //             $class = Classes::where('class_id', $teaching['class_id'])->first();
+    //             $teacher = Teachers::where('teacher_id', $teaching['teacher_id'])->first();
+
+    //             if (!$class || !$teacher) {
+    //                 Log::warning("Teaching {$teaching['teaching_id']} dependencies check failed - Class: {$teaching['class_id']}, Teacher: {$teaching['teacher_id']}");
+    //                 continue;
+    //             }
+
+    //             Teaching::updateOrCreate(
+    //                 ['teaching_id' => $teaching['teaching_id']],
+    //                 [
+    //                     'start_time' => $teaching['start_time'],
+    //                     'end_time' => $teaching['end_time'],
+    //                     'duration' => $teaching['duration'],
+    //                     'class_type' => $teaching['class_type'],
+    //                     'status' => $teaching['status'],
+    //                     'class_id' => $teaching['class_id'],
+    //                     'teacher_id' => $teaching['teacher_id']
+    //                 ]
+    //             );
+    //         }
+
+    //         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+    //     } catch (\Exception $e) {
+    //         Log::error("Teaching sync failed: " . $e->getMessage());
+    //         throw $e;
+    //     }
+    // }
+
     private function syncTeachings()
     {
         try {
             $teachings = collect($this->tdbmService->getTeachings());
+            Log::info("Fetched " . $teachings->count() . " teachings from API");
 
+            // Disable foreign key checks to allow direct manipulation
             DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
+            $syncCount = 0;
+            $errorCount = 0;
+
             foreach ($teachings as $teaching) {
-                // Verify dependencies
-                $class = Classes::where('class_id', $teaching['class_id'])->first();
-                $teacher = Teachers::where('teacher_id', $teaching['teacher_id'])->first();
+                try {
+                    // Validate essential data
+                    if (!$this->validateApiData($teaching, ['teaching_id', 'class_id', 'teacher_id', 'start_time', 'end_time'])) {
+                        Log::warning("Teaching data validation failed: " . json_encode($teaching));
+                        $errorCount++;
+                        continue;
+                    }
 
-                if (!$class || !$teacher) {
-                    Log::warning("Teaching {$teaching['teaching_id']} dependencies check failed - Class: {$teaching['class_id']}, Teacher: {$teaching['teacher_id']}");
-                    continue;
-                }
+                    // Verify dependencies
+                    $class = Classes::find($teaching['class_id']);
+                    $teacher = Teachers::find($teaching['teacher_id']);
 
-                Teaching::updateOrCreate(
-                    ['teaching_id' => $teaching['teaching_id']],
-                    [
+                    if (!$class || !$teacher) {
+                        Log::warning("Teaching {$teaching['teaching_id']} has invalid class or teacher references");
+                        $errorCount++;
+                        continue;
+                    }
+
+                    // Prepare teaching data
+                    $teachingData = [
+                        'teaching_id' => $teaching['teaching_id'],
                         'start_time' => $teaching['start_time'],
                         'end_time' => $teaching['end_time'],
-                        'duration' => $teaching['duration'],
-                        'class_type' => $teaching['class_type'],
-                        'status' => $teaching['status'],
+                        'duration' => $teaching['duration'] ?? 0,
+                        'class_type' => $teaching['class_type'] ?? 'C',
+                        'status' => $teaching['status'] ?? 'A',
                         'class_id' => $teaching['class_id'],
                         'teacher_id' => $teaching['teacher_id']
-                    ]
-                );
+                    ];
+
+                    // Optional: Add additional fields if they exist in the API data
+                    if (isset($teaching['holiday_id'])) {
+                        $teachingData['holiday_id'] = $teaching['holiday_id'];
+                    }
+
+                    // Use updateOrCreate instead of creating every time
+                    Teaching::updateOrCreate(
+                        ['teaching_id' => $teaching['teaching_id']],
+                        $teachingData
+                    );
+
+                    $syncCount++;
+                } catch (\Exception $e) {
+                    Log::error("Failed to sync teaching ID {$teaching['teaching_id']}: " . $e->getMessage());
+                    $errorCount++;
+                }
             }
 
+            // Re-enable foreign key checks
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+            Log::info("Teachings sync completed: {$syncCount} synced, {$errorCount} errors");
         } catch (\Exception $e) {
             Log::error("Teaching sync failed: " . $e->getMessage());
             throw $e;
@@ -428,30 +499,75 @@ class TDBMSyncService
     private function syncExtraTeachings()
     {
         try {
+            // Fetch data from API
             $extraTeachings = collect($this->tdbmService->getExtraTeachings());
             Log::info("Fetched " . $extraTeachings->count() . " extra teachings from API");
 
-            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            if ($extraTeachings->isEmpty()) {
+                Log::warning("No extra teachings data found from API");
+                return false;
+            }
 
-            $syncCount = 0;
-            $errorCount = 0;
+            // Use a separate transaction for this function
+            // This prevents nested transaction issues
+            DB::beginTransaction();
 
-            foreach ($extraTeachings as $teaching) {
-                // Verify dependencies
-                $mainTeaching = Teaching::find($teaching['teaching_id']);
-                $class = Classes::find($teaching['class_id']);
-                $teacher = Teachers::find($teaching['teacher_id']);
+            try {
+                DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
-                if (!$mainTeaching || !$class || !$teacher) {
-                    Log::warning("ExtraTeaching {$teaching['extra_class_id']} missing dependencies");
-                    $errorCount++;
-                    continue;
-                }
+                $syncCount = 0;
+                $errorCount = 0;
 
-                try {
-                    ExtraTeaching::updateOrCreate(
-                        ['extra_class_id' => $teaching['extra_class_id']],
-                        [
+                // Process each record individually
+                foreach ($extraTeachings as $teaching) {
+                    try {
+                        // Basic data validation
+                        if (
+                            !isset($teaching['extra_class_id']) ||
+                            !isset($teaching['teaching_id']) ||
+                            !isset($teaching['class_id']) ||
+                            !isset($teaching['teacher_id']) ||
+                            !isset($teaching['class_date']) ||
+                            !isset($teaching['start_time']) ||
+                            !isset($teaching['end_time']) ||
+                            !isset($teaching['duration'])
+                        ) {
+
+                            Log::warning("Extra teaching record missing required fields: " . json_encode($teaching));
+                            $errorCount++;
+                            continue;
+                        }
+
+                        // Check if references exist
+                        $mainTeaching = Teaching::find($teaching['teaching_id']);
+                        $class = Classes::find($teaching['class_id']);
+                        $teacher = Teachers::find($teaching['teacher_id']);
+
+                        if (!$mainTeaching) {
+                            Log::warning("Extra teaching {$teaching['extra_class_id']} references non-existent teaching {$teaching['teaching_id']}");
+                            $errorCount++;
+                            continue;
+                        }
+
+                        if (!$class) {
+                            Log::warning("Extra teaching {$teaching['extra_class_id']} references non-existent class {$teaching['class_id']}");
+                            $errorCount++;
+                            continue;
+                        }
+
+                        if (!$teacher) {
+                            Log::warning("Extra teaching {$teaching['extra_class_id']} references non-existent teacher {$teaching['teacher_id']}");
+                            $errorCount++;
+                            continue;
+                        }
+
+                        // Direct DB insert to avoid any model validation issues
+                        // This is a more reliable approach when dealing with external data
+                        $exists = DB::table('extra_teachings')
+                            ->where('extra_class_id', $teaching['extra_class_id'])
+                            ->exists();
+
+                        $data = [
                             'title' => $teaching['title'] ?? 'No Title',
                             'detail' => $teaching['detail'] ?? 'No Detail',
                             'opt_status' => $teaching['opt_status'] ?? 'A',
@@ -461,22 +577,57 @@ class TDBMSyncService
                             'end_time' => $teaching['end_time'],
                             'duration' => $teaching['duration'],
                             'teacher_id' => $teaching['teacher_id'],
-                            'holiday_id' => $teaching['holiday_id'] ?? 0,
+                            'holiday_id' => $teaching['holiday_id'] ?? null,
                             'teaching_id' => $teaching['teaching_id'],
-                            'class_id' => $teaching['class_id']
-                        ]
-                    );
-                    $syncCount++;
-                } catch (\Exception $e) {
-                    Log::error("Failed to sync extra teaching: {$teaching['extra_class_id']}, Error: " . $e->getMessage());
-                    $errorCount++;
-                }
-            }
+                            'class_id' => $teaching['class_id'],
+                            'updated_at' => now()
+                        ];
 
-            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-            Log::info("Extra teachings sync completed: {$syncCount} synced, {$errorCount} errors");
+                        if ($exists) {
+                            // Update existing record
+                            DB::table('extra_teachings')
+                                ->where('extra_class_id', $teaching['extra_class_id'])
+                                ->update($data);
+                        } else {
+                            // Insert new record
+                            $data['extra_class_id'] = $teaching['extra_class_id'];
+                            $data['created_at'] = now();
+                            DB::table('extra_teachings')->insert($data);
+                        }
+
+                        $syncCount++;
+
+                        // Log success occasionally to avoid huge logs
+                        if ($syncCount % 200 == 0) {
+                            Log::info("Synced {$syncCount} extra teachings so far");
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("Failed to sync extra teaching ID {$teaching['extra_class_id']}: " . $e->getMessage());
+                        $errorCount++;
+                        // Continue with the next record despite the error
+                    }
+                }
+
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+                DB::commit();
+
+                Log::info("Extra teachings sync completed: {$syncCount} synced, {$errorCount} errors");
+                return $syncCount > 0;
+            } catch (\Exception $e) {
+                // If anything fails in the transaction
+                DB::rollBack();
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+                throw $e;
+            }
         } catch (\Exception $e) {
-            Log::error("Extra teaching sync failed: " . $e->getMessage());
+            Log::error("Extra teaching sync failed with exception: " . $e->getMessage());
+            Log::error("Stack trace: " . $e->getTraceAsString());
+            // Make sure foreign key checks are re-enabled
+            try {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            } catch (\Exception $ex) {
+                // Ignore any errors here
+            }
             throw $e;
         }
     }

@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('extra_teachings', function (Blueprint $table) {
-            $table->id('extra_class_id');
-            $table->string('title', 1024);
-            $table->string('detail', 1024);
+            $table->unsignedBigInteger('extra_class_id')->primary();
+            $table->string('title', 1024)->nullable();
+            $table->string('detail', 1024)->nullable();
             $table->char('opt_status');
             $table->char('status');
             $table->date('class_date');

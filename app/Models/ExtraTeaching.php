@@ -11,6 +11,8 @@ class ExtraTeaching extends Model
 
     protected $primaryKey = 'extra_class_id';
 
+    public $incrementing = false;
+
     protected $fillable = [
         'title',
         'detail',
@@ -25,21 +27,6 @@ class ExtraTeaching extends Model
         'teaching_id',
         'class_id',
     ];
-
-    // public function teacher()
-    // {
-    //     return $this->hasOne(Teachers::class);
-    // }
-
-    // public function teaching()
-    // {
-    //     return $this->hasOne(Teaching::class);
-    // }
-
-    // public function class()
-    // {
-    //     return $this->hasOne(Classes::class);
-    // }
 
     public function attendance()
     {
