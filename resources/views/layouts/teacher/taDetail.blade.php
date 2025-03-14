@@ -188,6 +188,12 @@
                                                                         type="checkbox" name="extra_attendances[]"
                                                                         value="{{ $attendance['original_id'] }}"
                                                                         id="attendance-{{ $index }}">
+                                                                @elseif ($attendance['type'] === 'สอนชดเชย')
+                                                                    <input class="form-check-input attendance-checkbox"
+                                                                        type="checkbox" name="normal_attendances[]"
+                                                                        value="{{ $attendance['original_id'] }}"
+                                                                        {{-- ใช้ original_id แทน extra- --}}
+                                                                        id="attendance-{{ $index }}">
                                                                 @else
                                                                     <!-- Normal/Extra Teaching Attendance -->
                                                                     <input class="form-check-input attendance-checkbox"

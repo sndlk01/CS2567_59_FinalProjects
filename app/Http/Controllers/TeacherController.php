@@ -815,73 +815,71 @@ class TeacherController extends Controller
             $approveNote = $request->input('approve_note');
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $yearMonth);
             $ta = CourseTas::with('student')->findOrFail($ta_id);
-
+    
             // รับค่า checkbox ที่เลือก
             $normalAttendanceIds = $request->input('normal_attendances', []);
             $extraAttendanceIds = $request->input('extra_attendances', []);
-
+    
+            // บันทึก log ค่าที่รับมาเพื่อตรวจสอบ
+            Log::debug('Approving monthly attendance', [
+                'student_id' => $ta->student_id,
+                'year_month' => $yearMonth,
+                'normal_attendances' => $normalAttendanceIds,
+                'extra_attendances' => $extraAttendanceIds
+            ]);
+    
             // ตรวจสอบว่ามีการเลือกรายการหรือไม่
             if (empty($normalAttendanceIds) && empty($extraAttendanceIds)) {
                 return back()->with('error', 'กรุณาเลือกรายการที่ต้องการอนุมัติ');
             }
-
+    
             DB::beginTransaction();
-
+    
             try {
                 $normalCount = 0;
                 $extraTeachingCount = 0;
                 $extraAttendanceCount = 0;
-
+    
                 // อนุมัติการลงเวลาปกติและสอนชดเชย (Teaching ปกติและ Extra Teaching)
                 foreach ($normalAttendanceIds as $id) {
-                    // ตรวจสอบว่าเป็น extra teaching หรือไม่
-                    if (strpos($id, 'extra-') === 0) {
-                        // กรณี Extra Teaching
-                        $extraTeachingId = str_replace('extra-', '', $id);
-
-                        $attendance = Attendances::whereNotNull('extra_teaching_id')
-                            ->where('extra_teaching_id', $extraTeachingId)
-                            ->where('student_id', $ta->student_id)
-                            ->where('is_extra', true)
-                            ->where(function ($query) {
-                                $query->whereNull('approve_status')
-                                    ->orWhere('approve_status', '!=', 'a');
-                            })
-                            ->first();
-
-                        if ($attendance) {
-                            $attendance->update([
-                                'approve_status' => 'a',
-                                'approve_at' => now(),
-                                'approve_user_id' => auth()->id(),
-                                'approve_note' => $approveNote
-                            ]);
+                    // ค้นหา attendance ตาม id ที่ส่งมา (ไม่ว่าจะเป็น teaching ปกติหรือ extra teaching)
+                    $attendance = Attendances::where(function($query) use ($id, $ta) {
+                            $query->where('teaching_id', $id)
+                                  ->orWhere('extra_teaching_id', $id); // หมายเหตุ: extra_teaching_id ควรตรงกับ extra_class_id
+                        })
+                        ->where('student_id', $ta->student_id)
+                        ->where(function ($query) {
+                            $query->whereNull('approve_status')
+                                ->orWhere('approve_status', '!=', 'a');
+                        })
+                        ->first();
+                    
+                    if ($attendance) {
+                        Log::debug('Found attendance record: ' . $attendance->id);
+                        
+                        // อัพเดทข้อมูล
+                        $attendance->update([
+                            'approve_status' => 'a',
+                            'approve_at' => now(),
+                            'approve_user_id' => auth()->id(),
+                            'approve_note' => $approveNote
+                        ]);
+                        
+                        // เพิ่มตัวนับตามประเภทของ attendance
+                        if ($attendance->is_extra) {
                             $extraTeachingCount++;
-                        }
-                    } else {
-                        // กรณี Teaching ปกติ
-                        $attendance = Attendances::where('teaching_id', $id)
-                            ->where('student_id', $ta->student_id)
-                            ->where(function ($query) {
-                                $query->whereNull('approve_status')
-                                    ->orWhere('approve_status', '!=', 'a');
-                            })
-                            ->first();
-
-                        if ($attendance) {
-                            $attendance->update([
-                                'approve_status' => 'a',
-                                'approve_at' => now(),
-                                'approve_user_id' => auth()->id(),
-                                'approve_note' => $approveNote
-                            ]);
+                        } else {
                             $normalCount++;
                         }
+                    } else {
+                        Log::error('No attendance found for ID: ' . $id);
                     }
                 }
-
+    
                 // อนุมัติการลงเวลาพิเศษ (Extra Attendances)
                 foreach ($extraAttendanceIds as $id) {
+                    Log::debug('Processing extra attendance ID: ' . $id);
+                    
                     $extraAttendance = ExtraAttendances::where('id', $id)
                         ->where('student_id', $ta->student_id)
                         ->where(function ($query) {
@@ -889,8 +887,9 @@ class TeacherController extends Controller
                                 ->orWhere('approve_status', '!=', 'a');
                         })
                         ->first();
-
+    
                     if ($extraAttendance) {
+                        Log::debug('Found extra attendance: ' . $extraAttendance->id);
                         $extraAttendance->update([
                             'approve_status' => 'a',
                             'approve_at' => now(),
@@ -898,32 +897,43 @@ class TeacherController extends Controller
                             'approve_note' => $approveNote
                         ]);
                         $extraAttendanceCount++;
+                    } else {
+                        Log::error('No extra attendance found for ID: ' . $id);
                     }
                 }
-
+    
                 // ตรวจสอบว่ามีการอนุมัติข้อมูลหรือไม่
                 $totalApproved = $normalCount + $extraTeachingCount + $extraAttendanceCount;
-
+                
+                Log::debug('Approval counts', [
+                    'normal' => $normalCount,
+                    'extraTeaching' => $extraTeachingCount,
+                    'extraAttendance' => $extraAttendanceCount,
+                    'total' => $totalApproved
+                ]);
+    
                 if ($totalApproved == 0) {
                     DB::rollBack();
                     return back()->with('error', 'ไม่สามารถอนุมัติรายการที่เลือกได้');
                 }
-
+    
                 // บันทึกข้อมูลลงฐานข้อมูล
                 DB::commit();
-
+    
                 // คำนวณจำนวนรายการที่อนุมัติแต่ละประเภท
                 $message = "อนุมัติรายการที่เลือกเรียบร้อยแล้ว ";
                 $message .= "(ปกติ: {$normalCount}, สอนชดเชย: {$extraTeachingCount}, งานพิเศษ: {$extraAttendanceCount})";
-
+    
                 return back()->with('success', $message);
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error('Error during approval: ' . $e->getMessage());
+                Log::error($e->getTraceAsString());
                 return back()->with('error', 'เกิดข้อผิดพลาดในการอนุมัติ: ' . $e->getMessage());
             }
         } catch (\Exception $e) {
-            Log::error($e->getMessage());
+            Log::error('Exception in approveMonthlyAttendance: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
             return back()->with('error', 'เกิดข้อผิดพลาดในการประมวลผล: ' . $e->getMessage());
         }
     }
