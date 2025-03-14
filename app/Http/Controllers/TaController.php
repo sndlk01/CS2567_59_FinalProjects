@@ -890,6 +890,7 @@ class TaController extends Controller
 
                 // ตรวจสอบว่ามีการลงเวลาไปแล้วหรือไม่
                 $exists = Attendances::where('extra_teaching_id', $teaching_id)
+                    ->where('student_id', $student->id) // เพิ่ม condition นี้
                     ->exists();
 
                 if ($exists) {
@@ -937,6 +938,7 @@ class TaController extends Controller
 
                 // ตรวจสอบว่ามีการลงเวลาไปแล้วหรือไม่
                 $exists = Attendances::where('teaching_id', $teaching_id)
+                    ->where('student_id', $student->id) // เพิ่ม condition นี้
                     ->exists();
 
                 if ($exists) {
