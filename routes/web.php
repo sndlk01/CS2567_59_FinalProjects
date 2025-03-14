@@ -98,7 +98,7 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
     Route::get('/admin/detailsta', [AdminController::class, 'detailsTa'])->name('layout.admin.detailsTa');
     Route::get('/admin/detailsta/id', [AdminController::class, 'detailsByid'])->name('layout.admin.detailsByid');
     Route::get('/admin/detailsta/{course_id}', [AdminController::class, 'showTaDetails'])->name('layout.admin.detailsTa');
-    Route::get('/admin/detailsta/profile/{student_id}', [AdminController::class, 'taDetail'])->name('admin.ta.profile');
+    Route::get('/admin/detailsta/profile/{student_id}', action: [AdminController::class, 'taDetail'])->name('admin.ta.profile');
     Route::get('/layout/ta/download-document/{id}', [AdminController::class, 'downloadDocument'])
         ->name('layout.ta.download-document');
 

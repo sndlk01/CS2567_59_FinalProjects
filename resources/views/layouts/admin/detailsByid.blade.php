@@ -90,24 +90,22 @@
                         </div>
 
                         <!-- ตัวเลือกเดือน -->
-                        <div class="card mb-4">
-                            <div class="card-body bg-light">
-                                <form method="GET" class="d-flex align-items-center">
-                                    <div class="d-flex align-items-center">
-                                        <label for="month" class="me-2"><strong>เลือกเดือน:</strong></label>
-                                        <select name="month" id="month" class="form-select" style="width: 200px;">
-                                            @foreach ($monthsInSemester as $yearMonth => $monthName)
-                                                <option value="{{ $yearMonth }}"
-                                                    {{ $selectedYearMonth == $yearMonth ? 'selected' : '' }}>
-                                                    {{ $monthName }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary ms-2">แสดงข้อมูล</button>
-                                </form>
+                        <form method="GET" class="d-flex align-items-center">
+                            <div class="d-flex align-items-center">
+                                <label for="month" class="me-2"><strong>เลือกเดือน:</strong></label>
+                                <select name="month" id="month" class="form-select" style="width: 200px;">
+                                    @foreach ($monthsInSemester as $yearMonth => $monthName)
+                                        <option value="{{ $yearMonth }}"
+                                            {{ $selectedYearMonth == $yearMonth ? 'selected' : '' }}>
+                                            {{ $monthName }}
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
-                        </div>
+                            <!-- เพิ่มบรรทัดนี้เพื่อส่ง course_id ไปด้วยเมื่อเปลี่ยนเดือน -->
+                            <input type="hidden" name="course_id" value="{{ $course->course_id }}">
+                            <button type="submit" class="btn btn-primary ms-2">แสดงข้อมูล</button>
+                        </form>
 
                         <!-- แสดงข้อมูลการลงเวลา -->
                         <div class="card mb-4">
