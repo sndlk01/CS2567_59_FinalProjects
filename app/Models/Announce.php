@@ -14,5 +14,20 @@ class Announce extends Model
     protected $fillable = [
         'title',
         'description',
+        'semester_id',
+        'is_active'
     ];
+
+    public function semester()
+    {
+        return $this->belongsTo(Semesters::class, 'semester_id', 'semester_id');
+    }
+
+    // Scope เพื่อกรองประกาศตามเทอมปัจจุบัน
+    public function scopeCurrentSemester($query)
+    {
+        $currentSemesterId = session('user_active_semester_id');
+        return $query->where('semester_id', $currentSemesterId)
+            ->where('is_active', true);
+    }
 }

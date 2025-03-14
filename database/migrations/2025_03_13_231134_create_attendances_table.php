@@ -34,8 +34,8 @@ return new class extends Migration
             $table->timestamps();
 
             // เพิ่ม unique constraint เพื่อป้องกันการลงเวลาซ้ำ
-            $table->unique(['teaching_id', 'is_extra'], 'unique_teaching_attendance');
-            $table->unique(['extra_teaching_id', 'is_extra'], 'unique_extra_teaching_attendance');
+            $table->unique(['teaching_id', 'student_id', 'is_extra'], 'unique_teaching_attendance');
+            $table->unique(['extra_teaching_id', 'student_id', 'is_extra'], 'unique_extra_teaching_attendance');
         });
     }
 

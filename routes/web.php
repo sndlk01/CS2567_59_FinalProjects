@@ -107,7 +107,7 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
     // Route::get('layout/exports/excel/{id}', [App\Http\Controllers\AdminController::class, 'exportTaDetailExcel'])->name('layout.exports.excel');
 
     Route::get('/admin/ta/export-template/{id}', [App\Http\Controllers\AdminController::class, 'exportFromTemplate'])
-        ->name('admin.export.template');
+    ->name('admin.export.template');
 
     Route::prefix('admin-ta-requests')->name('admin.ta-requests.')->group(function () {
         Route::get('/', [AdminController::class, 'taRequests'])->name('index');
@@ -122,30 +122,6 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
         Route::get('/{rate}/edit', [CompensationRateController::class, 'edit'])->name('edit');
         Route::put('/{rate}', [CompensationRateController::class, 'update'])->name('update');
     });
-
-
-    Route::prefix('admin/course-budgets')->name('admin.course-budgets.')->group(function () {
-        // แสดงรายการงบประมาณรายวิชาทั้งหมด
-        Route::get('/', [CourseBudgetController::class, 'index'])->name('index');
-
-        // คำนวณงบประมาณรายวิชา
-        Route::post('/calculate', [CourseBudgetController::class, 'calculateBudget'])->name('calculate');
-
-        // แสดงรายละเอียดงบประมาณรายวิชา
-        Route::get('/{course_id}/details', [CourseBudgetController::class, 'courseBudgetDetails'])->name('details');
-
-        // คำนวณค่าตอบแทนและแสดงตัวอย่าง
-        Route::post('/compensation/calculate', [CourseBudgetController::class, 'calculateCompensation'])->name('compensation.calculate');
-
-        // บันทึกการเบิกจ่ายค่าตอบแทน
-        Route::post('/compensation/save', [CourseBudgetController::class, 'saveCompensation'])->name('compensation.save');
-
-        // ยกเลิกรายการเบิกจ่าย
-        Route::delete('/compensation/{id}/cancel', [CourseBudgetController::class, 'cancelTransaction'])->name('compensation.cancel');
-    });
-
-
-    Route::get('/admin/ta/{student_id}/budget', [CourseBudgetController::class, 'taBudgetDetail'])->name('ta.budget');
 
     Route::post('/admin/update-user-semester', [AdminController::class, 'updateUserSemester'])->name('layout.admin.updateUserSemester');
 });
