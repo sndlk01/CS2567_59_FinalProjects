@@ -17,7 +17,8 @@ use App\Models\{
     TeacherRequest,
     TeacherRequestsDetail,
     TeacherRequestStudent,
-    Semesters
+    Semesters,
+    ExtraTeaching
 };
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, DB, Log};
@@ -382,6 +383,146 @@ class TeacherController extends Controller
         }
     }
 
+    // public function taDetail($ta_id)
+    // {
+    //     try {
+    //         $ta = CourseTas::with(['student', 'course.semesters'])->findOrFail($ta_id);
+    //         $student = $ta->student;
+    //         $semester = $ta->course->semesters;
+
+    //         $start = \Carbon\Carbon::parse($semester->start_date)->startOfDay();
+    //         $end = \Carbon\Carbon::parse($semester->end_date)->endOfDay();
+
+    //         if (!\Carbon\Carbon::now()->between($start, $end)) {
+    //             return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
+    //         }
+
+    //         // สร้างรายการเดือน (คงไว้เหมือนเดิม)
+    //         $monthsInSemester = [];
+    //         if ($start->year === $end->year) {
+    //             for ($m = $start->month; $m <= $end->month; $m++) {
+    //                 $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
+    //                 $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
+    //             }
+    //         } else {
+    //             for ($m = $start->month; $m <= 12; $m++) {
+    //                 $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
+    //                 $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
+    //             }
+    //             for ($m = 1; $m <= $end->month; $m++) {
+    //                 $date = \Carbon\Carbon::createFromDate($end->year, $m, 1);
+    //                 $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
+    //             }
+    //         }
+
+    //         $selectedYearMonth = request('month', $start->format('Y-m'));
+    //         $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
+
+    //         // ดึงข้อมูลการลงเวลาปกติของนักศึกษาที่เลือก
+    //         // แก้ไขจากการกรองตาม created_at เป็นการไม่กรองเดือน
+    //         $attendances = Attendances::where('student_id', $student->id)->get();
+
+    //         // เตรียม teaching_ids ที่นักศึกษาลงเวลา
+    //         $teachingIds = $attendances->pluck('teaching_id')->toArray();
+
+    //         // ดึงข้อมูลการสอนตาม teaching_ids ที่ได้
+    //         $teachings = Teaching::with(['teacher', 'class'])
+    //             ->whereIn('teaching_id', $teachingIds)
+    //             ->get();
+
+    //         // กรองตามเดือนที่เลือกโดยใช้ start_time ของ teaching แทน created_at ของ attendance
+    //         $filteredTeachings = $teachings->filter(function ($teaching) use ($selectedDate) {
+    //             return \Carbon\Carbon::parse($teaching->start_time)->format('Y-m') === $selectedDate->format('Y-m');
+    //         });
+
+    //         // สร้าง collection ใหม่ที่มี attendance ของนักศึกษาที่เลือกเท่านั้น
+    //         $formattedTeachings = collect();
+
+    //         foreach ($filteredTeachings as $teaching) {
+    //             $attendance = $attendances->where('teaching_id', $teaching->teaching_id)->first();
+    //             if ($attendance) {
+    //                 // สร้าง object ใหม่ที่มีทั้งข้อมูล teaching และ attendance
+    //                 $teachingWithAttendance = clone $teaching;
+    //                 $teachingWithAttendance->attendance = $attendance;
+    //                 $formattedTeachings->push($teachingWithAttendance);
+    //             }
+    //         }
+
+    //         // ดึงข้อมูลการลงเวลาพิเศษเฉพาะของนักศึกษาที่เลือก
+    //         $extraAttendances = ExtraAttendances::where('student_id', $student->id)
+    //             ->whereYear('start_work', $selectedDate->year)
+    //             ->whereMonth('start_work', $selectedDate->month)
+    //             ->with([
+    //                 'classes' => function ($query) {
+    //                     $query->with('teachers');
+    //                 }
+    //             ])
+    //             ->get();
+
+    //         // ใช้ $formattedTeachings เป็น $teachings
+    //         $teachings = $formattedTeachings;
+
+    //         // ตรวจสอบสถานะการอนุมัติ
+    //         $normalAttendanceApproved = Attendances::where('student_id', $student->id)
+    //             ->whereYear('created_at', $selectedDate->year)
+    //             ->whereMonth('created_at', $selectedDate->month)
+    //             ->where('approve_status', 'a')
+    //             ->exists();
+
+    //         $extraAttendanceApproved = ExtraAttendances::where('student_id', $student->id)
+    //             ->whereYear('start_work', $selectedDate->year)
+    //             ->whereMonth('start_work', $selectedDate->month)
+    //             ->where('approve_status', 'a')
+    //             ->exists();
+
+    //         $isMonthApproved = $normalAttendanceApproved || $extraAttendanceApproved;
+    //         $approvalNote = null;
+
+    //         if ($isMonthApproved) {
+    //             // ดึงหมายเหตุการอนุมัติล่าสุด
+    //             $latestNormalApproval = Attendances::where('student_id', $student->id)
+    //                 ->whereYear('created_at', $selectedDate->year)
+    //                 ->whereMonth('created_at', $selectedDate->month)
+    //                 ->where('approve_status', 'a')
+    //                 ->latest()
+    //                 ->first();
+
+    //             $latestExtraApproval = ExtraAttendances::where('student_id', $student->id)
+    //                 ->whereYear('start_work', $selectedDate->year)
+    //                 ->whereMonth('start_work', $selectedDate->month)
+    //                 ->where('approve_status', 'a')
+    //                 ->latest()
+    //                 ->first();
+
+    //             if ($latestNormalApproval && $latestExtraApproval) {
+    //                 $approvalNote = $latestNormalApproval->approve_at > $latestExtraApproval->approve_at
+    //                     ? $latestNormalApproval->approve_note
+    //                     : $latestExtraApproval->approve_note;
+    //             } elseif ($latestNormalApproval) {
+    //                 $approvalNote = $latestNormalApproval->approve_note;
+    //             } elseif ($latestExtraApproval) {
+    //                 $approvalNote = $latestExtraApproval->approve_note;
+    //             }
+    //         }
+
+    //         return view('layouts.teacher.taDetail', compact(
+    //             'student',
+    //             'semester',
+    //             'teachings',
+    //             'extraAttendances',
+    //             'monthsInSemester',
+    //             'selectedYearMonth',
+    //             'isMonthApproved',
+    //             'approvalNote'
+    //         ));
+    //     } catch (\Exception $e) {
+    //         Log::error('Exception in taDetail: ' . $e->getMessage());
+    //         Log::error($e->getTraceAsString());
+    //         return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
+    //     }
+    // }
+
+
     public function taDetail($ta_id)
     {
         try {
@@ -417,28 +558,31 @@ class TeacherController extends Controller
             $selectedYearMonth = request('month', $start->format('Y-m'));
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
 
-            // ดึงข้อมูลการลงเวลาปกติของนักศึกษาที่เลือก
-            // แก้ไขจากการกรองตาม created_at เป็นการไม่กรองเดือน
+            // ดึงข้อมูลการลงเวลาทั้งหมดของนักศึกษาที่เลือก
             $attendances = Attendances::where('student_id', $student->id)->get();
 
-            // เตรียม teaching_ids ที่นักศึกษาลงเวลา
-            $teachingIds = $attendances->pluck('teaching_id')->toArray();
+            // แยกการลงเวลาปกติและการลงเวลาการสอนชดเชย
+            $regularAttendances = $attendances->where('is_extra', false)->where('extra_teaching_id', null);
+            $extraTeachingAttendances = $attendances->where('is_extra', true)->where('extra_teaching_id', '!=', null);
+
+            // เตรียม teaching_ids สำหรับการลงเวลาปกติ
+            $teachingIds = $regularAttendances->pluck('teaching_id')->toArray();
 
             // ดึงข้อมูลการสอนตาม teaching_ids ที่ได้
             $teachings = Teaching::with(['teacher', 'class'])
                 ->whereIn('teaching_id', $teachingIds)
                 ->get();
 
-            // กรองตามเดือนที่เลือกโดยใช้ start_time ของ teaching แทน created_at ของ attendance
+            // กรองตามเดือนที่เลือกโดยใช้ start_time ของ teaching
             $filteredTeachings = $teachings->filter(function ($teaching) use ($selectedDate) {
                 return \Carbon\Carbon::parse($teaching->start_time)->format('Y-m') === $selectedDate->format('Y-m');
             });
 
-            // สร้าง collection ใหม่ที่มี attendance ของนักศึกษาที่เลือกเท่านั้น
+            // สร้าง collection ใหม่ที่มี attendance ของนักศึกษาที่เลือกเท่านั้น (สำหรับการสอนปกติ)
             $formattedTeachings = collect();
 
             foreach ($filteredTeachings as $teaching) {
-                $attendance = $attendances->where('teaching_id', $teaching->teaching_id)->first();
+                $attendance = $regularAttendances->where('teaching_id', $teaching->teaching_id)->first();
                 if ($attendance) {
                     // สร้าง object ใหม่ที่มีทั้งข้อมูล teaching และ attendance
                     $teachingWithAttendance = clone $teaching;
@@ -446,6 +590,45 @@ class TeacherController extends Controller
                     $formattedTeachings->push($teachingWithAttendance);
                 }
             }
+
+            // Debug log
+            Log::info('Regular teachings count: ' . $formattedTeachings->count());
+
+            // ดึงข้อมูลการสอนชดเชย (ExtraTeaching)
+            $extraTeachingIds = $extraTeachingAttendances->pluck('extra_teaching_id')->toArray();
+            $extraTeachings = ExtraTeaching::with(['teacher', 'class'])
+                ->whereIn('extra_class_id', $extraTeachingIds)
+                ->get();
+
+            // กรองตามเดือนที่เลือก
+            $filteredExtraTeachings = $extraTeachings->filter(function ($extraTeaching) use ($selectedDate) {
+                return \Carbon\Carbon::parse($extraTeaching->class_date)->format('Y-m') === $selectedDate->format('Y-m');
+            });
+
+            // เพิ่มข้อมูล attendance เข้าไปใน extraTeaching objects
+            foreach ($filteredExtraTeachings as $extraTeaching) {
+                $attendance = $extraTeachingAttendances->where('extra_teaching_id', $extraTeaching->extra_class_id)->first();
+                if ($attendance) {
+                    $extraTeaching->attendance = $attendance;
+
+                    // แปลงให้อยู่ในรูปแบบเดียวกับ regular teaching เพื่อแสดงผลในหน้า taDetail
+                    $convertedTeaching = new \stdClass();
+                    $convertedTeaching->teaching_id = $extraTeaching->extra_class_id;
+                    $convertedTeaching->start_time = $extraTeaching->class_date . ' ' . $extraTeaching->start_time;
+                    $convertedTeaching->end_time = $extraTeaching->class_date . ' ' . $extraTeaching->end_time;
+                    $convertedTeaching->duration = $extraTeaching->duration;
+                    $convertedTeaching->class_type = 'E'; // กำหนดเป็น E สำหรับ extra teaching
+                    $convertedTeaching->teacher = $extraTeaching->teacher;
+                    $convertedTeaching->class = $extraTeaching->class;
+                    $convertedTeaching->attendance = $attendance;
+
+                    $formattedTeachings->push($convertedTeaching);
+                }
+            }
+
+            // Debug log
+            Log::info('Extra teachings count: ' . $filteredExtraTeachings->count());
+            Log::info('Total formatted teachings: ' . $formattedTeachings->count());
 
             // ดึงข้อมูลการลงเวลาพิเศษเฉพาะของนักศึกษาที่เลือก
             $extraAttendances = ExtraAttendances::where('student_id', $student->id)
@@ -457,9 +640,6 @@ class TeacherController extends Controller
                     }
                 ])
                 ->get();
-
-            // ใช้ $formattedTeachings เป็น $teachings
-            $teachings = $formattedTeachings;
 
             // ตรวจสอบสถานะการอนุมัติ
             $normalAttendanceApproved = Attendances::where('student_id', $student->id)
@@ -503,6 +683,9 @@ class TeacherController extends Controller
                     $approvalNote = $latestExtraApproval->approve_note;
                 }
             }
+
+            // ใช้ formattedTeachings แทน teachings
+            $teachings = $formattedTeachings;
 
             return view('layouts.teacher.taDetail', compact(
                 'student',

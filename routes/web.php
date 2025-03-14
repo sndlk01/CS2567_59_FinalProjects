@@ -107,7 +107,7 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
 
     Route::get('/admin/ta/export-template/{id}', [App\Http\Controllers\AdminController::class, 'exportFromTemplate'])
     ->name('admin.export.template');
-    
+
     Route::prefix('admin-ta-requests')->name('admin.ta-requests.')->group(function () {
         Route::get('/', [AdminController::class, 'taRequests'])->name('index');
         Route::get('/{id}', [AdminController::class, 'showTARequest'])->name('show');
@@ -122,9 +122,6 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
         Route::put('/{rate}', [CompensationRateController::class, 'update'])->name('update');
     });
 
-
-
-    
     Route::post('/admin/update-user-semester', [AdminController::class, 'updateUserSemester'])->name('layout.admin.updateUserSemester');
 });
 
