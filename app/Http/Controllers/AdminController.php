@@ -17,7 +17,9 @@ use App\Models\{
     TeacherRequestsDetail,
     CompensationRate,
     CompensationTransaction,
-    Semesters
+    Semesters,
+    ExtraTeaching,
+    Attendances
 };
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\TaAttendanceExport;
@@ -364,8 +366,12 @@ class AdminController extends Controller
             $specialLabHours = 0;
 
             if ($attendanceType === 'all' || $attendanceType === 'N' || $attendanceType === 'S') {
+                // ดึงข้อมูลการสอนปกติที่ได้รับการอนุมัติแล้ว
                 $teachings = Teaching::with([
-                    'attendance',
+                    'attendance' => function ($query) use ($student) {
+                        $query->where('student_id', $student->id)
+                            ->where('approve_status', 'a');
+                    },
                     'teacher',
                     'class.course.subjects',
                     'class.major'
@@ -373,8 +379,9 @@ class AdminController extends Controller
                     ->where('class_id', 'LIKE', $ta->course_id . '%')
                     ->whereYear('start_time', $selectedDate->year)
                     ->whereMonth('start_time', $selectedDate->month)
-                    ->whereHas('attendance', function ($query) {
-                        $query->where('approve_status', 'A');
+                    ->whereHas('attendance', function ($query) use ($student) {
+                        $query->where('student_id', $student->id)
+                            ->where('approve_status', 'a');
                     })
                     ->when($attendanceType !== 'all', function ($query) use ($attendanceType) {
                         $query->whereHas('class.major', function ($q) use ($attendanceType) {
@@ -386,6 +393,10 @@ class AdminController extends Controller
                         return $teaching->class->section_num;
                     });
 
+                // บันทึก log จำนวนการสอนปกติที่พบ
+                Log::debug('Found normal teachings: ' . $teachings->flatten()->count());
+
+                // ประมวลผลข้อมูลการสอนปกติ
                 foreach ($teachings as $section => $sectionTeachings) {
                     foreach ($sectionTeachings as $teaching) {
                         $startTime = \Carbon\Carbon::parse($teaching->start_time);
@@ -420,15 +431,105 @@ class AdminController extends Controller
                         ]);
                     }
                 }
+
+                // ดึงข้อมูล IDs ของการสอนชดเชยที่ได้รับการอนุมัติแล้ว
+                $extraTeachingIds = Attendances::where('student_id', $student->id)
+                    ->where('is_extra', true)
+                    ->where('approve_status', 'a')
+                    ->whereNotNull('extra_teaching_id')
+                    ->pluck('extra_teaching_id')
+                    ->toArray();
+
+                Log::debug('Found extra teaching IDs: ' . count($extraTeachingIds) . ' - ' . implode(', ', $extraTeachingIds));
+
+                $extraTeachings = ExtraTeaching::with([
+                    'teacher',
+                    'class.course.subjects',
+                    'class.major',
+                    'attendance' => function ($query) use ($student) {
+                        $query->where('student_id', $student->id)
+                            ->where('approve_status', 'a');
+                    }
+                ])
+                    ->whereIn('extra_class_id', $extraTeachingIds)
+                    ->get();
+
+                // Adjust $selectedDate based on the first extra teaching's class_date (if available)
+                if ($extraTeachings->isNotEmpty()) {
+                    $firstClassDate = $extraTeachings->first()->class_date;
+                    if ($firstClassDate) {
+                        $selectedYearMonth = \Carbon\Carbon::parse($firstClassDate)->format('Y-m');
+                        $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
+                        Log::debug('Adjusted selectedYearMonth to: ' . $selectedYearMonth);
+                    } else {
+                        Log::warning('First extra teaching has no class_date, using default selectedDate');
+                    }
+                } else {
+                    Log::warning('No extra teachings found for IDs: ' . implode(', ', $extraTeachingIds));
+                }
+
+                // Filter extra teachings based on the adjusted $selectedDate
+                $filteredExtraTeachings = $extraTeachings->filter(function ($extraTeaching) use ($selectedDate) {
+                    // ถ้า class_date มีค่า null ให้ใช้ created_at แทน
+                    $dateToCheck = $extraTeaching->class_date
+                        ? \Carbon\Carbon::parse($extraTeaching->class_date)
+                        : \Carbon\Carbon::parse($extraTeaching->created_at);
+
+                    return $dateToCheck->year == $selectedDate->year &&
+                        $dateToCheck->month == $selectedDate->month;
+                });
+
+
+                //dd($extraTeachingIds, $extraTeachings, $filteredExtraTeachings);
+                // Log and debug the results
+                Log::debug('Filtered Extra Teachings Count: ' . $filteredExtraTeachings->count());
+                // dd($extraTeachingIds, $extraTeachings, $filteredExtraTeachings);
+
+
+                // เพิ่มข้อมูล attendance เข้าไปใน extraTeaching objects
+                foreach ($filteredExtraTeachings as $extraTeaching) {
+                    $attendance = Attendances::where('extra_teaching_id', $extraTeaching->extra_class_id)
+                        ->where('student_id', $student->id)
+                        ->where('approve_status', 'a')
+                        ->first();
+
+                    if ($attendance) {
+                        // ตรวจสอบค่า class_date ว่ามีค่าหรือไม่
+                        $classDate = $extraTeaching->class_date
+                            ? $extraTeaching->class_date
+                            : \Carbon\Carbon::parse($attendance->created_at)->format('Y-m-d');
+
+                        // คำนวณชั่วโมงการสอนใหม่
+                        $startTime = \Carbon\Carbon::parse($classDate . ' ' . $extraTeaching->start_time);
+                        $endTime = \Carbon\Carbon::parse($classDate . ' ' . $extraTeaching->end_time);
+                        $hours = $endTime->diffInMinutes($startTime) / 60;
+
+                        $majorType = $extraTeaching->class->major->major_type ?? 'N';
+                        $classType = $extraTeaching->class_type === 'L' ? 'LAB' : 'LECTURE';
+
+                        // เพิ่มข้อมูลใน allAttendances
+                        $allAttendances->push([
+                            'type' => 'extra',  // เปลี่ยนเป็น 'extra' เพื่อให้แยกจาก 'regular' และ 'special'
+                            'section' => $extraTeaching->class->section_num ?? 'N/A',
+                            'date' => $classDate . ' ' . $extraTeaching->start_time,
+                            'data' => $extraTeaching,
+                            'hours' => $hours,
+                            'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
+                            'class_type' => $classType
+                        ]);
+                    }
+                }
+                // dd($allAttendances);
             }
 
             if ($attendanceType === 'all' || $attendanceType === 'N' || $attendanceType === 'S') {
+                // ดึงข้อมูลการลงเวลาพิเศษ (Extra Attendances)
                 $extraAttendances = ExtraAttendances::with([
                     'classes.course.subjects',
                     'classes.major'
                 ])
                     ->where('student_id', $student->id)
-                    ->where('approve_status', 'A')
+                    ->where('approve_status', 'a')
                     ->whereYear('start_work', $selectedDate->year)
                     ->whereMonth('start_work', $selectedDate->month)
                     ->when($attendanceType !== 'all', function ($query) use ($attendanceType) {
@@ -439,6 +540,7 @@ class AdminController extends Controller
                     ->get()
                     ->groupBy('class_id');
 
+                // ประมวลผลข้อมูลการลงเวลาพิเศษ (Extra Attendances)
                 foreach ($extraAttendances as $classId => $extras) {
                     foreach ($extras as $extra) {
                         $hours = $extra->duration / 60;
@@ -473,6 +575,15 @@ class AdminController extends Controller
                     }
                 }
             }
+
+            // บันทึก log สรุปชั่วโมงทั้งหมด
+            Log::debug('Hour summary:', [
+                'regularLecture' => $regularLectureHours,
+                'regularLab' => $regularLabHours,
+                'specialLecture' => $specialLectureHours,
+                'specialLab' => $specialLabHours,
+                'total' => $regularLectureHours + $regularLabHours + $specialLectureHours + $specialLabHours
+            ]);
 
             $regularLectureRate = $this->getCompensationRate('regular', 'LECTURE');
             $regularLabRate = $this->getCompensationRate('regular', 'LAB');
@@ -594,10 +705,15 @@ class AdminController extends Controller
                     $fixedAmount = 0;
                 }
             }
+            // เรียงข้อมูลตามวันที่
+            $allAttendances = $allAttendances->sortBy('date');
 
+            // แล้วจึงจัดกลุ่มตาม section
+            $attendancesBySection = $allAttendances->groupBy('section');
             // เพิ่มบรรทัดนี้เพื่อกำหนดค่า courseTa
             $courseTa = $ta;
 
+            // dd($allAttendances);
             // ส่งข้อมูลทั้งหมดไปยัง view
             return view('layouts.admin.detailsById', compact(
                 'student',
@@ -612,7 +728,6 @@ class AdminController extends Controller
                 'totalStudents',
                 'totalBudget',
                 'totalTAs',
-                // 'budgetPerTA',
                 'totalUsedByTA',
                 'remainingBudget',
                 'isExceeded',
@@ -620,7 +735,8 @@ class AdminController extends Controller
                 'fixedAmount'
             ));
         } catch (\Exception $e) {
-            Log::error($e->getMessage());
+            Log::error('Exception in taDetail: ' . $e->getMessage());
+            Log::error($e->getTraceAsString());
             return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }

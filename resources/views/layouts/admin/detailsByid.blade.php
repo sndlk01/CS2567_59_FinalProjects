@@ -139,20 +139,50 @@
                                                 @php
                                                     $regularAttendances = $attendancesBySection
                                                         ->map(function ($sectionAttendances) {
-                                                            return $sectionAttendances->filter(function ($attendance) {
-                                                                if ($attendance['type'] === 'regular') {
-                                                                    return $attendance['data']->class->major
-                                                                        ->major_type !== 'S';
-                                                                } else {
-                                                                    return $attendance['data']->classes->major
-                                                                        ->major_type !== 'S';
-                                                                }
-                                                            });
+                                                            return $sectionAttendances
+                                                                ->filter(function ($attendance) {
+                                                                    // กรณี attendance ปกติ
+                                                                    if ($attendance['type'] === 'regular') {
+                                                                        // Check if class and major exist
+                                                                        if (
+                                                                            $attendance['data'] &&
+                                                                            $attendance['data']->class &&
+                                                                            $attendance['data']->class->major
+                                                                        ) {
+                                                                            return $attendance['data']->class->major
+                                                                                ->major_type !== 'S';
+                                                                        }
+                                                                        return false; // Skip if class or major is null
+                                                                    }
+                                                                    // กรณี attendance พิเศษ
+                                                                    elseif ($attendance['type'] === 'special') {
+                                                                        // Check if classes and major exist
+                                                                        if (
+                                                                            $attendance['data'] &&
+                                                                            $attendance['data']->classes &&
+                                                                            $attendance['data']->classes->major
+                                                                        ) {
+                                                                            return $attendance['data']->classes->major
+                                                                                ->major_type !== 'S';
+                                                                        }
+                                                                        return false; // Skip if classes or major is null
+                                                                    }
+                                                                    // กรณี attendance เป็นชดเชย (extra)
+                                                                    elseif ($attendance['type'] === 'extra') {
+                                                                        // ใช้ teaching_type ที่ถูกกำหนดตอนสร้าง array
+                                                                        return $attendance['teaching_type'] ===
+                                                                            'regular';
+                                                                    }
+
+                                                                    return false;
+                                                                })
+                                                                ->sortBy('date');
                                                         })
                                                         ->filter(function ($sectionAttendances) {
                                                             return $sectionAttendances->isNotEmpty();
                                                         });
 
+                                                    // คำนวณจำนวนรายการทั้งหมดใน $regularAttendances
                                                     $regularCount = 0;
                                                     foreach ($regularAttendances as $section => $attendances) {
                                                         $regularCount += count($attendances);
@@ -171,11 +201,32 @@
                                                                         <span>
                                                                             @if ($attendance['type'] === 'regular')
                                                                                 {{ \Carbon\Carbon::parse($attendance['data']->start_time)->locale('th')->translatedFormat('d F Y') }}
-                                                                            @else
-                                                                                {{ \Carbon\Carbon::parse($attendance['data']->start_work)->locale('th')->translatedFormat('d F Y') }}
+                                                                            @elseif ($attendance['type'] === 'special')
+                                                                                @if (isset($attendance['data']->start_work))
+                                                                                    {{ \Carbon\Carbon::parse($attendance['data']->start_work)->locale('th')->translatedFormat('d F Y') }}
+                                                                                @else
+                                                                                    ไม่ระบุวันที่
+                                                                                @endif
+                                                                            @elseif ($attendance['type'] === 'extra')
+                                                                                {{-- สำหรับการสอนชดเชย --}}
+                                                                                @php
+                                                                                    $dateParts = explode(
+                                                                                        ' ',
+                                                                                        $attendance['date'],
+                                                                                    );
+                                                                                    $dateOnly = $dateParts[0] ?? null;
+                                                                                @endphp
+                                                                                @if ($dateOnly)
+                                                                                    {{ \Carbon\Carbon::parse($dateOnly)->locale('th')->translatedFormat('d F Y') }}
+                                                                                @else
+                                                                                    ไม่ระบุวันที่
+                                                                                @endif
                                                                             @endif
                                                                         </span>
-                                                                        <span class="badge bg-success">อนุมัติแล้ว</span>
+                                                                        <span
+                                                                            class="badge {{ $attendance['type'] === 'extra' ? 'bg-warning text-dark' : 'bg-success' }}">
+                                                                            {{ $attendance['type'] === 'extra' ? 'สอนชดเชย' : 'อนุมัติแล้ว' }}
+                                                                        </span>
                                                                     </div>
                                                                     <div class="row mt-2">
                                                                         <div class="col-md-3">
@@ -184,8 +235,23 @@
                                                                                     {{ \Carbon\Carbon::parse($attendance['data']->start_time)->format('H:i') }}
                                                                                     -
                                                                                     {{ \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i') }}
-                                                                                @else
-                                                                                    {{ \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') }}
+                                                                                @elseif ($attendance['type'] === 'special')
+                                                                                    @if (isset($attendance['data']->start_work))
+                                                                                        {{ \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') }}
+                                                                                        -
+                                                                                        {{ \Carbon\Carbon::parse($attendance['data']->end_work)->format('H:i') }}
+                                                                                    @else
+                                                                                        ไม่ระบุเวลา
+                                                                                    @endif
+                                                                                @elseif ($attendance['type'] === 'extra')
+                                                                                    {{-- แสดงข้อมูลเวลาสำหรับการสอนชดเชย --}}
+                                                                                    @if (isset($attendance['data']->start_time) && isset($attendance['data']->end_time))
+                                                                                        {{ substr($attendance['data']->start_time, 0, 5) }}
+                                                                                        -
+                                                                                        {{ substr($attendance['data']->end_time, 0, 5) }}
+                                                                                    @else
+                                                                                        ไม่ระบุเวลา
+                                                                                    @endif
                                                                                 @endif
                                                                             </span>
                                                                         </div>
@@ -197,8 +263,15 @@
                                                                                     @else
                                                                                         บรรยาย
                                                                                     @endif
-                                                                                @else
+                                                                                @elseif ($attendance['type'] === 'special')
                                                                                     @if ($attendance['data']->class_type === 'L')
+                                                                                        ปฏิบัติการ
+                                                                                    @else
+                                                                                        บรรยาย
+                                                                                    @endif
+                                                                                @elseif ($attendance['type'] === 'extra')
+                                                                                    {{-- แสดงข้อมูลประเภทของการสอนชดเชย --}}
+                                                                                    @if ($attendance['class_type'] === 'LAB')
                                                                                         ปฏิบัติการ
                                                                                     @else
                                                                                         บรรยาย
@@ -225,8 +298,12 @@
                                                                                     @endphp
                                                                                     {{ number_format($durationInHours, 2) }}
                                                                                     ชั่วโมง
-                                                                                @else
+                                                                                @elseif ($attendance['type'] === 'special')
                                                                                     {{ number_format($attendance['data']->duration / 60, 2) }}
+                                                                                    ชั่วโมง
+                                                                                @elseif ($attendance['type'] === 'extra')
+                                                                                    {{-- ใช้ชั่วโมงที่คำนวณมาจาก controller --}}
+                                                                                    {{ number_format($attendance['hours'], 2) }}
                                                                                     ชั่วโมง
                                                                                 @endif
                                                                             </span>
@@ -235,12 +312,32 @@
                                                                             <span class="text-muted">รายละเอียด:
                                                                                 @if ($attendance['type'] === 'regular')
                                                                                     {{ $attendance['data']->attendance->note ?? '-' }}
-                                                                                @else
+                                                                                @elseif ($attendance['type'] === 'special')
                                                                                     {{ $attendance['data']->detail ?? '-' }}
+                                                                                @elseif ($attendance['type'] === 'extra')
+                                                                                    {{-- แสดงรายละเอียดสำหรับการสอนชดเชย --}}
+                                                                                    การสอนชดเชย
+                                                                                    {{ $attendance['data']->note ?? '' }}
                                                                                 @endif
                                                                             </span>
                                                                         </div>
                                                                     </div>
+
+                                                                    {{-- เพิ่มเติมสำหรับการสอนชดเชย --}}
+                                                                    @if ($attendance['type'] === 'extra')
+                                                                        <div class="mt-1 small">
+                                                                            <span class="badge bg-secondary">
+                                                                                <i class="fas fa-exchange-alt me-1"></i>
+                                                                                การสอนชดเชย
+                                                                            </span>
+                                                                            @if (isset($attendance['data']->original_date))
+                                                                                <span class="ms-2 text-muted">
+                                                                                    ชดเชยวันที่:
+                                                                                    {{ \Carbon\Carbon::parse($attendance['data']->original_date)->locale('th')->translatedFormat('d F Y') }}
+                                                                                </span>
+                                                                            @endif
+                                                                        </div>
+                                                                    @endif
                                                                 </div>
                                                             @endforeach
                                                         </div>
@@ -259,20 +356,50 @@
                                                 @php
                                                     $specialAttendances = $attendancesBySection
                                                         ->map(function ($sectionAttendances) {
-                                                            return $sectionAttendances->filter(function ($attendance) {
-                                                                if ($attendance['type'] === 'regular') {
-                                                                    return $attendance['data']->class->major
-                                                                        ->major_type === 'S';
-                                                                } else {
-                                                                    return $attendance['data']->classes->major
-                                                                        ->major_type === 'S';
-                                                                }
-                                                            });
+                                                            return $sectionAttendances
+                                                                ->filter(function ($attendance) {
+                                                                    // กรณี attendance ปกติ
+                                                                    if ($attendance['type'] === 'regular') {
+                                                                        // Check if class and major exist
+                                                                        if (
+                                                                            $attendance['data'] &&
+                                                                            $attendance['data']->class &&
+                                                                            $attendance['data']->class->major
+                                                                        ) {
+                                                                            return $attendance['data']->class->major
+                                                                                ->major_type === 'S';
+                                                                        }
+                                                                        return false; // Skip if class or major is null
+                                                                    }
+                                                                    // กรณี attendance พิเศษ
+                                                                    elseif ($attendance['type'] === 'special') {
+                                                                        // Check if classes and major exist
+                                                                        if (
+                                                                            $attendance['data'] &&
+                                                                            $attendance['data']->classes &&
+                                                                            $attendance['data']->classes->major
+                                                                        ) {
+                                                                            return $attendance['data']->classes->major
+                                                                                ->major_type === 'S';
+                                                                        }
+                                                                        return false; // Skip if classes or major is null
+                                                                    }
+                                                                    // กรณี attendance เป็นชดเชย (extra)
+                                                                    elseif ($attendance['type'] === 'extra') {
+                                                                        // ใช้ teaching_type ที่ถูกกำหนดตอนสร้าง array
+                                                                        return $attendance['teaching_type'] ===
+                                                                            'special';
+                                                                    }
+
+                                                                    return false;
+                                                                })
+                                                                ->sortBy('date');
                                                         })
                                                         ->filter(function ($sectionAttendances) {
                                                             return $sectionAttendances->isNotEmpty();
                                                         });
 
+                                                    // คำนวณจำนวนรายการทั้งหมดใน $specialAttendances
                                                     $specialCount = 0;
                                                     foreach ($specialAttendances as $section => $attendances) {
                                                         $specialCount += count($attendances);
@@ -291,11 +418,32 @@
                                                                         <span>
                                                                             @if ($attendance['type'] === 'regular')
                                                                                 {{ \Carbon\Carbon::parse($attendance['data']->start_time)->locale('th')->translatedFormat('d F Y') }}
-                                                                            @else
-                                                                                {{ \Carbon\Carbon::parse($attendance['data']->start_work)->locale('th')->translatedFormat('d F Y') }}
+                                                                            @elseif ($attendance['type'] === 'special')
+                                                                                @if (isset($attendance['data']->start_work))
+                                                                                    {{ \Carbon\Carbon::parse($attendance['data']->start_work)->locale('th')->translatedFormat('d F Y') }}
+                                                                                @else
+                                                                                    ไม่ระบุวันที่
+                                                                                @endif
+                                                                            @elseif ($attendance['type'] === 'extra')
+                                                                                {{-- สำหรับการสอนชดเชย --}}
+                                                                                @php
+                                                                                    $dateParts = explode(
+                                                                                        ' ',
+                                                                                        $attendance['date'],
+                                                                                    );
+                                                                                    $dateOnly = $dateParts[0] ?? null;
+                                                                                @endphp
+                                                                                @if ($dateOnly)
+                                                                                    {{ \Carbon\Carbon::parse($dateOnly)->locale('th')->translatedFormat('d F Y') }}
+                                                                                @else
+                                                                                    ไม่ระบุวันที่
+                                                                                @endif
                                                                             @endif
                                                                         </span>
-                                                                        <span class="badge bg-success">อนุมัติแล้ว</span>
+                                                                        <span
+                                                                            class="badge {{ $attendance['type'] === 'extra' ? 'bg-warning text-dark' : 'bg-success' }}">
+                                                                            {{ $attendance['type'] === 'extra' ? 'สอนชดเชย' : 'อนุมัติแล้ว' }}
+                                                                        </span>
                                                                     </div>
                                                                     <div class="row mt-2">
                                                                         <div class="col-md-3">
@@ -304,8 +452,23 @@
                                                                                     {{ \Carbon\Carbon::parse($attendance['data']->start_time)->format('H:i') }}
                                                                                     -
                                                                                     {{ \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i') }}
-                                                                                @else
-                                                                                    {{ \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') }}
+                                                                                @elseif ($attendance['type'] === 'special')
+                                                                                    @if (isset($attendance['data']->start_work))
+                                                                                        {{ \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') }}
+                                                                                        -
+                                                                                        {{ \Carbon\Carbon::parse($attendance['data']->end_work)->format('H:i') }}
+                                                                                    @else
+                                                                                        ไม่ระบุเวลา
+                                                                                    @endif
+                                                                                @elseif ($attendance['type'] === 'extra')
+                                                                                    {{-- แสดงข้อมูลเวลาสำหรับการสอนชดเชย --}}
+                                                                                    @if (isset($attendance['data']->start_time) && isset($attendance['data']->end_time))
+                                                                                        {{ substr($attendance['data']->start_time, 0, 5) }}
+                                                                                        -
+                                                                                        {{ substr($attendance['data']->end_time, 0, 5) }}
+                                                                                    @else
+                                                                                        ไม่ระบุเวลา
+                                                                                    @endif
                                                                                 @endif
                                                                             </span>
                                                                         </div>
@@ -317,8 +480,15 @@
                                                                                     @else
                                                                                         บรรยาย
                                                                                     @endif
-                                                                                @else
+                                                                                @elseif ($attendance['type'] === 'special')
                                                                                     @if ($attendance['data']->class_type === 'L')
+                                                                                        ปฏิบัติการ
+                                                                                    @else
+                                                                                        บรรยาย
+                                                                                    @endif
+                                                                                @elseif ($attendance['type'] === 'extra')
+                                                                                    {{-- แสดงข้อมูลประเภทของการสอนชดเชย --}}
+                                                                                    @if ($attendance['class_type'] === 'LAB')
                                                                                         ปฏิบัติการ
                                                                                     @else
                                                                                         บรรยาย
@@ -345,8 +515,12 @@
                                                                                     @endphp
                                                                                     {{ number_format($durationInHours, 2) }}
                                                                                     ชั่วโมง
-                                                                                @else
+                                                                                @elseif ($attendance['type'] === 'special')
                                                                                     {{ number_format($attendance['data']->duration / 60, 2) }}
+                                                                                    ชั่วโมง
+                                                                                @elseif ($attendance['type'] === 'extra')
+                                                                                    {{-- ใช้ชั่วโมงที่คำนวณมาจาก controller --}}
+                                                                                    {{ number_format($attendance['hours'], 2) }}
                                                                                     ชั่วโมง
                                                                                 @endif
                                                                             </span>
@@ -355,12 +529,32 @@
                                                                             <span class="text-muted">รายละเอียด:
                                                                                 @if ($attendance['type'] === 'regular')
                                                                                     {{ $attendance['data']->attendance->note ?? '-' }}
-                                                                                @else
+                                                                                @elseif ($attendance['type'] === 'special')
                                                                                     {{ $attendance['data']->detail ?? '-' }}
+                                                                                @elseif ($attendance['type'] === 'extra')
+                                                                                    {{-- แสดงรายละเอียดสำหรับการสอนชดเชย --}}
+                                                                                    การสอนชดเชย
+                                                                                    {{ $attendance['data']->note ?? '' }}
                                                                                 @endif
                                                                             </span>
                                                                         </div>
                                                                     </div>
+
+                                                                    {{-- เพิ่มเติมสำหรับการสอนชดเชย --}}
+                                                                    @if ($attendance['type'] === 'extra')
+                                                                        <div class="mt-1 small">
+                                                                            <span class="badge bg-secondary">
+                                                                                <i class="fas fa-exchange-alt me-1"></i>
+                                                                                การสอนชดเชย
+                                                                            </span>
+                                                                            @if (isset($attendance['data']->original_date))
+                                                                                <span class="ms-2 text-muted">
+                                                                                    ชดเชยวันที่:
+                                                                                    {{ \Carbon\Carbon::parse($attendance['data']->original_date)->locale('th')->translatedFormat('d F Y') }}
+                                                                                </span>
+                                                                            @endif
+                                                                        </div>
+                                                                    @endif
                                                                 </div>
                                                             @endforeach
                                                         </div>

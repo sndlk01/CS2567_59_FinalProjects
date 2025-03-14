@@ -123,6 +123,15 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
         Route::put('/{rate}', [CompensationRateController::class, 'update'])->name('update');
     });
 
+    Route::prefix('admin/course-budgets')->name('admin.course-budgets.')->group(function () {
+        Route::get('/', [CourseBudgetController::class, 'index'])->name('index');
+        Route::post('/calculate', [CourseBudgetController::class, 'calculateBudget'])->name('calculate');
+        Route::get('/{course_id}/details', [CourseBudgetController::class, 'courseBudgetDetails'])->name('details');
+        Route::post('/compensation/calculate', [CourseBudgetController::class, 'calculateCompensation'])->name('compensation.calculate');
+        Route::post('/compensation/save', [CourseBudgetController::class, 'saveCompensation'])->name('compensation.save');
+        Route::delete('/compensation/{id}/cancel', [CourseBudgetController::class, 'cancelTransaction'])->name('compensation.cancel');
+    });
+
     Route::post('/admin/update-user-semester', [AdminController::class, 'updateUserSemester'])->name('layout.admin.updateUserSemester');
 });
 
