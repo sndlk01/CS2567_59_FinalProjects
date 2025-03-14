@@ -107,7 +107,7 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
     // Route::get('layout/exports/excel/{id}', [App\Http\Controllers\AdminController::class, 'exportTaDetailExcel'])->name('layout.exports.excel');
 
     Route::get('/admin/ta/export-template/{id}', [App\Http\Controllers\AdminController::class, 'exportFromTemplate'])
-    ->name('admin.export.template');
+        ->name('admin.export.template');
 
     Route::prefix('admin-ta-requests')->name('admin.ta-requests.')->group(function () {
         Route::get('/', [AdminController::class, 'taRequests'])->name('index');
@@ -131,6 +131,12 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
         Route::post('/compensation/save', [CourseBudgetController::class, 'saveCompensation'])->name('compensation.save');
         Route::delete('/compensation/{id}/cancel', [CourseBudgetController::class, 'cancelTransaction'])->name('compensation.cancel');
     });
+
+    Route::get('/admin/compensation/preview', [CourseBudgetController::class, 'showCompensationPreview'])
+        ->name('admin.compensation-preview');
+        
+    Route::post('/admin/course-budgets/compensation/save', [CourseBudgetController::class, 'saveCompensation'])
+        ->name('admin.course-budgets.compensation.save');
 
     Route::post('/admin/update-user-semester', [AdminController::class, 'updateUserSemester'])->name('layout.admin.updateUserSemester');
 });

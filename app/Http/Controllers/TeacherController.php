@@ -559,7 +559,9 @@ class TeacherController extends Controller
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
 
             // ดึงข้อมูลการลงเวลาทั้งหมดของนักศึกษาที่เลือก
-            $attendances = Attendances::where('student_id', $student->id)->get();
+            $attendances = Attendances::whereHas('teaching', function ($query) use ($ta) {
+                $query->where('class_id', 'LIKE', $ta->course_id . '%');
+            })->where('student_id', $student->id)->get();
 
             // แยกการลงเวลาปกติและการลงเวลาการสอนชดเชย
             $regularAttendances = $attendances->where('is_extra', false)->where('extra_teaching_id', null);

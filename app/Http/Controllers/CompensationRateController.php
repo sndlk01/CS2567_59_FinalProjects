@@ -100,4 +100,6 @@ class CompensationRateController extends Controller
             return back()->withInput()->with('error', 'เกิดข้อผิดพลาดในการอัปเดตอัตราค่าตอบแทน: ' . $e->getMessage());
         }
     }
+
+    
 }

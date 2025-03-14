@@ -318,9 +318,9 @@ class AdminController extends Controller
         try {
             $course_id = request('course_id');
 
-            if (!$course_id) {
-                return back()->with('error', 'กรุณาระบุรหัสรายวิชา');
-            }
+            // if (!$course_id) {
+            //     return back()->with('error', 'กรุณาระบุรหัสรายวิชา');
+            // }
 
             $ta = CourseTas::with(['student', 'course.semesters'])
                 ->where('student_id', $student_id)
@@ -393,9 +393,6 @@ class AdminController extends Controller
                         return $teaching->class->section_num;
                     });
 
-                // บันทึก log จำนวนการสอนปกติที่พบ
-                Log::debug('Found normal teachings: ' . $teachings->flatten()->count());
-
                 // ประมวลผลข้อมูลการสอนปกติ
                 foreach ($teachings as $section => $sectionTeachings) {
                     foreach ($sectionTeachings as $teaching) {
@@ -432,147 +429,55 @@ class AdminController extends Controller
                     }
                 }
 
-                // ดึงข้อมูล IDs ของการสอนชดเชยที่ได้รับการอนุมัติแล้ว
+                // ดึงข้อมูลการสอนชดเชย
                 $extraTeachingIds = Attendances::where('student_id', $student->id)
                     ->where('is_extra', true)
                     ->where('approve_status', 'a')
                     ->whereNotNull('extra_teaching_id')
                     ->pluck('extra_teaching_id')
                     ->toArray();
-
-                Log::debug('Found extra teaching IDs: ' . count($extraTeachingIds) . ' - ' . implode(', ', $extraTeachingIds));
-
-                $extraTeachings = ExtraTeaching::with([
-                    'teacher',
-                    'class.course.subjects',
-                    'class.major',
-                    'attendance' => function ($query) use ($student) {
-                        $query->where('student_id', $student->id)
-                            ->where('approve_status', 'a');
-                    }
-                ])
+                $startDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth)->startOfMonth();
+                $endDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth)->endOfMonth();
+                $extraTeachings = ExtraTeaching::with(['class.major'])
                     ->whereIn('extra_class_id', $extraTeachingIds)
+                    ->whereBetween('class_date', [$startDate, $endDate])
                     ->get();
 
-                // Adjust $selectedDate based on the first extra teaching's class_date (if available)
-                if ($extraTeachings->isNotEmpty()) {
-                    $firstClassDate = $extraTeachings->first()->class_date;
-                    if ($firstClassDate) {
-                        $selectedYearMonth = \Carbon\Carbon::parse($firstClassDate)->format('Y-m');
-                        $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
-                        Log::debug('Adjusted selectedYearMonth to: ' . $selectedYearMonth);
-                    } else {
-                        Log::warning('First extra teaching has no class_date, using default selectedDate');
-                    }
-                } else {
-                    Log::warning('No extra teachings found for IDs: ' . implode(', ', $extraTeachingIds));
-                }
+                // คำนวณชั่วโมงการสอนชดเชย
+                foreach ($extraTeachings as $extraTeaching) {
+                    $startTime = \Carbon\Carbon::parse($extraTeaching->start_time);
+                    $endTime = \Carbon\Carbon::parse($extraTeaching->end_time);
+                    $hours = $endTime->diffInMinutes($startTime) / 60;
 
-                // Filter extra teachings based on the adjusted $selectedDate
-                $filteredExtraTeachings = $extraTeachings->filter(function ($extraTeaching) use ($selectedDate) {
-                    // ถ้า class_date มีค่า null ให้ใช้ created_at แทน
-                    $dateToCheck = $extraTeaching->class_date
-                        ? \Carbon\Carbon::parse($extraTeaching->class_date)
-                        : \Carbon\Carbon::parse($extraTeaching->created_at);
+                    $majorType = $extraTeaching->class->major->major_type ?? 'N';
+                    $classType = $extraTeaching->class_type === 'L' ? 'LAB' : 'LECTURE';
 
-                    return $dateToCheck->year == $selectedDate->year &&
-                        $dateToCheck->month == $selectedDate->month;
-                });
-
-
-                //dd($extraTeachingIds, $extraTeachings, $filteredExtraTeachings);
-                // Log and debug the results
-                Log::debug('Filtered Extra Teachings Count: ' . $filteredExtraTeachings->count());
-                // dd($extraTeachingIds, $extraTeachings, $filteredExtraTeachings);
-
-
-                // เพิ่มข้อมูล attendance เข้าไปใน extraTeaching objects
-                foreach ($filteredExtraTeachings as $extraTeaching) {
-                    $attendance = Attendances::where('extra_teaching_id', $extraTeaching->extra_class_id)
-                        ->where('student_id', $student->id)
-                        ->where('approve_status', 'a')
-                        ->first();
-
-                    if ($attendance) {
-                        // ตรวจสอบค่า class_date ว่ามีค่าหรือไม่
-                        $classDate = $extraTeaching->class_date
-                            ? $extraTeaching->class_date
-                            : \Carbon\Carbon::parse($attendance->created_at)->format('Y-m-d');
-
-                        // คำนวณชั่วโมงการสอนใหม่
-                        $startTime = \Carbon\Carbon::parse($classDate . ' ' . $extraTeaching->start_time);
-                        $endTime = \Carbon\Carbon::parse($classDate . ' ' . $extraTeaching->end_time);
-                        $hours = $endTime->diffInMinutes($startTime) / 60;
-
-                        $majorType = $extraTeaching->class->major->major_type ?? 'N';
-                        $classType = $extraTeaching->class_type === 'L' ? 'LAB' : 'LECTURE';
-
-                        // เพิ่มข้อมูลใน allAttendances
-                        $allAttendances->push([
-                            'type' => 'extra',  // เปลี่ยนเป็น 'extra' เพื่อให้แยกจาก 'regular' และ 'special'
-                            'section' => $extraTeaching->class->section_num ?? 'N/A',
-                            'date' => $classDate . ' ' . $extraTeaching->start_time,
-                            'data' => $extraTeaching,
-                            'hours' => $hours,
-                            'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
-                            'class_type' => $classType
-                        ]);
-                    }
-                }
-                // dd($allAttendances);
-            }
-
-            if ($attendanceType === 'all' || $attendanceType === 'N' || $attendanceType === 'S') {
-                // ดึงข้อมูลการลงเวลาพิเศษ (Extra Attendances)
-                $extraAttendances = ExtraAttendances::with([
-                    'classes.course.subjects',
-                    'classes.major'
-                ])
-                    ->where('student_id', $student->id)
-                    ->where('approve_status', 'a')
-                    ->whereYear('start_work', $selectedDate->year)
-                    ->whereMonth('start_work', $selectedDate->month)
-                    ->when($attendanceType !== 'all', function ($query) use ($attendanceType) {
-                        $query->whereHas('classes.major', function ($q) use ($attendanceType) {
-                            $q->where('major_type', $attendanceType);
-                        });
-                    })
-                    ->get()
-                    ->groupBy('class_id');
-
-                // ประมวลผลข้อมูลการลงเวลาพิเศษ (Extra Attendances)
-                foreach ($extraAttendances as $classId => $extras) {
-                    foreach ($extras as $extra) {
-                        $hours = $extra->duration / 60;
-                        $class = $extra->classes;
-
-                        $majorType = $class && $class->major ? $class->major->major_type : 'N';
-                        $classType = $extra->class_type === 'L' ? 'LAB' : 'LECTURE';
-
-                        if ($majorType === 'N') {
-                            if ($classType === 'LECTURE') {
-                                $regularLectureHours += $hours;
-                            } else {
-                                $regularLabHours += $hours;
-                            }
-                        } else { // S
-                            if ($classType === 'LECTURE') {
-                                $specialLectureHours += $hours;
-                            } else {
-                                $specialLabHours += $hours;
-                            }
+                    if ($majorType === 'N') {
+                        // ถ้าเป็นโครงการปกติ
+                        if ($classType === 'LECTURE') {
+                            $regularLectureHours += $hours;
+                        } else {
+                            $regularLabHours += $hours;
                         }
-
-                        $allAttendances->push([
-                            'type' => 'special',
-                            'section' => $class ? $class->section_num : 'N/A',
-                            'date' => $extra->start_work,
-                            'data' => $extra,
-                            'hours' => $hours,
-                            'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
-                            'class_type' => $classType
-                        ]);
+                    } else {
+                        // ถ้าเป็นโครงการพิเศษ
+                        if ($classType === 'LECTURE') {
+                            $specialLectureHours += $hours;
+                        } else {
+                            $specialLabHours += $hours;
+                        }
                     }
+
+                    // เพิ่มข้อมูลการสอนชดเชยใน allAttendances
+                    $allAttendances->push([
+                        'type' => 'extra',
+                        'section' => $extraTeaching->class->section_num ?? 'N/A',
+                        'date' => $extraTeaching->class_date . ' ' . $extraTeaching->start_time,
+                        'data' => $extraTeaching,
+                        'hours' => $hours,
+                        'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
+                        'class_type' => $classType
+                    ]);
                 }
             }
 
@@ -718,7 +623,7 @@ class AdminController extends Controller
             return view('layouts.admin.detailsById', compact(
                 'student',
                 'course',
-                'courseTa',
+                // 'courseTa',
                 'semester',
                 'attendancesBySection',
                 'monthsInSemester',
@@ -817,7 +722,8 @@ class AdminController extends Controller
                 ->whereHas('student', function ($query) use ($id) {
                     $query->where('id', $id);
                 })
-                ->first();
+                ->first()
+                ->firstOrFail();
 
             if (!$ta) {
                 return back()->with('error', 'ไม่พบข้อมูลผู้ช่วยสอน');
