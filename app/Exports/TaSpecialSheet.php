@@ -16,6 +16,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use App\Models\CompensationRate;
+use Illuminate\Support\Facades\Log;
 
 class TaSpecialSheet implements FromCollection, WithTitle, ShouldAutoSize, WithStyles, WithColumnWidths, WithEvents
 {
