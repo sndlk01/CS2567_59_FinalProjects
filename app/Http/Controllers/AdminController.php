@@ -781,29 +781,29 @@ class AdminController extends Controller
     {
         try {
             $selectedYearMonth = request('month');
-
+    
             $ta = CourseTas::with(['student', 'course.semesters', 'course.teachers'])
                 ->whereHas('student', function ($query) use ($id) {
                     $query->where('id', $id);
                 })
                 ->first();
-
+    
             if (!$ta) {
                 return back()->with('error', 'ไม่พบข้อมูลผู้ช่วยสอน');
             }
-
+    
             $student = $ta->student;
             $semester = $ta->course->semesters;
-
+    
             $teacherName = $ta->course->teachers->name ?? 'อาจารย์ผู้สอน';
             $teacherPosition = $ta->course->teachers->position ?? '';
             $teacherDegree = $ta->course->teachers->degree ?? '';
             $teacherFullTitle = trim($teacherPosition . ' ' . $teacherDegree . '.' . ' ' . $teacherName);
-
+    
             $headName = 'ผศ. ดร.คำรณ สุนัติ';
-
+    
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
-
+    
             $currentDate = \Carbon\Carbon::now();
             $thaiMonth = $currentDate->locale('th')->monthName;
             $thaiYear = $currentDate->year + 543;
@@ -812,32 +812,32 @@ class AdminController extends Controller
                 'month' => $thaiMonth,
                 'year' => $thaiYear
             ];
-
+    
             $monthText = $selectedDate->locale('th')->monthName . ' ' . ($selectedDate->year + 543);
             $year = $selectedDate->year + 543;
-
+    
             // คำนวณจำนวนนักศึกษาและงบประมาณ
             $course = Courses::with('classes')->find($ta->course_id);
             $totalStudents = $course ? $course->classes->sum('enrolled_num') : 0;
             $totalBudget = $totalStudents * 300; // 300 บาทต่อคน
-
+    
             // ดึงข้อมูลงบประมาณคงเหลือรายวิชา
             $courseBudget = CourseBudget::where('course_id', $ta->course_id)->first();
             $remainingBudget = $courseBudget ? $courseBudget->remaining_budget : $totalBudget;
-
+    
             // ดึงรายการเบิกจ่ายของเดือนนี้ (ถ้ามี)
             $transaction = CompensationTransaction::where('student_id', $student->id)
                 ->where('course_id', $ta->course_id)
                 ->where('month_year', $selectedYearMonth)
                 ->first();
-
+    
             $allAttendances = collect();
             $regularAttendances = collect();
             $specialAttendances = collect();
-
+    
             $hasRegularProject = false;
             $hasSpecialProject = false;
-
+    
             // Initialize variables to prevent undefined errors
             $isFixedPayment = false;
             $fixedAmount = 0;
@@ -846,7 +846,7 @@ class AdminController extends Controller
             $regularLabHoursSum = 0;
             $specialLectureHoursSum = 0;
             $specialLabHoursSum = 0;
-
+    
             // ดึงข้อมูลการสอนปกติ
             $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects', 'class.major'])
                 ->where('class_id', 'LIKE', $ta->course_id . '%')
@@ -860,25 +860,25 @@ class AdminController extends Controller
                 ->groupBy(function ($teaching) {
                     return $teaching->class->section_num;
                 });
-
+    
             foreach ($teachings as $section => $sectionTeachings) {
                 foreach ($sectionTeachings as $teaching) {
                     $startTime = \Carbon\Carbon::parse($teaching->start_time);
                     $endTime = \Carbon\Carbon::parse($teaching->end_time);
                     $hours = $endTime->diffInMinutes($startTime) / 60;
-
+    
                     $majorType = $teaching->class->major->major_type ?? 'N';
                     $classType = $teaching->class_type === 'L' ? 'LAB' : 'LECTURE';
-
+    
                     if ($majorType === 'N') {
                         $hasRegularProject = true;
-
+    
                         if ($classType === 'LECTURE') {
                             $regularLectureHoursSum += $hours;
                         } else {
                             $regularLabHoursSum += $hours;
                         }
-
+    
                         $regularAttendances->push([
                             'type' => 'regular',
                             'data' => $teaching,
@@ -887,13 +887,13 @@ class AdminController extends Controller
                         ]);
                     } else {
                         $hasSpecialProject = true;
-
+    
                         if ($classType === 'LECTURE') {
                             $specialLectureHoursSum += $hours;
                         } else {
                             $specialLabHoursSum += $hours;
                         }
-
+    
                         $specialAttendances->push([
                             'type' => 'regular',
                             'data' => $teaching,
@@ -901,7 +901,7 @@ class AdminController extends Controller
                             'class_type' => $classType
                         ]);
                     }
-
+    
                     $allAttendances->push([
                         'type' => 'regular',
                         'section' => $section,
@@ -913,7 +913,7 @@ class AdminController extends Controller
                     ]);
                 }
             }
-
+    
             // ดึงข้อมูลการสอนชดเชย
             $extraTeachingIds = Attendances::where('student_id', $student->id)
                 ->where('is_extra', true)
@@ -921,7 +921,7 @@ class AdminController extends Controller
                 ->whereNotNull('extra_teaching_id')
                 ->pluck('extra_teaching_id')
                 ->toArray();
-
+    
             $extraTeachings = ExtraTeaching::with(['class.major'])
                 ->whereIn('extra_class_id', $extraTeachingIds)
                 ->whereBetween('class_date', [
@@ -929,24 +929,24 @@ class AdminController extends Controller
                     $selectedDate->endOfMonth()->format('Y-m-d')
                 ])
                 ->get();
-
+    
             foreach ($extraTeachings as $teaching) {
                 $startTime = \Carbon\Carbon::parse($teaching->start_time);
                 $endTime = \Carbon\Carbon::parse($teaching->end_time);
                 $hours = $endTime->diffInMinutes($startTime) / 60;
-
+    
                 $majorType = $teaching->class->major->major_type ?? 'N';
                 $classType = $teaching->class_type === 'L' ? 'LAB' : 'LECTURE';
-
+    
                 if ($majorType === 'N') {
                     $hasRegularProject = true;
-
+    
                     if ($classType === 'LECTURE') {
                         $regularLectureHoursSum += $hours;
                     } else {
                         $regularLabHoursSum += $hours;
                     }
-
+    
                     $regularAttendances->push([
                         'type' => 'extra',
                         'data' => $teaching,
@@ -955,13 +955,13 @@ class AdminController extends Controller
                     ]);
                 } else {
                     $hasSpecialProject = true;
-
+    
                     if ($classType === 'LECTURE') {
                         $specialLectureHoursSum += $hours;
                     } else {
                         $specialLabHoursSum += $hours;
                     }
-
+    
                     $specialAttendances->push([
                         'type' => 'extra',
                         'data' => $teaching,
@@ -969,7 +969,7 @@ class AdminController extends Controller
                         'class_type' => $classType
                     ]);
                 }
-
+    
                 $allAttendances->push([
                     'type' => 'extra',
                     'section' => $teaching->class->section_num ?? 'N/A',
@@ -980,7 +980,7 @@ class AdminController extends Controller
                     'class_type' => $classType
                 ]);
             }
-
+    
             // ดึงข้อมูลการทำงานพิเศษ
             $extraAttendances = ExtraAttendances::with(['classes.course.subjects', 'classes.major'])
                 ->where('student_id', $student->id)
@@ -988,23 +988,23 @@ class AdminController extends Controller
                 ->whereYear('start_work', $selectedDate->year)
                 ->whereMonth('start_work', $selectedDate->month)
                 ->get();
-
+    
             foreach ($extraAttendances as $attendance) {
                 $hours = $attendance->duration / 60;
                 $majorType = $attendance->classes && $attendance->classes->major
                     ? $attendance->classes->major->major_type
                     : 'N';
                 $classType = $attendance->class_type === 'L' ? 'LAB' : 'LECTURE';
-
+    
                 if ($majorType === 'N') {
                     $hasRegularProject = true;
-
+    
                     if ($classType === 'LECTURE') {
                         $regularLectureHoursSum += $hours;
                     } else {
                         $regularLabHoursSum += $hours;
                     }
-
+    
                     $regularAttendances->push([
                         'type' => 'special',
                         'data' => $attendance,
@@ -1013,13 +1013,13 @@ class AdminController extends Controller
                     ]);
                 } else {
                     $hasSpecialProject = true;
-
+    
                     if ($classType === 'LECTURE') {
                         $specialLectureHoursSum += $hours;
                     } else {
                         $specialLabHoursSum += $hours;
                     }
-
+    
                     $specialAttendances->push([
                         'type' => 'special',
                         'data' => $attendance,
@@ -1027,7 +1027,7 @@ class AdminController extends Controller
                         'class_type' => $classType
                     ]);
                 }
-
+    
                 $allAttendances->push([
                     'type' => 'special',
                     'section' => $attendance->classes ? $attendance->classes->section_num : 'N/A',
@@ -1038,42 +1038,42 @@ class AdminController extends Controller
                     'class_type' => $classType
                 ]);
             }
-
+    
             // ดึงอัตราค่าตอบแทน
             $regularRate = $this->getCompensationRate('regular', 'LECTURE', $student->degree_level ?? 'undergraduate');
             $specialRate = $this->getCompensationRate('special', 'LECTURE', $student->degree_level ?? 'undergraduate');
-
+    
             // คำนวณค่าตอบแทน
             $regularPay = ($regularLectureHoursSum + $regularLabHoursSum) * $regularRate;
             $specialPay = ($specialLectureHoursSum + $specialLabHoursSum) * $specialRate;
-
+    
             // ตรวจสอบว่าเป็นผู้ช่วยสอนระดับบัณฑิตศึกษาและสอนในโครงการพิเศษหรือไม่
             $isGraduate = in_array($student->degree_level, ['master', 'doctoral', 'graduate']);
             $isFixedPayment = $isGraduate && $hasSpecialProject;
-
+    
             if ($isFixedPayment) {
                 // ดึงอัตราเหมาจ่ายจากฐานข้อมูล
                 $fixedAmount = $this->getFixedCompensationRate('special', $student->degree_level ?? 'graduate');
                 $specialPay = $fixedAmount ?? 4000; // ค่าเริ่มต้น 4,000 บาท
             }
-
+    
             $totalPay = $regularPay + $specialPay;
-
+    
             // คำนวณสัดส่วนเงินระหว่างโครงการปกติและโครงการพิเศษ
             $regularProportion = 0;
             $specialProportion = 0;
-
+    
             if ($totalPay > 0) {
                 $regularProportion = $regularPay / $totalPay;
                 $specialProportion = $specialPay / $totalPay;
             }
-
+    
             // ตรวจสอบว่ามีการเบิกจ่ายแล้วหรือไม่ และตรวจสอบงบประมาณคงเหลือ
             $isExceeded = $totalPay > $remainingBudget;
             $actualTotalPay = $totalPay;
             $actualRegularPay = $regularPay;
             $actualSpecialPay = $specialPay;
-
+    
             if ($transaction) {
                 // ถ้ามีการบันทึกรายการเบิกจ่ายแล้ว ใช้ยอดตามที่บันทึก และคำนวณตามสัดส่วน
                 $actualTotalPay = $transaction->actual_amount;
@@ -1085,14 +1085,14 @@ class AdminController extends Controller
                 $actualRegularPay = $actualTotalPay * $regularProportion;
                 $actualSpecialPay = $actualTotalPay * $specialProportion;
             }
-
+    
             $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
-
+    
             $compensationRates = [
                 'regularLecture' => $regularRate,
                 'specialLecture' => $specialRate
             ];
-
+    
             $pdf = PDF::loadView('exports.detailPDF', compact(
                 'student',
                 'semester',
@@ -1123,10 +1123,10 @@ class AdminController extends Controller
                 'isExceeded',
                 'remainingBudget'
             ));
-
+    
             $pdf->setPaper('A4');
             $fileName = 'TA-Compensation-Detail-' . $student->student_id . '-' . $selectedYearMonth . '.pdf';
-
+    
             return $pdf->download($fileName);
         } catch (\Exception $e) {
             Log::error('PDF Export Error: ' . $e->getMessage());
@@ -1474,9 +1474,9 @@ class AdminController extends Controller
             $remainingBudget = $courseBudget ? $courseBudget->remaining_budget : 0;
 
             // ถ้ายังไม่มีข้อมูลงบประมาณ ให้สร้างขึ้นใหม่
-            // if (!$courseBudget) {
-            //     $remainingBudget = $totalBudget; // ยังไม่มีการใช้เลย คงเหลือเท่ากับงบทั้งหมด
-            // }
+            if (!$courseBudget) {
+                $remainingBudget = $totalBudget; // ยังไม่มีการใช้เลย คงเหลือเท่ากับงบทั้งหมด
+            }
 
             // คำนวณสัดส่วนเงินระหว่างโครงการปกติและโครงการพิเศษ
             $regularProportion = 0;
@@ -1713,7 +1713,7 @@ class AdminController extends Controller
 
     /**
      * ดึงและคำนวณข้อมูลการสอนของผู้ช่วยสอนแยกตามประเภท
-     *
+     * 
      * @param int $studentId รหัสผู้ช่วยสอน
      * @param string $courseId รหัสรายวิชา
      * @param string $yearMonth ปี-เดือน (Y-m)
@@ -2011,7 +2011,7 @@ class AdminController extends Controller
 
             // ถ้ายังไม่มีข้อมูลงบประมาณ ให้สร้างขึ้นใหม่
             if (!$courseBudget) {
-                $remainingBudget = $totalBudget; 
+                $remainingBudget = $totalBudget; // ยังไม่มีการใช้เลย คงเหลือเท่ากับงบทั้งหมด
             }
 
             // ดึงรายการเบิกจ่ายของเดือนนี้ (ถ้ามี)
@@ -2556,8 +2556,8 @@ class AdminController extends Controller
             return response()->download($tempPath, $fileName)->deleteFileAfterSend(true);
 
         } catch (\Exception $e) {
-            Log::error('Template Export Error: ' . $e->getMessage());
-            Log::error($e->getTraceAsString());
+            \Log::error('Template Export Error: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
             return back()->with('error', 'เกิดข้อผิดพลาดในการสร้างไฟล์ Excel: ' . $e->getMessage());
         }
     }
