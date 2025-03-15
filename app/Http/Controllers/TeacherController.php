@@ -383,152 +383,14 @@ class TeacherController extends Controller
         }
     }
 
-    // public function taDetail($ta_id)
-    // {
-    //     try {
-    //         $ta = CourseTas::with(['student', 'course.semesters'])->findOrFail($ta_id);
-    //         $student = $ta->student;
-    //         $semester = $ta->course->semesters;
-
-    //         $start = \Carbon\Carbon::parse($semester->start_date)->startOfDay();
-    //         $end = \Carbon\Carbon::parse($semester->end_date)->endOfDay();
-
-    //         if (!\Carbon\Carbon::now()->between($start, $end)) {
-    //             return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
-    //         }
-
-    //         // สร้างรายการเดือน (คงไว้เหมือนเดิม)
-    //         $monthsInSemester = [];
-    //         if ($start->year === $end->year) {
-    //             for ($m = $start->month; $m <= $end->month; $m++) {
-    //                 $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
-    //                 $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
-    //             }
-    //         } else {
-    //             for ($m = $start->month; $m <= 12; $m++) {
-    //                 $date = \Carbon\Carbon::createFromDate($start->year, $m, 1);
-    //                 $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
-    //             }
-    //             for ($m = 1; $m <= $end->month; $m++) {
-    //                 $date = \Carbon\Carbon::createFromDate($end->year, $m, 1);
-    //                 $monthsInSemester[$date->format('Y-m')] = $date->locale('th')->monthName . ' ' . ($date->year + 543);
-    //             }
-    //         }
-
-    //         $selectedYearMonth = request('month', $start->format('Y-m'));
-    //         $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
-
-    //         // ดึงข้อมูลการลงเวลาปกติของนักศึกษาที่เลือก
-    //         // แก้ไขจากการกรองตาม created_at เป็นการไม่กรองเดือน
-    //         $attendances = Attendances::where('student_id', $student->id)->get();
-
-    //         // เตรียม teaching_ids ที่นักศึกษาลงเวลา
-    //         $teachingIds = $attendances->pluck('teaching_id')->toArray();
-
-    //         // ดึงข้อมูลการสอนตาม teaching_ids ที่ได้
-    //         $teachings = Teaching::with(['teacher', 'class'])
-    //             ->whereIn('teaching_id', $teachingIds)
-    //             ->get();
-
-    //         // กรองตามเดือนที่เลือกโดยใช้ start_time ของ teaching แทน created_at ของ attendance
-    //         $filteredTeachings = $teachings->filter(function ($teaching) use ($selectedDate) {
-    //             return \Carbon\Carbon::parse($teaching->start_time)->format('Y-m') === $selectedDate->format('Y-m');
-    //         });
-
-    //         // สร้าง collection ใหม่ที่มี attendance ของนักศึกษาที่เลือกเท่านั้น
-    //         $formattedTeachings = collect();
-
-    //         foreach ($filteredTeachings as $teaching) {
-    //             $attendance = $attendances->where('teaching_id', $teaching->teaching_id)->first();
-    //             if ($attendance) {
-    //                 // สร้าง object ใหม่ที่มีทั้งข้อมูล teaching และ attendance
-    //                 $teachingWithAttendance = clone $teaching;
-    //                 $teachingWithAttendance->attendance = $attendance;
-    //                 $formattedTeachings->push($teachingWithAttendance);
-    //             }
-    //         }
-
-    //         // ดึงข้อมูลการลงเวลาพิเศษเฉพาะของนักศึกษาที่เลือก
-    //         $extraAttendances = ExtraAttendances::where('student_id', $student->id)
-    //             ->whereYear('start_work', $selectedDate->year)
-    //             ->whereMonth('start_work', $selectedDate->month)
-    //             ->with([
-    //                 'classes' => function ($query) {
-    //                     $query->with('teachers');
-    //                 }
-    //             ])
-    //             ->get();
-
-    //         // ใช้ $formattedTeachings เป็น $teachings
-    //         $teachings = $formattedTeachings;
-
-    //         // ตรวจสอบสถานะการอนุมัติ
-    //         $normalAttendanceApproved = Attendances::where('student_id', $student->id)
-    //             ->whereYear('created_at', $selectedDate->year)
-    //             ->whereMonth('created_at', $selectedDate->month)
-    //             ->where('approve_status', 'a')
-    //             ->exists();
-
-    //         $extraAttendanceApproved = ExtraAttendances::where('student_id', $student->id)
-    //             ->whereYear('start_work', $selectedDate->year)
-    //             ->whereMonth('start_work', $selectedDate->month)
-    //             ->where('approve_status', 'a')
-    //             ->exists();
-
-    //         $isMonthApproved = $normalAttendanceApproved || $extraAttendanceApproved;
-    //         $approvalNote = null;
-
-    //         if ($isMonthApproved) {
-    //             // ดึงหมายเหตุการอนุมัติล่าสุด
-    //             $latestNormalApproval = Attendances::where('student_id', $student->id)
-    //                 ->whereYear('created_at', $selectedDate->year)
-    //                 ->whereMonth('created_at', $selectedDate->month)
-    //                 ->where('approve_status', 'a')
-    //                 ->latest()
-    //                 ->first();
-
-    //             $latestExtraApproval = ExtraAttendances::where('student_id', $student->id)
-    //                 ->whereYear('start_work', $selectedDate->year)
-    //                 ->whereMonth('start_work', $selectedDate->month)
-    //                 ->where('approve_status', 'a')
-    //                 ->latest()
-    //                 ->first();
-
-    //             if ($latestNormalApproval && $latestExtraApproval) {
-    //                 $approvalNote = $latestNormalApproval->approve_at > $latestExtraApproval->approve_at
-    //                     ? $latestNormalApproval->approve_note
-    //                     : $latestExtraApproval->approve_note;
-    //             } elseif ($latestNormalApproval) {
-    //                 $approvalNote = $latestNormalApproval->approve_note;
-    //             } elseif ($latestExtraApproval) {
-    //                 $approvalNote = $latestExtraApproval->approve_note;
-    //             }
-    //         }
-
-    //         return view('layouts.teacher.taDetail', compact(
-    //             'student',
-    //             'semester',
-    //             'teachings',
-    //             'extraAttendances',
-    //             'monthsInSemester',
-    //             'selectedYearMonth',
-    //             'isMonthApproved',
-    //             'approvalNote'
-    //         ));
-    //     } catch (\Exception $e) {
-    //         Log::error('Exception in taDetail: ' . $e->getMessage());
-    //         Log::error($e->getTraceAsString());
-    //         return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
-    //     }
-    // }
-
-
+    // version test monthapprove
     public function taDetail($ta_id)
     {
         try {
             $ta = CourseTas::with(['student', 'course.semesters'])->findOrFail($ta_id);
             $student = $ta->student;
             $semester = $ta->course->semesters;
+            $currentTeacher = Auth::user()->teacher;
 
             $start = \Carbon\Carbon::parse($semester->start_date)->startOfDay();
             $end = \Carbon\Carbon::parse($semester->end_date)->endOfDay();
@@ -537,7 +399,7 @@ class TeacherController extends Controller
                 return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
             }
 
-            // สร้างรายการเดือน (คงไว้เหมือนเดิม)
+            // สร้างรายการเดือน
             $monthsInSemester = [];
             if ($start->year === $end->year) {
                 for ($m = $start->month; $m <= $end->month; $m++) {
@@ -559,9 +421,7 @@ class TeacherController extends Controller
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
 
             // ดึงข้อมูลการลงเวลาทั้งหมดของนักศึกษาที่เลือก
-            $attendances = Attendances::whereHas('teaching', function ($query) use ($ta) {
-                $query->where('class_id', 'LIKE', $ta->course_id . '%');
-            })->where('student_id', $student->id)->get();
+            $attendances = Attendances::where('student_id', $student->id)->get();
 
             // แยกการลงเวลาปกติและการลงเวลาการสอนชดเชย
             $regularAttendances = $attendances->where('is_extra', false)->where('extra_teaching_id', null);
@@ -570,9 +430,18 @@ class TeacherController extends Controller
             // เตรียม teaching_ids สำหรับการลงเวลาปกติ
             $teachingIds = $regularAttendances->pluck('teaching_id')->toArray();
 
+            // ดึงรายวิชาที่อาจารย์คนปัจจุบันเป็นเจ้าของ
+            $coursesOwnedByTeacher = Courses::where('owner_teacher_id', $currentTeacher->teacher_id)
+                ->pluck('course_id')->toArray();
+
+            // ดึงข้อมูล Class ที่อยู่ในรายวิชาที่อาจารย์เป็นเจ้าของ
+            $classesInTeacherCourses = Classes::whereIn('course_id', $coursesOwnedByTeacher)
+                ->pluck('class_id')->toArray();
+
             // ดึงข้อมูลการสอนตาม teaching_ids ที่ได้
             $teachings = Teaching::with(['teacher', 'class'])
                 ->whereIn('teaching_id', $teachingIds)
+                ->whereIn('class_id', $classesInTeacherCourses)
                 ->get();
 
             // กรองตามเดือนที่เลือกโดยใช้ start_time ของ teaching
@@ -586,20 +455,17 @@ class TeacherController extends Controller
             foreach ($filteredTeachings as $teaching) {
                 $attendance = $regularAttendances->where('teaching_id', $teaching->teaching_id)->first();
                 if ($attendance) {
-                    // สร้าง object ใหม่ที่มีทั้งข้อมูล teaching และ attendance
                     $teachingWithAttendance = clone $teaching;
                     $teachingWithAttendance->attendance = $attendance;
                     $formattedTeachings->push($teachingWithAttendance);
                 }
             }
 
-            // Debug log
-            Log::info('Regular teachings count: ' . $formattedTeachings->count());
-
             // ดึงข้อมูลการสอนชดเชย (ExtraTeaching)
             $extraTeachingIds = $extraTeachingAttendances->pluck('extra_teaching_id')->toArray();
             $extraTeachings = ExtraTeaching::with(['teacher', 'class'])
                 ->whereIn('extra_class_id', $extraTeachingIds)
+                ->whereIn('class_id', $classesInTeacherCourses)
                 ->get();
 
             // กรองตามเดือนที่เลือก
@@ -613,7 +479,7 @@ class TeacherController extends Controller
                 if ($attendance) {
                     $extraTeaching->attendance = $attendance;
 
-                    // แปลงให้อยู่ในรูปแบบเดียวกับ regular teaching เพื่อแสดงผลในหน้า taDetail
+                    // แปลงให้อยู่ในรูปแบบเดียวกับ regular teaching
                     $convertedTeaching = new \stdClass();
                     $convertedTeaching->teaching_id = $extraTeaching->extra_class_id;
                     $convertedTeaching->start_time = $extraTeaching->class_date . ' ' . $extraTeaching->start_time;
@@ -628,14 +494,11 @@ class TeacherController extends Controller
                 }
             }
 
-            // Debug log
-            Log::info('Extra teachings count: ' . $filteredExtraTeachings->count());
-            Log::info('Total formatted teachings: ' . $formattedTeachings->count());
-
-            // ดึงข้อมูลการลงเวลาพิเศษเฉพาะของนักศึกษาที่เลือก
+            // ดึงข้อมูลการลงเวลาพิเศษเฉพาะของนักศึกษาที่เลือก และของหลักสูตรที่อาจารย์ปัจจุบันสอน
             $extraAttendances = ExtraAttendances::where('student_id', $student->id)
                 ->whereYear('start_work', $selectedDate->year)
                 ->whereMonth('start_work', $selectedDate->month)
+                ->whereIn('class_id', $classesInTeacherCourses)
                 ->with([
                     'classes' => function ($query) {
                         $query->with('teachers');
@@ -643,28 +506,47 @@ class TeacherController extends Controller
                 ])
                 ->get();
 
-            // ตรวจสอบสถานะการอนุมัติ
+            // ตรวจสอบสถานะการอนุมัติ - แก้ไขส่วนนี้ให้ตรวจสอบแยกตามอาจารย์/วิชา
             $normalAttendanceApproved = Attendances::where('student_id', $student->id)
                 ->whereYear('created_at', $selectedDate->year)
                 ->whereMonth('created_at', $selectedDate->month)
                 ->where('approve_status', 'a')
+                ->whereHas('teaching', function ($query) use ($classesInTeacherCourses) {
+                    $query->whereIn('class_id', $classesInTeacherCourses);
+                })
+                ->exists();
+
+            $extraTeachingApproved = Attendances::where('student_id', $student->id)
+                ->whereYear('created_at', $selectedDate->year)
+                ->whereMonth('created_at', $selectedDate->month)
+                ->where('approve_status', 'a')
+                ->where('is_extra', true)
+                ->whereHas('extraTeaching', function ($query) use ($classesInTeacherCourses) {
+                    $query->whereIn('class_id', $classesInTeacherCourses);
+                })
                 ->exists();
 
             $extraAttendanceApproved = ExtraAttendances::where('student_id', $student->id)
                 ->whereYear('start_work', $selectedDate->year)
                 ->whereMonth('start_work', $selectedDate->month)
                 ->where('approve_status', 'a')
+                ->whereIn('class_id', $classesInTeacherCourses)
                 ->exists();
 
-            $isMonthApproved = $normalAttendanceApproved || $extraAttendanceApproved;
+            // เปลี่ยนเป็นตรวจสอบเฉพาะรายการของอาจารย์ปัจจุบันเท่านั้น
+            $isMonthApproved = $normalAttendanceApproved || $extraTeachingApproved || $extraAttendanceApproved;
             $approvalNote = null;
 
             if ($isMonthApproved) {
-                // ดึงหมายเหตุการอนุมัติล่าสุด
+                // ดึงหมายเหตุการอนุมัติล่าสุดเฉพาะของอาจารย์คนปัจจุบัน
                 $latestNormalApproval = Attendances::where('student_id', $student->id)
                     ->whereYear('created_at', $selectedDate->year)
                     ->whereMonth('created_at', $selectedDate->month)
                     ->where('approve_status', 'a')
+                    ->where('approve_user_id', auth()->id())
+                    ->whereHas('teaching', function ($query) use ($classesInTeacherCourses) {
+                        $query->whereIn('class_id', $classesInTeacherCourses);
+                    })
                     ->latest()
                     ->first();
 
@@ -672,6 +554,8 @@ class TeacherController extends Controller
                     ->whereYear('start_work', $selectedDate->year)
                     ->whereMonth('start_work', $selectedDate->month)
                     ->where('approve_status', 'a')
+                    ->where('approve_user_id', auth()->id())
+                    ->whereIn('class_id', $classesInTeacherCourses)
                     ->latest()
                     ->first();
 
@@ -706,110 +590,6 @@ class TeacherController extends Controller
         }
     }
 
-    // public function approveMonthlyAttendance(Request $request, $ta_id)
-    // {
-    //     try {
-    //         $yearMonth = $request->input('year_month');
-    //         $approveNote = $request->input('approve_note');
-    //         $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $yearMonth);
-    //         $ta = CourseTas::with('student')->findOrFail($ta_id);
-
-    //         DB::beginTransaction();
-
-    //         try {
-    //             // อนุมัติการลงเวลาปกติ (Teaching ปกติ)
-    //             $normalAttendances = Attendances::whereHas('teaching', function ($query) use ($ta, $selectedDate) {
-    //                 $query->where('class_id', 'LIKE', $ta->course_id . '%')
-    //                     ->whereYear('start_time', $selectedDate->year)
-    //                     ->whereMonth('start_time', $selectedDate->month);
-    //             })
-    //                 ->where('student_id', $ta->student_id)
-    //                 ->where(function ($query) {
-    //                     $query->whereNull('approve_status')
-    //                         ->orWhere('approve_status', '!=', 'a');
-    //                 })
-    //                 ->get();
-
-    //             foreach ($normalAttendances as $attendance) {
-    //                 $attendance->update([
-    //                     'approve_status' => 'a',
-    //                     'approve_at' => now(),
-    //                     'approve_user_id' => auth()->id(),
-    //                     'approve_note' => $approveNote
-    //                 ]);
-    //             }
-
-    //             // อนุมัติการลงเวลาสอนชดเชย (Extra Teaching)
-    //             $extraTeachingAttendances = Attendances::whereNotNull('extra_teaching_id')
-    //                 ->where('student_id', $ta->student_id)
-    //                 ->where('is_extra', true)
-    //                 ->whereHas('extraTeaching', function ($query) use ($ta, $selectedDate) {
-    //                     $query->where('class_id', 'LIKE', $ta->course_id . '%')
-    //                         ->whereYear('class_date', $selectedDate->year)
-    //                         ->whereMonth('class_date', $selectedDate->month);
-    //                 })
-    //                 ->where(function ($query) {
-    //                     $query->whereNull('approve_status')
-    //                         ->orWhere('approve_status', '!=', 'a');
-    //                 })
-    //                 ->get();
-
-    //             foreach ($extraTeachingAttendances as $attendance) {
-    //                 $attendance->update([
-    //                     'approve_status' => 'a',
-    //                     'approve_at' => now(),
-    //                     'approve_user_id' => auth()->id(),
-    //                     'approve_note' => $approveNote
-    //                 ]);
-    //             }
-
-    //             // อนุมัติการลงเวลาพิเศษ (Extra Attendances)
-    //             $extraAttendances = ExtraAttendances::where('student_id', $ta->student_id)
-    //                 ->where('class_id', 'LIKE', $ta->course_id . '%')
-    //                 ->whereYear('start_work', $selectedDate->year)
-    //                 ->whereMonth('start_work', $selectedDate->month)
-    //                 ->where(function ($query) {
-    //                     $query->whereNull('approve_status')
-    //                         ->orWhere('approve_status', '!=', 'a');
-    //                 })
-    //                 ->get();
-
-    //             foreach ($extraAttendances as $extraAttendance) {
-    //                 $extraAttendance->update([
-    //                     'approve_status' => 'a',
-    //                     'approve_at' => now(),
-    //                     'approve_user_id' => auth()->id(),
-    //                     'approve_note' => $approveNote
-    //                 ]);
-    //             }
-
-    //             // ตรวจสอบว่ามีการอนุมัติข้อมูลหรือไม่
-    //             $totalApproved = $normalAttendances->count() + $extraTeachingAttendances->count() + $extraAttendances->count();
-
-    //             if ($totalApproved == 0) {
-    //                 return back()->with('error', 'ไม่พบข้อมูลการลงเวลาที่รออนุมัติสำหรับเดือนที่เลือก');
-    //             }
-
-    //             // บันทึกข้อมูลลงฐานข้อมูล
-    //             DB::commit();
-
-    //             // คำนวณจำนวนรายการที่อนุมัติแต่ละประเภท
-    //             $message = "อนุมัติการลงเวลาประจำเดือนเรียบร้อยแล้ว ";
-    //             $message .= "(ปกติ: {$normalAttendances->count()}, สอนชดเชย: {$extraTeachingAttendances->count()}, งานพิเศษ: {$extraAttendances->count()})";
-
-    //             return back()->with('success', $message);
-    //         } catch (\Exception $e) {
-    //             DB::rollBack();
-    //             Log::error('Error during approval: ' . $e->getMessage());
-    //             return back()->with('error', 'เกิดข้อผิดพลาดในการอนุมัติ: ' . $e->getMessage());
-    //         }
-    //     } catch (\Exception $e) {
-    //         Log::error($e->getMessage());
-    //         return back()->with('error', 'เกิดข้อผิดพลาดในการประมวลผล: ' . $e->getMessage());
-    //     }
-    // }
-
-
     public function approveMonthlyAttendance(Request $request, $ta_id)
     {
         try {
@@ -817,75 +597,91 @@ class TeacherController extends Controller
             $approveNote = $request->input('approve_note');
             $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $yearMonth);
             $ta = CourseTas::with('student')->findOrFail($ta_id);
-    
+            $currentTeacher = Auth::user()->teacher;
+
             // รับค่า checkbox ที่เลือก
             $normalAttendanceIds = $request->input('normal_attendances', []);
             $extraAttendanceIds = $request->input('extra_attendances', []);
-    
-            // บันทึก log ข้อมูลที่รับมา
-            Log::debug('Approving monthly attendance', [
-                'student_id' => $ta->student_id,
-                'normal_attendances' => $normalAttendanceIds,
-                'extra_attendances' => $extraAttendanceIds
-            ]);
-    
+
             // ตรวจสอบว่ามีการเลือกรายการหรือไม่
             if (empty($normalAttendanceIds) && empty($extraAttendanceIds)) {
                 return back()->with('error', 'กรุณาเลือกรายการที่ต้องการอนุมัติ');
             }
-    
+
+            // ดึงรายวิชาที่อาจารย์คนปัจจุบันเป็นเจ้าของ
+            $coursesOwnedByTeacher = Courses::where('owner_teacher_id', $currentTeacher->teacher_id)
+                ->pluck('course_id')->toArray();
+
+            // ดึงข้อมูล Class ที่อยู่ในรายวิชาที่อาจารย์เป็นเจ้าของ
+            $classesInTeacherCourses = Classes::whereIn('course_id', $coursesOwnedByTeacher)
+                ->pluck('class_id')->toArray();
+
             DB::beginTransaction();
-    
+
             try {
                 $normalCount = 0;
                 $extraTeachingCount = 0;
                 $extraAttendanceCount = 0;
-    
-                // อนุมัติการลงเวลาปกติและการสอนชดเชย
+
+                // อนุมัติการลงเวลาปกติและสอนชดเชย (Teaching ปกติและ Extra Teaching)
                 foreach ($normalAttendanceIds as $id) {
-                    // ใช้เงื่อนไขที่ยืดหยุ่นในการค้นหา attendance record
-                    $attendance = Attendances::where(function($query) use ($id) {
-                            // ค้นหาด้วย teaching_id หรือ extra_teaching_id
-                            $query->where('teaching_id', $id)
-                                  ->orWhere('extra_teaching_id', $id);
-                        })
-                        ->where('student_id', $ta->student_id)
-                        ->where(function ($query) {
-                            $query->whereNull('approve_status')
-                                ->orWhere('approve_status', '!=', 'a');
-                        })
-                        ->first();
-    
-                    if ($attendance) {
-                        Log::debug('Found attendance record: ' . $attendance->id . ', is_extra: ' . $attendance->is_extra);
-                        
-                        $attendance->update([
-                            'approve_status' => 'a',
-                            'approve_at' => now(),
-                            'approve_user_id' => auth()->id(),
-                            'approve_note' => $approveNote
-                        ]);
-                        
-                        if ($attendance->is_extra) {
-                            $extraTeachingCount++;
-                        } else {
-                            $normalCount++;
-                        }
+                    // ตรวจสอบว่าเป็น ID ที่มีรูปแบบ "extra-XXX" หรือไม่
+                    if (strpos($id, 'extra-') === 0) {
+                        // กรณี Extra Teaching จากรูปแบบเก่า (มี prefix)
+                        $extraTeachingId = str_replace('extra-', '', $id);
+
+                        $this->processExtraTeaching($extraTeachingId, $ta->student_id, $classesInTeacherCourses, $approveNote, $extraTeachingCount);
                     } else {
-                        Log::warning('No attendance found for ID: ' . $id);
+                        // ตรวจสอบว่าเป็น Extra Teaching หรือ Regular Teaching
+                        $extraTeaching = ExtraTeaching::where('extra_class_id', $id)
+                            ->whereIn('class_id', $classesInTeacherCourses)
+                            ->first();
+
+                        if ($extraTeaching) {
+                            // กรณี Extra Teaching จากรูปแบบใหม่ (ไม่มี prefix)
+                            $this->processExtraTeaching($id, $ta->student_id, $classesInTeacherCourses, $approveNote, $extraTeachingCount);
+                        } else {
+                            // กรณี Teaching ปกติ
+                            $teaching = Teaching::where('teaching_id', $id)
+                                ->whereIn('class_id', $classesInTeacherCourses)
+                                ->first();
+
+                            if (!$teaching) {
+                                continue; // ข้ามรายการที่ไม่เกี่ยวข้องกับอาจารย์คนปัจจุบัน
+                            }
+
+                            $attendance = Attendances::where('teaching_id', $id)
+                                ->where('student_id', $ta->student_id)
+                                ->where(function ($query) {
+                                    $query->whereNull('approve_status')
+                                        ->orWhere('approve_status', '!=', 'a');
+                                })
+                                ->first();
+
+                            if ($attendance) {
+                                $attendance->update([
+                                    'approve_status' => 'a',
+                                    'approve_at' => now(),
+                                    'approve_user_id' => auth()->id(),
+                                    'approve_note' => $approveNote
+                                ]);
+                                $normalCount++;
+                            }
+                        }
                     }
                 }
-    
+
                 // อนุมัติการลงเวลาพิเศษ (Extra Attendances)
                 foreach ($extraAttendanceIds as $id) {
                     $extraAttendance = ExtraAttendances::where('id', $id)
                         ->where('student_id', $ta->student_id)
+                        ->whereIn('class_id', $classesInTeacherCourses) // เฉพาะรายการของอาจารย์คนปัจจุบัน
                         ->where(function ($query) {
                             $query->whereNull('approve_status')
                                 ->orWhere('approve_status', '!=', 'a');
                         })
                         ->first();
-    
+
                     if ($extraAttendance) {
                         $extraAttendance->update([
                             'approve_status' => 'a',
@@ -896,29 +692,22 @@ class TeacherController extends Controller
                         $extraAttendanceCount++;
                     }
                 }
-    
+
                 // ตรวจสอบว่ามีการอนุมัติข้อมูลหรือไม่
                 $totalApproved = $normalCount + $extraTeachingCount + $extraAttendanceCount;
-                
-                Log::debug('Approval count summary:', [
-                    'normal' => $normalCount,
-                    'extraTeaching' => $extraTeachingCount,
-                    'extraAttendance' => $extraAttendanceCount,
-                    'total' => $totalApproved
-                ]);
-    
+
                 if ($totalApproved == 0) {
                     DB::rollBack();
                     return back()->with('error', 'ไม่สามารถอนุมัติรายการที่เลือกได้');
                 }
-    
+
                 // บันทึกข้อมูลลงฐานข้อมูล
                 DB::commit();
-    
+
                 // คำนวณจำนวนรายการที่อนุมัติแต่ละประเภท
                 $message = "อนุมัติรายการที่เลือกเรียบร้อยแล้ว ";
                 $message .= "(ปกติ: {$normalCount}, สอนชดเชย: {$extraTeachingCount}, งานพิเศษ: {$extraAttendanceCount})";
-    
+
                 return back()->with('success', $message);
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -926,8 +715,40 @@ class TeacherController extends Controller
                 return back()->with('error', 'เกิดข้อผิดพลาดในการอนุมัติ: ' . $e->getMessage());
             }
         } catch (\Exception $e) {
-            Log::error('Exception in approveMonthlyAttendance: ' . $e->getMessage());
+            Log::error($e->getMessage());
             return back()->with('error', 'เกิดข้อผิดพลาดในการประมวลผล: ' . $e->getMessage());
+        }
+    }
+
+    // เพิ่มเมธอดช่วยสำหรับการประมวลผล Extra Teaching
+    private function processExtraTeaching($extraTeachingId, $studentId, $classesInTeacherCourses, $approveNote, &$extraTeachingCount)
+    {
+        // ตรวจสอบว่า extra teaching นี้อยู่ในคลาสของอาจารย์คนปัจจุบันหรือไม่
+        $classCheck = ExtraTeaching::where('extra_class_id', $extraTeachingId)
+            ->whereIn('class_id', $classesInTeacherCourses)
+            ->exists();
+
+        if (!$classCheck) {
+            return; // ข้ามรายการที่ไม่เกี่ยวข้องกับอาจารย์คนปัจจุบัน
+        }
+
+        $attendance = Attendances::where('extra_teaching_id', $extraTeachingId)
+            ->where('student_id', $studentId)
+            ->where('is_extra', true)
+            ->where(function ($query) {
+                $query->whereNull('approve_status')
+                    ->orWhere('approve_status', '!=', 'a');
+            })
+            ->first();
+
+        if ($attendance) {
+            $attendance->update([
+                'approve_status' => 'a',
+                'approve_at' => now(),
+                'approve_user_id' => auth()->id(),
+                'approve_note' => $approveNote
+            ]);
+            $extraTeachingCount++;
         }
     }
 
