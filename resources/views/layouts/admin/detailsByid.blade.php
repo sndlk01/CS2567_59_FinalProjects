@@ -908,7 +908,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="list-group">
-                        <a href="{{ route('layout.exports.pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}"
+                        <a href="{{ route('layout.exports.pdf', ['id' => $student->id, 'month' => $selectedYearMonth, 'course_id' => $course->course_id]) }}"
                             class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             <div>
                                 <i class="fas fa-file-pdf text-danger me-2"></i>
@@ -917,7 +917,7 @@
                             </div>
                             <i class="fas fa-download"></i>
                         </a>
-                        <a href="{{ route('layout.exports.result-pdf', ['id' => $student->id, 'month' => $selectedYearMonth]) }}"
+                        <a href="{{ route('layout.exports.result-pdf', ['id' => $student->id, 'month' => $selectedYearMonth, 'course_id' => $course->course_id]) }}"
                             class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             <div>
                                 <i class="fas fa-file-pdf text-danger me-2"></i>
@@ -926,7 +926,7 @@
                             </div>
                             <i class="fas fa-download"></i>
                         </a>
-                        <a href="{{ route('admin.export.template', ['id' => $student->id, 'month' => $selectedYearMonth]) }}"
+                        <a href="{{ route('admin.export.template', ['id' => $student->id, 'month' => $selectedYearMonth, 'course_id' => $course->course_id]) }}"
                             class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             <div>
                                 <i class="fas fa-file-excel text-success me-2"></i>

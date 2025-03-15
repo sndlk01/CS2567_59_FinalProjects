@@ -146,31 +146,8 @@
 </head>
 
 <body>
-    @php
-        $regularAttendances = collect();
-        $specialAttendances = collect();
-
-        foreach ($attendancesBySection as $section => $attendances) {
-            foreach ($attendances as $attendance) {
-                $majorType = '';
-
-                if ($attendance['type'] === 'regular') {
-                    $majorType = $attendance['data']->class->major->major_type ?? 'N';
-                } else {
-                    $majorType = $attendance['data']->classes->major->major_type ?? 'N';
-                }
-
-                if ($majorType === 'S') {
-                    $specialAttendances->push($attendance);
-                } else {
-                    $regularAttendances->push($attendance);
-                }
-            }
-        }
-    @endphp
-
     <!-- โครงการปกติ แสดงเฉพาะเมื่อมีข้อมูลโครงการปกติ -->
-    @if ($hasRegularProject || $regularAttendances->isNotEmpty())
+    @if ($hasRegularProject)
         <div class="center">
             <h3>แบบใบเบิกค่าตอบแทนผู้ช่วยสอนและผู้ช่วยปฏิบัติงาน</h3>
             <h3>วิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น</h3>
@@ -213,8 +190,6 @@
                 @php
                     $no = 1;
                     $isFirstRow = true;
-                    $regularLectureHoursSum = 0;
-                    $regularLabHoursSum = 0;
                 @endphp
                 @forelse ($regularAttendances as $attendance)
                     <tr>
@@ -230,44 +205,58 @@
                             @endif
                         </td>
                         <td style="text-align: center;">
-                            @if ($student->degree_level == 'bachelor')
-                                ป.ตรี
-                            @elseif($student->degree_level == 'master')
-                                ป.โท
-                            @elseif($student->degree_level == 'doctoral')
-                                ป.เอก
-                            @else
-                                ป.ตรี
-                            @endif
-                        </td>
-                        <td style="text-align: center;">
-                            {{ \Carbon\Carbon::parse($attendance['type'] === 'regular' ? $attendance['data']->start_time : $attendance['data']->start_work)->format('d-m-y') }}
+                            @php
+                                $degreeLevel = $student->degree_level ?? 'undergraduate';
+                                if ($degreeLevel == 'bachelor') {
+                                    echo 'ป.ตรี';
+                                } elseif ($degreeLevel == 'master') {
+                                    echo 'ป.โท';
+                                } elseif ($degreeLevel == 'doctoral') {
+                                    echo 'ป.เอก';
+                                } else {
+                                    echo 'ป.ตรี';
+                                }
+                            @endphp
                         </td>
                         <td style="text-align: center;">
                             @if ($attendance['type'] === 'regular')
-                                {{ $attendance['data']->class->course->subjects->subject_id ?? 'N/A' }}
+                                {{ \Carbon\Carbon::parse($attendance['data']->start_time)->format('d-m-y') }}
+                            @elseif ($attendance['type'] === 'extra')
+                                @php
+                                    if (isset($attendance['date'])) {
+                                        $dateParts = explode(' ', $attendance['date']);
+                                        $dateOnly = $dateParts[0] ?? null;
+                                    } else {
+                                        // ใช้ข้อมูลจาก data แทนถ้าไม่มี 'date'
+                                        $dateOnly = isset($attendance['data']->class_date)
+                                            ? $attendance['data']->class_date
+                                            : \Carbon\Carbon::now()->format('Y-m-d');
+                                    }
+                                @endphp
+                                {{ \Carbon\Carbon::parse($dateOnly)->format('d-m-y') }}
                             @else
-                                {{ $attendance['data']->classes->course->subjects->subject_id ?? ($attendance['data']->class_id ?? 'N/A') }}
+                                {{ \Carbon\Carbon::parse($attendance['data']->start_work)->format('d-m-y') }}
                             @endif
                         </td>
                         <td style="text-align: center;">
-                            @if ($attendance['data']->class_type !== 'L')
-                                @php
-                                    $hours = $attendance['hours'];
-                                    $regularLectureHoursSum += $hours;
-                                    echo number_format($hours, 2);
-                                @endphp
+                            @if ($attendance['type'] === 'regular')
+                                {{ $attendance['data']->class->course->subjects->subject_id ?? '-' }}
+                            @elseif ($attendance['type'] === 'extra')
+                                {{ $attendance['data']->class->course->subjects->subject_id ?? '-' }}
+                            @else
+                                {{ $attendance['data']->classes->course->subjects->subject_id ?? '-' }}
+                            @endif
+                        </td>
+                        <td style="text-align: center;">
+                            @if ($attendance['class_type'] === 'LECTURE')
+                                {{ number_format($attendance['hours'], 2) }}
                             @else
                                 -
                             @endif
                         </td>
                         <td style="text-align: center;">
-                            @if ($attendance['data']->class_type === 'L')
-                                @php
-                                    $hours = $attendance['hours'];
-                                    $regularLabHoursSum += $hours;
-                                    echo number_format($hours, 2);
-                                @endphp
+                            @if ($attendance['class_type'] === 'LAB')
+                                {{ number_format($attendance['hours'], 2) }}
                             @else
                                 -
                             @endif
@@ -275,6 +264,8 @@
                         <td>
                             @if ($attendance['type'] === 'regular')
                                 {{ $attendance['data']->attendance->note ?? 'ช่วยตรวจงาน / เช็คชื่อ' }}
+                            @elseif ($attendance['type'] === 'extra')
+                                การสอนชดเชย
                             @else
                                 {{ $attendance['data']->detail ?? '-' }}
                             @endif
@@ -336,7 +327,7 @@
         <div class="clear"></div>
         <div style="margin-top: 20px;">
             <p>หมายเหตุ : ขอเบิกจ่ายเพียง
-                {{ number_format($actualRegularPay, 2) }}
+                {{ number_format(isset($actualRegularPay) ? $actualRegularPay : ($regularLectureHoursSum + $regularLabHoursSum) * $compensationRates['regularLecture'], 2) }}
                 บาท
             </p>
         </div>
@@ -371,7 +362,7 @@
     @endif
 
     <!--  โครงการพิเศษ แสดงเฉพาะเมื่อมีข้อมูลโครงการพิเศษ -->
-    @if ($hasSpecialProject || $specialAttendances->isNotEmpty())
+    @if ($hasSpecialProject)
         <div class="center">
             <h3>แบบใบเบิกค่าตอบแทนผู้ช่วยสอนและผู้ช่วยปฏิบัติงาน</h3>
             <h3>วิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น</h3>
@@ -414,8 +405,6 @@
                 @php
                     $no = 1;
                     $isFirstRow = true;
-                    $specialLectureHoursSum = 0;
-                    $specialLabHoursSum = 0;
                 @endphp
                 @forelse ($specialAttendances as $attendance)
                     <tr>
@@ -431,44 +420,58 @@
                             @endif
                         </td>
                         <td style="text-align: center;">
-                            @if ($student->degree_level == 'bachelor')
-                                ป.ตรี
-                            @elseif($student->degree_level == 'master')
-                                ป.โท
-                            @elseif($student->degree_level == 'doctoral')
-                                ป.เอก
-                            @else
-                                ป.ตรี
-                            @endif
-                        </td>
-                        <td style="text-align: center;">
-                            {{ \Carbon\Carbon::parse($attendance['type'] === 'regular' ? $attendance['data']->start_time : $attendance['data']->start_work)->format('d-m-y') }}
+                            @php
+                                $degreeLevel = $student->degree_level ?? 'undergraduate';
+                                if ($degreeLevel == 'bachelor') {
+                                    echo 'ป.ตรี';
+                                } elseif ($degreeLevel == 'master') {
+                                    echo 'ป.โท';
+                                } elseif ($degreeLevel == 'doctoral') {
+                                    echo 'ป.เอก';
+                                } else {
+                                    echo 'ป.ตรี';
+                                }
+                            @endphp
                         </td>
                         <td style="text-align: center;">
                             @if ($attendance['type'] === 'regular')
-                                {{ $attendance['data']->class->course->subjects->subject_id ?? 'N/A' }}
+                                {{ \Carbon\Carbon::parse($attendance['data']->start_time)->format('d-m-y') }}
+                            @elseif ($attendance['type'] === 'extra')
+                                @php
+                                    if (isset($attendance['date'])) {
+                                        $dateParts = explode(' ', $attendance['date']);
+                                        $dateOnly = $dateParts[0] ?? null;
+                                    } else {
+                                        // ใช้ข้อมูลจาก data แทนถ้าไม่มี 'date'
+                                        $dateOnly = isset($attendance['data']->class_date)
+                                            ? $attendance['data']->class_date
+                                            : \Carbon\Carbon::now()->format('Y-m-d');
+                                    }
+                                @endphp
+                                {{ \Carbon\Carbon::parse($dateOnly)->format('d-m-y') }}
                             @else
-                                {{ $attendance['data']->classes->course->subjects->subject_id ?? ($attendance['data']->class_id ?? 'N/A') }}
+                                {{ \Carbon\Carbon::parse($attendance['data']->start_work)->format('d-m-y') }}
                             @endif
                         </td>
                         <td style="text-align: center;">
-                            @if ($attendance['data']->class_type !== 'L')
-                                @php
-                                    $hours = $attendance['hours'];
-                                    $specialLectureHoursSum += $hours;
-                                    echo number_format($hours, 2);
-                                @endphp
+                            @if ($attendance['type'] === 'regular')
+                                {{ $attendance['data']->class->course->subjects->subject_id ?? '-' }}
+                            @elseif ($attendance['type'] === 'extra')
+                                {{ $attendance['data']->class->course->subjects->subject_id ?? '-' }}
+                            @else
+                                {{ $attendance['data']->classes->course->subjects->subject_id ?? '-' }}
+                            @endif
+                        </td>
+                        <td style="text-align: center;">
+                            @if ($attendance['class_type'] === 'LECTURE')
+                                {{ number_format($attendance['hours'], 2) }}
                             @else
                                 -
                             @endif
                         </td>
                         <td style="text-align: center;">
-                            @if ($attendance['data']->class_type === 'L')
-                                @php
-                                    $hours = $attendance['hours'];
-                                    $specialLabHoursSum += $hours;
-                                    echo number_format($hours, 2);
-                                @endphp
+                            @if ($attendance['class_type'] === 'LAB')
+                                {{ number_format($attendance['hours'], 2) }}
                             @else
                                 -
                             @endif
@@ -476,6 +479,8 @@
                         <td>
                             @if ($attendance['type'] === 'regular')
                                 {{ $attendance['data']->attendance->note ?? 'ช่วยตรวจงาน / เช็คชื่อ' }}
+                            @elseif ($attendance['type'] === 'extra')
+                                การสอนชดเชย
                             @else
                                 {{ $attendance['data']->detail ?? '-' }}
                             @endif
@@ -552,7 +557,7 @@
         <div style="margin-top: 20px;">
             <div style="margin-top: 20px;">
                 <p>หมายเหตุ : ขอเบิกจ่ายเพียง
-                    {{ number_format($actualSpecialPay, 2) }}
+                    {{ number_format(isset($actualSpecialPay) ? $actualSpecialPay : $specialPay, 2) }}
                     บาท
                 </p>
             </div>
