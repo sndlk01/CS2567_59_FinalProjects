@@ -336,8 +336,9 @@
         <div class="clear"></div>
         <div style="margin-top: 20px;">
             <p>หมายเหตุ : ขอเบิกจ่ายเพียง
-                {{ number_format(($regularLectureHoursSum + $regularLabHoursSum) * $compensationRates['regularLecture'], 2) }}
-                บาท</p>
+                {{ number_format($actualRegularPay, 2) }}
+                บาท
+            </p>
         </div>
 
         <div class="signature-section">
@@ -549,14 +550,12 @@
 
         <div class="clear"></div>
         <div style="margin-top: 20px;">
-            <p>หมายเหตุ : ขอเบิกจ่ายเพียง
-                @if (isset($transaction) && $transaction)
-                    {{ number_format($transaction->actual_amount, 2) }}
-                @else
-                    {{ number_format($specialPay, 2) }}
-                @endif
-                บาท
-            </p>
+            <div style="margin-top: 20px;">
+                <p>หมายเหตุ : ขอเบิกจ่ายเพียง
+                    {{ number_format($actualSpecialPay, 2) }}
+                    บาท
+                </p>
+            </div>
         </div>
 
         <div class="signature-section">
