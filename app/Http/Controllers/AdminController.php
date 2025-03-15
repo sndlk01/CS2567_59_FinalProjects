@@ -2011,7 +2011,7 @@ class AdminController extends Controller
 
             // ถ้ายังไม่มีข้อมูลงบประมาณ ให้สร้างขึ้นใหม่
             if (!$courseBudget) {
-                $remainingBudget = $totalBudget; // ยังไม่มีการใช้เลย คงเหลือเท่ากับงบทั้งหมด
+                $remainingBudget = $totalBudget; 
             }
 
             // ดึงรายการเบิกจ่ายของเดือนนี้ (ถ้ามี)
