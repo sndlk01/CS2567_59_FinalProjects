@@ -681,7 +681,7 @@
                                     </div>
 
                                     <div class="col-md-5">
-                                        <!-- การเบิกจ่าย - แก้ไขตรงนี้ -->
+                                        <!-- การเบิกจ่าย - ส่วนที่แก้ไข -->
                                         <div class="card h-100">
                                             @php
                                                 // ตรวจสอบว่ามีการเบิกจ่ายแล้วหรือไม่
@@ -751,14 +751,14 @@
                                                     </button>
                                                 @else
                                                     @if ($compensation['totalPay'] <= 0)
-                                                        <!-- กรณี totalPay < 0 -->
+                                                        <!-- กรณี totalPay <= 0 -->
                                                         <div class="alert alert-danger">
                                                             <i class="fas fa-exclamation-circle"></i>
                                                             <strong>ไม่สามารถเบิกจ่ายได้:</strong>
-                                                            ค่าตอบแทนที่คำนวณได้มีค่าน้อยกว่า 0 บาท
+                                                            ค่าตอบแทนที่คำนวณได้มีค่าน้อยกว่าหรือเท่ากับ 0 บาท
                                                         </div>
-                                                    @elseif ($isExceeded)
-                                                        <!-- กรณีงบประมาณไม่พอ -->
+                                                    @elseif ($isExceeded || $compensation['totalPay'] > $remainingBudget)
+                                                        <!-- กรณีงบประมาณไม่พอ - แสดงฟอร์มปรับยอดทันที -->
                                                         <div class="alert alert-warning">
                                                             <strong>คำเตือน:</strong> ค่าตอบแทนเกินงบประมาณคงเหลือ
                                                         </div>
@@ -809,15 +809,21 @@
                                                                 <input type="number" step="0.01" name="actual_amount"
                                                                     id="actual_amount" class="form-control"
                                                                     value="{{ number_format($remainingBudget, 2, '.', '') }}"
-                                                                    max="{{ $remainingBudget }}">
+                                                                    max="{{ $remainingBudget }}" min="0" required>
+                                                                <small class="text-danger">ค่าตอบแทนที่คำนวณได้
+                                                                    {{ number_format($compensation['totalPay'], 2) }} บาท
+                                                                    เกินงบประมาณคงเหลือ
+                                                                    {{ number_format($remainingBudget, 2) }} บาท</small>
                                                             </div>
                                                             <div class="mb-3">
                                                                 <label for="adjustment_reason"
-                                                                    class="form-label">เหตุผลในการปรับยอด:</label>
-                                                                <textarea name="adjustment_reason" id="adjustment_reason" class="form-control" rows="2">งบประมาณคงเหลือไม่เพียงพอ</textarea>
+                                                                    class="form-label">เหตุผลในการปรับยอด
+                                                                    (จำเป็นต้องระบุ):</label>
+                                                                <textarea name="adjustment_reason" id="adjustment_reason" class="form-control" rows="2" required>งบประมาณคงเหลือไม่เพียงพอ ต้องปรับลดตามงบประมาณที่มี</textarea>
                                                             </div>
                                                             <button type="submit" class="btn btn-primary w-100">
-                                                                <i class="fas fa-save"></i> บันทึกการเบิกจ่าย
+                                                                <i class="fas fa-save"></i>
+                                                                บันทึกการเบิกจ่ายตามงบประมาณที่เหลือ
                                                             </button>
                                                         </form>
                                                     @else

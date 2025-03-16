@@ -188,7 +188,7 @@ class CourseBudgetController extends Controller
             'calculated_amount' => 'required|numeric|min:0',
             'actual_amount' => 'required|numeric|min:0',
             'hours_worked' => 'required|numeric|min:0',
-            'adjustment_reason' => 'nullable|required_if:is_adjusted,1|string',
+            'adjustment_reason' => 'nullable|string|required_if:is_adjusted,1',
             'is_adjusted' => 'boolean'
         ]);
 
@@ -224,9 +224,21 @@ class CourseBudgetController extends Controller
                 $courseBudget->save();
             }
 
-            // Check remaining budget
+            // Check if there's enough remaining budget and adjust if needed
             if ($validated['actual_amount'] > $courseBudget->remaining_budget) {
-                throw new \Exception('งบประมาณคงเหลือไม่เพียงพอ (' . number_format($courseBudget->remaining_budget, 2) . ' บาท)');
+                // ถ้าในกรณีของการบันทึกแบบเต็มจำนวน (ไม่มีการปรับยอด) แต่ยอดเกินงบประมาณ
+                if (!$request->has('is_adjusted') || !$request->is_adjusted) {
+                    // กลับไปยังหน้าเดิมพร้อมข้อความเตือน
+                    DB::rollBack();
+                    return back()->with('error', 'งบประมาณคงเหลือไม่เพียงพอ (' . number_format($courseBudget->remaining_budget, 2) . ' บาท) กรุณาปรับลดยอดเงิน');
+                }
+
+                // ถ้ามีการระบุว่ามีการปรับยอดแล้ว แต่ยอดเงินที่ระบุยังเกินงบประมาณคงเหลือ
+                // ให้ปรับลดให้เท่ากับงบประมาณคงเหลือโดยอัตโนมัติ
+                if ($validated['actual_amount'] > $courseBudget->remaining_budget) {
+                    $validated['actual_amount'] = $courseBudget->remaining_budget;
+                    Log::info("Auto-adjusted amount to match remaining budget. Original: {$request->actual_amount}, Adjusted to: {$validated['actual_amount']}");
+                }
             }
 
             // Create transaction
@@ -237,8 +249,16 @@ class CourseBudgetController extends Controller
             $transaction->hours_worked = $validated['hours_worked'];
             $transaction->calculated_amount = $validated['calculated_amount'];
             $transaction->actual_amount = $validated['actual_amount'];
-            $transaction->is_adjusted = $request->has('is_adjusted') ? $request->is_adjusted : ($validated['calculated_amount'] != $validated['actual_amount']);
-            $transaction->adjustment_reason = $transaction->is_adjusted ? $validated['adjustment_reason'] : null;
+
+            // ตรวจสอบว่ามีการปรับยอดหรือไม่
+            $isAdjusted = $request->has('is_adjusted') ? $request->is_adjusted : ($validated['calculated_amount'] != $validated['actual_amount']);
+            $transaction->is_adjusted = $isAdjusted;
+
+            // ถ้ามีการปรับยอด ให้บันทึกเหตุผล
+            if ($isAdjusted) {
+                $transaction->adjustment_reason = $validated['adjustment_reason'] ?? 'งบประมาณไม่เพียงพอ ปรับลดตามงบประมาณคงเหลือ';
+            }
+
             $transaction->save();
 
             // Update budget
@@ -255,7 +275,6 @@ class CourseBudgetController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error saving compensation: ' . $e->getMessage());
-
             return back()->withInput()->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
         }
     }
@@ -321,26 +340,31 @@ class CourseBudgetController extends Controller
             $courseBudget = CourseBudget::where('course_id', $courseId)->first();
         }
 
+        // คำนวณงบประมาณคงเหลือของรายวิชา
         $totalUsed = CompensationTransaction::where('course_id', $courseId)
             ->sum('actual_amount');
 
+        // ดึงจำนวนนักศึกษาเพื่อคำนวณงบประมาณรวม
+        $totalStudents = $course->classes->sum('enrolled_num');
+        $totalBudget = $totalStudents * 300; // 300 บาทต่อคน
 
-        $remainingBudgetForTA = $courseBudget->remaining_budget ?? 0;
-
-        if ($remainingBudgetForTA < 0) {
-            // หากงบประมาณคงเหลือติดลบ ให้ redirect ไปยังหน้า preview
-            return [
-                'is_exceeded' => true,
-                'remainingBudgetForTA' => 0, // ตั้งค่าให้งบประมาณคงเหลือเป็น 0
-                'final_amount' => 0, // ตั้งค่าจำนวนเงินที่จะเบิกจ่ายเป็น 0
-                'error' => 'งบประมาณคงเหลือไม่เพียงพอ กรุณาปรับจำนวนเงินที่ต้องการเบิกจ่าย'
-            ];
+        // ตรวจสอบว่ามี courseBudget หรือไม่
+        if (!$courseBudget) {
+            // ถ้าไม่มี ให้คำนวณงบประมาณคงเหลือจากยอดรวมทั้งหมด - จำนวนที่ใช้ไปแล้ว
+            $remainingBudgetForTA = $totalBudget - $totalUsed;
+        } else {
+            // ถ้ามี ให้ใช้งบประมาณคงเหลือจาก courseBudget
+            $remainingBudgetForTA = $courseBudget->remaining_budget;
         }
+
+        // ตรวจสอบงบประมาณคงเหลือ (ป้องกันติดลบ)
+        if ($remainingBudgetForTA < 0) {
+            $remainingBudgetForTA = 0;
+        }
+
         // คำนวณค่าตอบแทนจากชั่วโมงการสอนในเดือนที่เลือก
         $startDate = Carbon::createFromFormat('Y-m', $yearMonth)->startOfMonth();
         $endDate = Carbon::createFromFormat('Y-m', $yearMonth)->endOfMonth();
-
-
 
         // ดึงข้อมูลการสอนปกติ
         $regularTeachings = Teaching::with(['attendance', 'class.major'])
@@ -383,6 +407,7 @@ class CourseBudgetController extends Controller
         $specialLectureHours = 0;
         $specialLabHours = 0;
 
+        // คำนวณชั่วโมงจากการสอนพิเศษ
         foreach ($extraAttendances as $teaching) {
             $hours = $teaching->duration / 60;
 
@@ -411,7 +436,7 @@ class CourseBudgetController extends Controller
             }
         }
 
-
+        // คำนวณชั่วโมงจากการสอนปกติ
         foreach ($regularTeachings as $teaching) {
             $startTime = Carbon::parse($teaching->start_time);
             $endTime = Carbon::parse($teaching->end_time);
@@ -435,28 +460,7 @@ class CourseBudgetController extends Controller
             }
         }
 
-        foreach ($extraTeachings as $teaching) {
-            $hours = $teaching->duration / 60;
-
-            $majorType = $teaching->classes->major->major_type ?? 'N';
-            $classType = $teaching->class_type === 'L' ? 'LAB' : 'LECTURE';
-
-            if ($majorType === 'N') {
-                if ($classType === 'LECTURE') {
-                    $regularLectureHours += $hours;
-                } else {
-                    $regularLabHours += $hours;
-                }
-            } else {
-                if ($classType === 'LECTURE') {
-                    $specialLectureHours += $hours;
-                } else {
-                    $specialLabHours += $hours;
-                }
-            }
-        }
-
-        // คำนวณชั่วโมงการสอนชดเชย
+        // คำนวณชั่วโมงจากการสอนชดเชย
         foreach ($extraTeachingsCompensation as $extraTeaching) {
             $startTime = Carbon::parse($extraTeaching->start_time);
             $endTime = Carbon::parse($extraTeaching->end_time);
@@ -499,15 +503,9 @@ class CourseBudgetController extends Controller
         $specialPay = $specialLecturePay + $specialLabPay;
         $totalPay = $regularPay + $specialPay;
 
-        // ตรวจสอบว่ายังมีงบประมาณเพียงพอหรือไม่
-        $isExceeded = $totalPay > $remainingBudgetForTA;
-        $finalAmount = $isExceeded ? $remainingBudgetForTA : $totalPay;
-
         // หากเป็น TA บัณฑิตและสอนภาคพิเศษ ให้ใช้การจ่ายแบบเหมาจ่าย
         $isFixedPayment = false;
         $fixedAmount = null;
-        $courseBudget = CourseBudget::firstOrNew(['course_id' => $courseId]);
-        $remainingBudgetForTA = $courseBudget->remaining_budget ?? 0;
 
         if ($degreeLevel === 'graduate' && ($specialLectureHours > 0 || $specialLabHours > 0)) {
             // ดึงอัตราเหมาจ่ายจากฐานข้อมูล
@@ -521,22 +519,37 @@ class CourseBudgetController extends Controller
                     $fixedAmount = 4000; // จำกัดไม่ให้เกิน 4,000 บาท
                 }
 
-                $totalPay = $regularPay + $fixedAmount; // รวมค่าตอบแทนภาคปกติกับค่าเหมาจ่าย
-
-                // ตรวจสอบว่ายังมีงบประมาณเพียงพอหรือไม่อีกครั้ง
-                $isExceeded = $totalPay > $remainingBudgetForTA;
-                $finalAmount = $isExceeded ? $remainingBudgetForTA : $totalPay;
+                // อัปเดตค่าตอบแทนโครงการพิเศษและยอดรวม
+                $specialPay = $fixedAmount;
+                $totalPay = $regularPay + $specialPay;
             }
         }
 
+        // ตรวจสอบว่ายังมีงบประมาณเพียงพอหรือไม่
+        $isExceeded = $totalPay > $remainingBudgetForTA;
+
+        // กำหนดจำนวนเงินสุดท้ายที่จะเบิกจ่าย
+        $finalAmount = $isExceeded ? $remainingBudgetForTA : $totalPay;
+
+        // ตรวจสอบว่ามีรายการเบิกจ่ายสำหรับเดือนนี้แล้วหรือไม่
+        $existingTransaction = CompensationTransaction::where('student_id', $studentId)
+            ->where('course_id', $courseId)
+            ->where('month_year', $yearMonth)
+            ->first();
+
+        if ($existingTransaction) {
+            $finalAmount = $existingTransaction->actual_amount;
+        }
+
+        // ข้อมูลที่ส่งกลับไปยัง View
         return [
             'student' => $student,
             'course' => $course,
             'year_month' => $yearMonth,
             'month_name' => Carbon::createFromFormat('Y-m', $yearMonth)->locale('th')->monthName,
             'year' => Carbon::createFromFormat('Y-m', $yearMonth)->year + 543,
-            'student_count ' => $courseBudget->student_count,
-            'total_budget' => $courseBudget->total_budget,
+            'student_count' => $totalStudents,
+            'total_budget' => $totalBudget,
             'remainingBudgetForTA' => $remainingBudgetForTA,
             'hours' => [
                 'regularLecture' => $regularLectureHours,
@@ -566,7 +579,8 @@ class CourseBudgetController extends Controller
             'fixed_amount' => $fixedAmount,
             'is_exceeded' => $isExceeded,
             'final_amount' => $finalAmount,
-            'total_hours' => $regularLectureHours + $regularLabHours + $specialLectureHours + $specialLabHours
+            'total_hours' => $regularLectureHours + $regularLabHours + $specialLectureHours + $specialLabHours,
+            'adjustment_reason' => $isExceeded ? 'งบประมาณไม่เพียงพอ ปรับลดตามงบประมาณคงเหลือ' : null
         ];
     }
 

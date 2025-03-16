@@ -293,8 +293,9 @@ class AdminController extends Controller
     /**
      * ดึงอัตราค่าตอบแทนจากฐานข้อมูล
      */
-    private function getCompensationRate($teachingType, $classType, $degreeLevel)
+    private function getCompensationRate($teachingType, $classType, $degreeLevel = 'undergraduate')
     {
+        // ลองค้นหาในฐานข้อมูลก่อน
         $rate = CompensationRate::where('teaching_type', $teachingType)
             ->where('class_type', $classType)
             ->where('degree_level', $degreeLevel)
@@ -302,24 +303,25 @@ class AdminController extends Controller
             ->where('is_fixed_payment', false)
             ->first();
 
-        if (!$rate) {
-            // ใช้ค่าเริ่มต้นถ้าไม่พบอัตราในฐานข้อมูล
-            if ($degreeLevel === 'undergraduate') {
-                if ($teachingType === 'regular') {
-                    return 40; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคปกติ
-                } else {
-                    return 50; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคพิเศษ
-                }
-            } else { // graduate
-                if ($teachingType === 'regular') {
-                    return 50; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคปกติ
-                } else {
-                    return 60; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ (กรณีไม่ใช้เหมาจ่าย)
-                }
-            }
+        // ถ้าพบข้อมูลในฐานข้อมูล ให้ใช้ค่าจากฐานข้อมูล
+        if ($rate) {
+            return $rate->rate_per_hour;
         }
 
-        return $rate->rate_per_hour;
+        // กรณีไม่พบข้อมูลในฐานข้อมูล ให้ใช้ค่าเริ่มต้นตามที่กำหนด
+        if ($degreeLevel === 'undergraduate' || $degreeLevel === 'bachelor') {
+            if ($teachingType === 'regular') {
+                return 40; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคปกติ
+            } else {
+                return 50; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคพิเศษ
+            }
+        } else { // graduate, master, doctoral
+            if ($teachingType === 'regular') {
+                return 50; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคปกติ
+            } else {
+                return 60; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ (กรณีไม่ใช้เหมาจ่าย)
+            }
+        }
     }
 
     /**
@@ -327,22 +329,27 @@ class AdminController extends Controller
      */
     private function getFixedCompensationRate($teachingType, $degreeLevel)
     {
+        // ค้นหาข้อมูลในฐานข้อมูล
         $rate = CompensationRate::where('teaching_type', $teachingType)
             ->where('degree_level', $degreeLevel)
             ->where('status', 'active')
             ->where('is_fixed_payment', true)
             ->first();
 
+        // ถ้าพบข้อมูลในฐานข้อมูล ให้ใช้ค่าจากฐานข้อมูล
         if ($rate) {
             return $rate->fixed_amount;
         }
 
-        // ใช้ค่าเริ่มต้นถ้าไม่พบอัตราในฐานข้อมูล
-        if ($degreeLevel === 'graduate' && $teachingType === 'special') {
-            return 4000; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ เหมาจ่ายรายเดือน
+        // ใช้ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
+        // สำหรับผู้ช่วยสอนบัณฑิตในโครงการพิเศษเท่านั้น
+        if ($degreeLevel === 'graduate' || $degreeLevel === 'master' || $degreeLevel === 'doctoral') {
+            if ($teachingType === 'special') {
+                return 4000; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ เหมาจ่ายรายเดือนไม่เกิน 4,000 บาท
+            }
         }
 
-        return null;
+        return null; // กรณีไม่ใช่ประเภทที่เหมาจ่าย
     }
 
     /**
@@ -2693,7 +2700,7 @@ class AdminController extends Controller
                         \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                         : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                         \Carbon\Carbon::parse($attendance['data']->start_work)
-                        ->addMinutes($attendance['data']->duration)->format('H:i');
+                            ->addMinutes($attendance['data']->duration)->format('H:i');
 
                     $lectureHours = 0;
                     $labHours = 0;
@@ -2795,7 +2802,7 @@ class AdminController extends Controller
                             \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                             : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                             \Carbon\Carbon::parse($attendance['data']->start_work)
-                            ->addMinutes($attendance['data']->duration)->format('H:i');
+                                ->addMinutes($attendance['data']->duration)->format('H:i');
 
                         $lectureHours = 0;
                         $labHours = 0;
