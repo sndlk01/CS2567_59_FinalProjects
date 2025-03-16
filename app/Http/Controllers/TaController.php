@@ -634,30 +634,34 @@ class TaController extends Controller
             // Get the TDBM API Service
             $tdbmApiService = app(TDBMApiService::class);
 
-            // ดึงเฉพาะข้อมูล extra teachings
-            $classExtraTeachings = $tdbmApiService->getExtraTeachings();
+            // ดึงข้อมูล extra teachings ทั้งหมดจาก API
+            $allExtraTeachings = $tdbmApiService->getExtraTeachings();
 
-            // Log ข้อมูลที่ได้จาก API
-            Log::info("Fetched extra teachings from API: " . count($classExtraTeachings));
+            // Log จำนวนข้อมูลทั้งหมดที่ได้จาก API
+            Log::info("ดึงข้อมูล extra teachings ทั้งหมดจาก API จำนวน: " . count($allExtraTeachings));
 
-            // Filter extra teachings เฉพาะสำหรับคลาสนี้
-            $classExtraTeachings = collect($classExtraTeachings)->filter(function ($teaching) use ($id) {
-                return $teaching['class_id'] == $id;
-            })->toArray();
+            // กรองเฉพาะ extra teachings สำหรับคลาสที่ระบุ
+            $classExtraTeachings = array_filter($allExtraTeachings, function ($teaching) use ($id) {
+                return isset($teaching['class_id']) && (string)$teaching['class_id'] == (string)$id;
+            });
 
-            Log::info("Filtered extra teachings for class $id: " . count($classExtraTeachings));
+            Log::info("กรองข้อมูลสำหรับคลาส $id ได้จำนวน: " . count($classExtraTeachings));
 
             // ถ้าไม่มีข้อมูลให้แสดงข้อความและกลับไปหน้าเดิม
             if (empty($classExtraTeachings)) {
                 return redirect()
-                    ->route('layout.ta.teaching', ['id' => $id, 'selected_month' => $request->query('selected_month')])
-                    ->with('info', 'ไม่พบข้อมูลการสอนพิเศษใหม่สำหรับคลาสนี้');
+                    ->route('layout.ta.teaching', [
+                        'id' => $id,
+                        'month' => $request->query('month')
+                    ])
+                    ->with('info', 'ไม่พบข้อมูลการสอนพิเศษในระบบสำหรับคลาสนี้');
             }
 
             // เตรียมข้อมูลสำหรับการตรวจสอบการอัปเดต
             $updatedCount = 0;
             $newCount = 0;
             $skippedCount = 0;
+            $errorCount = 0;
 
             DB::beginTransaction();
 
@@ -667,124 +671,162 @@ class TaController extends Controller
                 ->keyBy('extra_class_id')
                 ->toArray();
 
-            // Update เฉพาะ extra teachings สำหรับคลาสนี้
+            Log::info("พบข้อมูล extra teaching ในฐานข้อมูลสำหรับคลาส $id จำนวน: " . count($existingExtraTeachings));
+
+            // วนลูปเพื่ออัปเดตหรือเพิ่มข้อมูล extra teaching จาก API
             foreach ($classExtraTeachings as $teaching) {
                 try {
-                    // Log ข้อมูลที่จะใส่ในตาราง
-                    Log::info("Processing extra teaching data: ", $teaching);
+                    // ตรวจสอบข้อมูลที่จำเป็น
+                    if (!isset($teaching['extra_class_id'])) {
+                        Log::warning("ข้อมูล extra teaching ไม่มี extra_class_id ข้ามรายการนี้");
+                        $errorCount++;
+                        continue;
+                    }
+
+                    // ตรวจสอบข้อมูลเพิ่มเติมที่จำเป็น
+                    $requiredFields = ['class_date', 'start_time', 'end_time', 'duration', 'class_id', 'teacher_id'];
+                    $missingFields = [];
+                    foreach ($requiredFields as $field) {
+                        if (!isset($teaching[$field])) {
+                            $missingFields[] = $field;
+                        }
+                    }
+
+                    if (!empty($missingFields)) {
+                        Log::warning("ข้อมูล extra teaching ID: {$teaching['extra_class_id']} ไม่มีฟิลด์ที่จำเป็น: " . implode(', ', $missingFields));
+                        $errorCount++;
+                        continue;
+                    }
 
                     $extraClassId = $teaching['extra_class_id'];
+                    Log::info("กำลังประมวลผล extra teaching ID: {$extraClassId}");
+
+                    // จัดเตรียมข้อมูลสำหรับการบันทึก/อัปเดต
+                    $teachingData = [
+                        'title' => $teaching['title'] ?? null,
+                        'detail' => $teaching['detail'] ?? null,
+                        'opt_status' => $teaching['opt_status'] ?? 'A',
+                        'status' => $teaching['status'] ?? 'A',
+                        'class_date' => $teaching['class_date'],
+                        'start_time' => $teaching['start_time'],
+                        'end_time' => $teaching['end_time'],
+                        'duration' => $teaching['duration'],
+                        'teacher_id' => $teaching['teacher_id'],
+                        'holiday_id' => $teaching['holiday_id'] ?? null,
+                        'teaching_id' => $teaching['teaching_id'] ?? null,
+                        'class_id' => $teaching['class_id'],
+                        'updated_at' => now()
+                    ];
 
                     // ตรวจสอบว่ามีข้อมูลนี้อยู่แล้วหรือไม่
                     if (isset($existingExtraTeachings[$extraClassId])) {
-                        // ตรวจสอบว่าข้อมูลมีการเปลี่ยนแปลงหรือไม่
                         $existing = $existingExtraTeachings[$extraClassId];
                         $hasChanges = false;
 
-                        // เปรียบเทียบฟิลด์สำคัญเพื่อตรวจสอบการเปลี่ยนแปลง
-                        $fieldsToCheck = [
-                            'title',
-                            'detail',
-                            'opt_status',
-                            'status',
-                            'class_date',
-                            'start_time',
-                            'end_time',
-                            'duration',
-                            'teacher_id',
-                            'holiday_id',
-                            'teaching_id'
-                        ];
+                        // ตรวจสอบการเปลี่ยนแปลงของแต่ละฟิลด์
+                        foreach ($teachingData as $field => $value) {
+                            // ข้ามฟิลด์ updated_at
+                            if ($field === 'updated_at') continue;
 
-                        foreach ($fieldsToCheck as $field) {
-                            $newValue = $teaching[$field] ?? null;
-                            if ($field === 'holiday_id' && $newValue === null) {
-                                $newValue = 0; // กำหนดค่าเริ่มต้นสำหรับ holiday_id
-                            }
+                            $existingValue = $existing[$field] ?? null;
 
-                            if (isset($existing[$field]) && $existing[$field] != $newValue) {
+                            // แปลงค่า null เป็นสตริงว่างสำหรับ title และ detail
+                            if (in_array($field, ['title', 'detail']) && $value === null) $value = '';
+                            if (in_array($field, ['title', 'detail']) && $existingValue === null) $existingValue = '';
+
+                            // เปรียบเทียบค่า
+                            if ((string)$existingValue !== (string)$value) {
+                                Log::info("พบการเปลี่ยนแปลงในฟิลด์ $field: เดิม='" . $existingValue . "', ใหม่='" . $value . "'");
                                 $hasChanges = true;
-                                break;
                             }
                         }
 
                         if ($hasChanges) {
                             // มีการเปลี่ยนแปลง ให้อัปเดต
-                            ExtraTeaching::where('extra_class_id', $extraClassId)
-                                ->update([
-                                    'title' => $teaching['title'] ?? 'No Title',
-                                    'detail' => $teaching['detail'] ?? 'No Detail',
-                                    'opt_status' => $teaching['opt_status'] ?? 'A',
-                                    'status' => $teaching['status'] ?? 'A',
-                                    'class_date' => $teaching['class_date'],
-                                    'start_time' => $teaching['start_time'],
-                                    'end_time' => $teaching['end_time'],
-                                    'duration' => $teaching['duration'],
-                                    'teacher_id' => $teaching['teacher_id'],
-                                    'holiday_id' => $teaching['holiday_id'] ?? 0,
-                                    'teaching_id' => $teaching['teaching_id'],
-                                    'class_id' => $teaching['class_id']
-                                ]);
-
-                            $updatedCount++;
-                            Log::info("Updated extra teaching ID: {$extraClassId}");
+                            try {
+                                ExtraTeaching::where('extra_class_id', $extraClassId)->update($teachingData);
+                                $updatedCount++;
+                                Log::info("อัปเดตข้อมูล extra teaching ID: {$extraClassId} สำเร็จ");
+                            } catch (\Exception $e) {
+                                Log::error("ไม่สามารถอัปเดตข้อมูล extra teaching ID: {$extraClassId} ได้: " . $e->getMessage());
+                                $errorCount++;
+                            }
                         } else {
-                            // ไม่มีการเปลี่ยนแปลง ข้ามไป
                             $skippedCount++;
-                            Log::info("Skipped unchanged extra teaching ID: {$extraClassId}");
+                            Log::info("ข้าม extra teaching ID: {$extraClassId} เนื่องจากไม่มีการเปลี่ยนแปลง");
                         }
                     } else {
                         // ไม่มีข้อมูลนี้ ให้สร้างใหม่
-                        ExtraTeaching::create([
-                            'extra_class_id' => $extraClassId,
-                            'title' => $teaching['title'] ?? 'No Title',
-                            'detail' => $teaching['detail'] ?? 'No Detail',
-                            'opt_status' => $teaching['opt_status'] ?? 'A',
-                            'status' => $teaching['status'] ?? 'A',
-                            'class_date' => $teaching['class_date'],
-                            'start_time' => $teaching['start_time'],
-                            'end_time' => $teaching['end_time'],
-                            'duration' => $teaching['duration'],
-                            'teacher_id' => $teaching['teacher_id'],
-                            'holiday_id' => $teaching['holiday_id'] ?? 0,
-                            'teaching_id' => $teaching['teaching_id'],
-                            'class_id' => $teaching['class_id']
-                        ]);
+                        try {
+                            $teachingData['extra_class_id'] = $extraClassId; // เพิ่ม ID สำหรับการสร้างใหม่
+                            $teachingData['created_at'] = now();
 
-                        $newCount++;
-                        Log::info("Created new extra teaching ID: {$extraClassId}");
+                            // สร้างข้อมูลใหม่โดยตรงผ่าน DB เพื่อหลีกเลี่ยงปัญหากับ Model
+                            // หมายเหตุ: การใช้ DB::table แทน Model จะไม่ทำให้เกิดการตรวจสอบค่าว่างของ primary key
+                            DB::table('extra_teachings')->insert($teachingData);
+
+                            $newCount++;
+                            Log::info("สร้างข้อมูล extra teaching ID: {$extraClassId} ใหม่สำเร็จ");
+                        } catch (\Exception $e) {
+                            Log::error("ไม่สามารถสร้างข้อมูล extra teaching ID: {$extraClassId} ได้: " . $e->getMessage());
+                            $errorCount++;
+                        }
                     }
                 } catch (\Exception $innerException) {
-                    Log::error("Error processing extra teaching {$teaching['extra_class_id']}: " . $innerException->getMessage());
-                    // ไม่ throw exception เพื่อให้โค้ดทำงานต่อไปได้สำหรับรายการอื่น
+                    Log::error("เกิดข้อผิดพลาดในการประมวลผล extra teaching: " . $innerException->getMessage());
+                    $errorCount++;
                 }
             }
 
             DB::commit();
 
             // สร้างข้อความสรุป
-            $summaryMessage = "อัปเดตข้อมูลการสอนพิเศษสำเร็จ ";
+            $summaryMessage = "อัปเดตข้อมูลการสอนพิเศษ: ";
+            $details = [];
+
             if ($newCount > 0) {
-                $summaryMessage .= "สร้างใหม่ {$newCount} รายการ ";
+                $details[] = "สร้างใหม่ {$newCount} รายการ";
             }
             if ($updatedCount > 0) {
-                $summaryMessage .= "อัปเดต {$updatedCount} รายการ ";
+                $details[] = "อัปเดต {$updatedCount} รายการ";
             }
             if ($skippedCount > 0) {
-                $summaryMessage .= "ข้ามที่ไม่มีการเปลี่ยนแปลง {$skippedCount} รายการ";
+                $details[] = "ไม่มีการเปลี่ยนแปลง {$skippedCount} รายการ";
+            }
+            if ($errorCount > 0) {
+                $details[] = "เกิดข้อผิดพลาด {$errorCount} รายการ";
             }
 
-            // Redirect back with success message
-            return redirect()
-                ->route('layout.ta.teaching', ['id' => $id, 'selected_month' => $request->query('selected_month')])
-                ->with('success', $summaryMessage);
+            if (empty($details)) {
+                $summaryMessage .= "ไม่มีการเปลี่ยนแปลง";
+            } else {
+                $summaryMessage .= implode(", ", $details);
+            }
+
+            // Redirect กลับพร้อมแสดงข้อความสรุป
+            if ($errorCount > 0 && $newCount == 0 && $updatedCount == 0) {
+                return redirect()
+                    ->route('layout.ta.teaching', [
+                        'id' => $id,
+                        'month' => $request->query('month')
+                    ])
+                    ->with('error', $summaryMessage);
+            } else {
+                return redirect()
+                    ->route('layout.ta.teaching', [
+                        'id' => $id,
+                        'month' => $request->query('month')
+                    ])
+                    ->with('success', $summaryMessage);
+            }
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error refreshing extra teachings: ' . $e->getMessage());
+            Log::error('เกิดข้อผิดพลาดในการอัปเดตข้อมูลการสอนพิเศษ: ' . $e->getMessage());
             Log::error($e->getTraceAsString()); // เพิ่ม stack trace เพื่อการแก้ไขปัญหา
+
             return redirect()
                 ->back()
-                ->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูลการสอนพิเศษ: ' . $e->getMessage());
+                ->with('error', 'เกิดข้อผิดพลาดในการอัปเดตข้อมูล: ' . $e->getMessage());
         }
     }
 
