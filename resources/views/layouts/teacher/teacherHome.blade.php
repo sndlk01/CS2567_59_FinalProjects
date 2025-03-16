@@ -9,9 +9,18 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <h4>คำร้องการสมัครผู้ช่วยสอน</h4>
+
+                    @if (isset($currentSemester))
+                        <div class="alert alert-info">
+                            กำลังแสดงข้อมูลภาคการศึกษา: {{ $currentSemester->year }}/{{ $currentSemester->semesters }}
+                            ({{ \Carbon\Carbon::parse($currentSemester->start_date)->format('d/m/Y') }} -
+                            {{ \Carbon\Carbon::parse($currentSemester->end_date)->format('d/m/Y') }})
+                        </div>
+                    @endif
+
                     <div class="container shadow-lg bg-body rounded p-5">
                         @if ($courseTas->isEmpty())
-                            <p>ไม่พบข้อมูลคำร้องการสมัคร</p>
+                            <p>ไม่พบข้อมูลคำร้องการสมัครในภาคการศึกษานี้</p>
                         @else
                             <form action="{{ route('teacher.home') }}" method="POST">
                                 @csrf
