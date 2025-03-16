@@ -136,7 +136,8 @@ class AdminController extends Controller
                     'coursesWithTAs' => collect(),
                     'semesters' => $semesters,
                     'selectedSemester' => null,
-                    'userSelectedSemester' => $userSelectedSemester
+                    'userSelectedSemester' => $userSelectedSemester,
+                    'curriculums' => collect()
                 ])->with('warning', 'ไม่พบข้อมูลภาคการศึกษาที่เลือก');
             }
 
@@ -149,6 +150,7 @@ class AdminController extends Controller
                 ->with([
                     'subjects',
                     'teachers',
+                    'curriculums', // เพิ่มความสัมพันธ์กับตาราง curriculums
                     'course_tas.student',
                     'course_tas.courseTaClasses.requests' => function ($query) {
                         $query->where('status', 'A')
@@ -157,13 +159,17 @@ class AdminController extends Controller
                 ])
                 ->get();
 
+            // ดึงข้อมูลหลักสูตรทั้งหมดเพื่อใช้ในการกรอง
+            $curriculums = \App\Models\Curriculums::orderBy('name_th')->get();
+
             Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
 
             return view('layouts.admin.taUsers', [
                 'coursesWithTAs' => $coursesWithTAs,
                 'semesters' => $semesters,
                 'selectedSemester' => $selectedSemester,
-                'userSelectedSemester' => $userSelectedSemester
+                'userSelectedSemester' => $userSelectedSemester,
+                'curriculums' => $curriculums
             ]);
         } catch (\Exception $e) {
             Log::error('Error in taUsers: ' . $e->getMessage());
@@ -295,10 +301,18 @@ class AdminController extends Controller
      */
     private function getCompensationRate($teachingType, $classType, $degreeLevel = 'undergraduate')
     {
+        // แปลงค่า degree_level ให้ตรงกับที่เก็บในฐานข้อมูล
+        $mappedDegreeLevel = $degreeLevel;
+        if (in_array($degreeLevel, ['master', 'doctoral'])) {
+            $mappedDegreeLevel = 'graduate';
+        } else if (in_array($degreeLevel, ['bachelor', 'bachelor_degree'])) {
+            $mappedDegreeLevel = 'undergraduate';
+        }
+
         // ลองค้นหาในฐานข้อมูลก่อน
         $rate = CompensationRate::where('teaching_type', $teachingType)
             ->where('class_type', $classType)
-            ->where('degree_level', $degreeLevel)
+            ->where('degree_level', $mappedDegreeLevel)  // ใช้ค่าที่แปลงแล้ว
             ->where('status', 'active')
             ->where('is_fixed_payment', false)
             ->first();
@@ -308,14 +322,14 @@ class AdminController extends Controller
             return $rate->rate_per_hour;
         }
 
-        // กรณีไม่พบข้อมูลในฐานข้อมูล ให้ใช้ค่าเริ่มต้นตามที่กำหนด
-        if ($degreeLevel === 'undergraduate' || $degreeLevel === 'bachelor') {
+        // กรณีไม่พบข้อมูลในฐานข้อมูล ให้ใช้ค่าเริ่มต้น
+        if ($mappedDegreeLevel === 'undergraduate') {
             if ($teachingType === 'regular') {
                 return 40; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคปกติ
             } else {
                 return 50; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคพิเศษ
             }
-        } else { // graduate, master, doctoral
+        } else { // graduate
             if ($teachingType === 'regular') {
                 return 50; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคปกติ
             } else {
@@ -324,14 +338,20 @@ class AdminController extends Controller
         }
     }
 
-    /**
-     * ดึงอัตราค่าตอบแทนแบบเหมาจ่ายจากฐานข้อมูล
-     */
+
     private function getFixedCompensationRate($teachingType, $degreeLevel)
     {
+        // แปลงค่า degree_level ให้ตรงกับที่เก็บในฐานข้อมูล
+        $mappedDegreeLevel = $degreeLevel;
+        if (in_array($degreeLevel, ['master', 'doctoral'])) {
+            $mappedDegreeLevel = 'graduate';
+        } else if (in_array($degreeLevel, ['bachelor', 'bachelor_degree'])) {
+            $mappedDegreeLevel = 'undergraduate';
+        }
+
         // ค้นหาข้อมูลในฐานข้อมูล
         $rate = CompensationRate::where('teaching_type', $teachingType)
-            ->where('degree_level', $degreeLevel)
+            ->where('degree_level', $mappedDegreeLevel)  // ใช้ค่าที่แปลงแล้ว
             ->where('status', 'active')
             ->where('is_fixed_payment', true)
             ->first();
@@ -342,10 +362,9 @@ class AdminController extends Controller
         }
 
         // ใช้ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
-        // สำหรับผู้ช่วยสอนบัณฑิตในโครงการพิเศษเท่านั้น
-        if ($degreeLevel === 'graduate' || $degreeLevel === 'master' || $degreeLevel === 'doctoral') {
+        if ($mappedDegreeLevel === 'graduate') {
             if ($teachingType === 'special') {
-                return 4000; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ เหมาจ่ายรายเดือนไม่เกิน 4,000 บาท
+                return 4000; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ เหมาจ่ายรายเดือน
             }
         }
 
@@ -367,36 +386,6 @@ class AdminController extends Controller
 
         return trim($teacherPosition . ' ' . $teacherDegree . '.' . ' ' . $teacherName);
     }
-
-    // private function getCompensationRate($teachingType, $classType, $degreeLevel = 'undergraduate')
-    // {
-    //     $rate = CompensationRate::where('teaching_type', $teachingType)
-    //         ->where('class_type', $classType)
-    //         ->where('degree_level', $degreeLevel)
-    //         ->where('status', 'active')
-    //         ->where('is_fixed_payment', false)
-    //         ->first();
-
-    //     if (!$rate) {
-    //         // ใช้ค่าเริ่มต้นถ้าไม่พบอัตราในฐานข้อมูล
-    //         if ($degreeLevel === 'undergraduate') {
-    //             if ($teachingType === 'regular') {
-    //                 return 40; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคปกติ
-    //             } else {
-    //                 return 50; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคพิเศษ
-    //             }
-    //         } else { // graduate
-    //             if ($teachingType === 'regular') {
-    //                 return 50; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคปกติ
-    //             } else {
-    //                 return 60; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ (กรณีไม่ใช้เหมาจ่าย)
-    //             }
-    //         }
-    //     }
-
-    //     return $rate->rate_per_hour;
-    // }
-
 
     public function taDetail($student_id)
     {
@@ -636,6 +625,13 @@ class AdminController extends Controller
                 'total' => $regularLectureHours + $regularLabHours + $specialLectureHours + $specialLabHours
             ]);
 
+            //dump("Student degree level: " . ($student->degree_level ?? 'Not set'));
+
+            // $regularLectureRate = $this->getCompensationRate('regular', 'LECTURE', $student->degree_level ?? 'undergraduate');
+            // $regularLabRate = $this->getCompensationRate('regular', 'LAB', $student->degree_level ?? 'undergraduate');
+            // $specialLectureRate = $this->getCompensationRate('special', 'LECTURE', $student->degree_level ?? 'undergraduate');
+            // $specialLabRate = $this->getCompensationRate('special', 'LAB', $student->degree_level ?? 'undergraduate');
+
             $regularLectureRate = $this->getCompensationRate('regular', 'LECTURE', $student->degree_level ?? 'undergraduate');
             $regularLabRate = $this->getCompensationRate('regular', 'LAB', $student->degree_level ?? 'undergraduate');
             $specialLectureRate = $this->getCompensationRate('special', 'LECTURE', $student->degree_level ?? 'undergraduate');
@@ -713,11 +709,31 @@ class AdminController extends Controller
                 Log::info('Error getting TA transactions: ' . $e->getMessage());
             }
 
+            // ในเมธอด taDetail ส่วนที่จะต้องแก้ไข
+
             $degreeLevel = $student->degree_level ?? 'undergraduate';
+            $isGraduate = in_array($degreeLevel, ['master', 'doctoral', 'graduate']);
             $isFixedPayment = false;
             $fixedAmount = null;
 
-            $degreeLevel = $student->degree_level ?? 'undergraduate';
+            // ตรวจสอบว่าเป็นผู้ช่วยสอนระดับบัณฑิตศึกษาและสอนในโครงการพิเศษหรือไม่
+            if ($isGraduate && ($compensation['specialLectureHours'] > 0 || $compensation['specialLabHours'] > 0)) {
+                // ดึงอัตราเหมาจ่ายจากฐานข้อมูล
+                $fixedAmount = $this->getFixedCompensationRate('special', $degreeLevel);
+
+                if ($fixedAmount) {
+                    $isFixedPayment = true;
+                    // ปรับค่าตอบแทนให้เป็นแบบเหมาจ่าย
+                    $compensation['specialPay'] = $fixedAmount;
+                    $totalPay = $compensation['regularPay'] + $fixedAmount;
+                    $compensation['totalPay'] = $totalPay;
+
+                    Log::debug("Using fixed payment: {$fixedAmount}");
+                } else {
+                    Log::debug("No fixed compensation rate found, using hourly rate");
+                }
+            }
+
             $isGraduate = in_array($degreeLevel, ['master', 'doctoral', 'graduate']);
             // ในเมธอด taDetail หรือ getMonthlyCompensationData
             if ($isGraduate && ($compensation['specialLectureHours'] > 0 || $compensation['specialLabHours'] > 0)) {
@@ -763,8 +779,13 @@ class AdminController extends Controller
             $attendancesBySection = $allAttendances->groupBy('section');
             // เพิ่มบรรทัดนี้เพื่อกำหนดค่า courseTa
             $courseTa = $ta;
-
-            // dd($allAttendances);
+            // dd([
+            //     'student_degree' => $student->degree_level,
+            //     'regularLectureRate' => $regularLectureRate,
+            //     'regularLabRate' => $regularLabRate,
+            //     'specialLectureRate' => $specialLectureRate,
+            //     'specialLabRate' => $specialLabRate
+            // ]);            // dd($allAttendances);
             // ส่งข้อมูลทั้งหมดไปยัง view
             return view('layouts.admin.detailsById', compact(
                 'student',
@@ -783,7 +804,11 @@ class AdminController extends Controller
                 'remainingBudget',
                 'isExceeded',
                 'isFixedPayment',
-                'fixedAmount'
+                'fixedAmount',
+                'regularLectureRate',
+                'regularLabRate',
+                'specialLectureRate',
+                'specialLabRate',
             ));
         } catch (\Exception $e) {
             Log::error('Exception in taDetail: ' . $e->getMessage());
@@ -859,450 +884,6 @@ class AdminController extends Controller
         ];
     }
 
-    // version 1
-    // public function exportTaDetailPDF($id)
-    // {
-    //     try {
-    //         $selectedYearMonth = request('month');
-
-    //         $ta = CourseTas::with(['student', 'course.semesters', 'course.teachers'])
-    //             ->whereHas('student', function ($query) use ($id) {
-    //                 $query->where('id', $id);
-    //             })
-    //             ->first();
-
-    //         if (!$ta) {
-    //             return back()->with('error', 'ไม่พบข้อมูลผู้ช่วยสอน');
-    //         }
-
-    //         $student = $ta->student;
-    //         $semester = $ta->course->semesters;
-
-    //         $teacherName = $ta->course->teachers->name ?? 'อาจารย์ผู้สอน';
-    //         $teacherPosition = $ta->course->teachers->position ?? '';
-    //         $teacherDegree = $ta->course->teachers->degree ?? '';
-    //         $teacherFullTitle = trim($teacherPosition . ' ' . $teacherDegree . '.' . ' ' . $teacherName);
-
-    //         $headName = 'ผศ. ดร.คำรณ สุนัติ';
-
-    //         $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
-
-    //         $currentDate = \Carbon\Carbon::now();
-    //         $thaiMonth = $currentDate->locale('th')->monthName;
-    //         $thaiYear = $currentDate->year + 543;
-    //         $formattedDate = [
-    //             'day' => $currentDate->day,
-    //             'month' => $thaiMonth,
-    //             'year' => $thaiYear
-    //         ];
-
-    //         $monthText = $selectedDate->locale('th')->monthName . ' ' . ($selectedDate->year + 543);
-    //         $year = $selectedDate->year + 543;
-
-    //         // คำนวณจำนวนนักศึกษาและงบประมาณ
-    //         $course = Courses::with('classes')->find($ta->course_id);
-    //         $totalStudents = $course ? $course->classes->sum('enrolled_num') : 0;
-    //         $totalBudget = $totalStudents * 300; // 300 บาทต่อคน
-
-    //         // ดึงข้อมูลงบประมาณคงเหลือรายวิชา
-    //         $courseBudget = CourseBudget::where('course_id', $ta->course_id)->first();
-    //         $remainingBudget = $courseBudget ? $courseBudget->remaining_budget : $totalBudget;
-
-    //         // ดึงรายการเบิกจ่ายของเดือนนี้ (ถ้ามี)
-    //         $transaction = CompensationTransaction::where('student_id', $student->id)
-    //             ->where('course_id', $ta->course_id)
-    //             ->where('month_year', $selectedYearMonth)
-    //             ->first();
-
-    //         $allAttendances = collect();
-    //         $regularAttendances = collect();
-    //         $specialAttendances = collect();
-
-    //         $hasRegularProject = false;
-    //         $hasSpecialProject = false;
-
-    //         // Initialize variables to prevent undefined errors
-    //         $isFixedPayment = false;
-    //         $fixedAmount = 0;
-    //         $specialPay = 0;
-    //         $regularLectureHoursSum = 0;
-    //         $regularLabHoursSum = 0;
-    //         $specialLectureHoursSum = 0;
-    //         $specialLabHoursSum = 0;
-
-    //         // ดึงข้อมูลการสอนปกติ
-    //         $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects', 'class.major'])
-    //             ->where('class_id', 'LIKE', $ta->course_id . '%')
-    //             ->whereYear('start_time', $selectedDate->year)
-    //             ->whereMonth('start_time', $selectedDate->month)
-    //             ->whereHas('attendance', function ($query) use ($student) {
-    //                 $query->where('student_id', $student->id)
-    //                     ->where('approve_status', 'A');
-    //             })
-    //             ->get()
-    //             ->groupBy(function ($teaching) {
-    //                 return $teaching->class->section_num;
-    //             });
-
-    //         foreach ($teachings as $section => $sectionTeachings) {
-    //             foreach ($sectionTeachings as $teaching) {
-    //                 $startTime = \Carbon\Carbon::parse($teaching->start_time);
-    //                 $endTime = \Carbon\Carbon::parse($teaching->end_time);
-    //                 $hours = $endTime->diffInMinutes($startTime) / 60;
-
-    //                 $majorType = $teaching->class->major->major_type ?? 'N';
-    //                 $classType = $teaching->class_type === 'L' ? 'LAB' : 'LECTURE';
-
-    //                 if ($majorType === 'N') {
-    //                     $hasRegularProject = true;
-
-    //                     if ($classType === 'LECTURE') {
-    //                         $regularLectureHoursSum += $hours;
-    //                     } else {
-    //                         $regularLabHoursSum += $hours;
-    //                     }
-
-    //                     $regularAttendances->push([
-    //                         'type' => 'regular',
-    //                         'data' => $teaching,
-    //                         'hours' => $hours,
-    //                         'class_type' => $classType
-    //                     ]);
-    //                 } else {
-    //                     $hasSpecialProject = true;
-
-    //                     if ($classType === 'LECTURE') {
-    //                         $specialLectureHoursSum += $hours;
-    //                     } else {
-    //                         $specialLabHoursSum += $hours;
-    //                     }
-
-    //                     $specialAttendances->push([
-    //                         'type' => 'regular',
-    //                         'data' => $teaching,
-    //                         'hours' => $hours,
-    //                         'class_type' => $classType
-    //                     ]);
-    //                 }
-
-    //                 $allAttendances->push([
-    //                     'type' => 'regular',
-    //                     'section' => $section,
-    //                     'date' => $teaching->start_time,
-    //                     'data' => $teaching,
-    //                     'hours' => $hours,
-    //                     'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
-    //                     'class_type' => $classType
-    //                 ]);
-    //             }
-    //         }
-
-    //         // ดึงข้อมูลการสอนชดเชย
-    //         $extraTeachingIds = Attendances::where('student_id', $student->id)
-    //             ->where('is_extra', true)
-    //             ->where('approve_status', 'A')
-    //             ->whereNotNull('extra_teaching_id')
-    //             ->pluck('extra_teaching_id')
-    //             ->toArray();
-
-    //         $extraTeachings = ExtraTeaching::with(['class.major'])
-    //             ->whereIn('extra_class_id', $extraTeachingIds)
-    //             ->whereBetween('class_date', [
-    //                 $selectedDate->startOfMonth()->format('Y-m-d'),
-    //                 $selectedDate->endOfMonth()->format('Y-m-d')
-    //             ])
-    //             ->get();
-
-    //         foreach ($extraTeachings as $teaching) {
-    //             $startTime = \Carbon\Carbon::parse($teaching->start_time);
-    //             $endTime = \Carbon\Carbon::parse($teaching->end_time);
-    //             $hours = $endTime->diffInMinutes($startTime) / 60;
-
-    //             $majorType = $teaching->class->major->major_type ?? 'N';
-    //             $classType = $teaching->class_type === 'L' ? 'LAB' : 'LECTURE';
-
-    //             if ($majorType === 'N') {
-    //                 $hasRegularProject = true;
-
-    //                 if ($classType === 'LECTURE') {
-    //                     $regularLectureHoursSum += $hours;
-    //                 } else {
-    //                     $regularLabHoursSum += $hours;
-    //                 }
-
-    //                 $regularAttendances->push([
-    //                     'type' => 'extra',
-    //                     'data' => $teaching,
-    //                     'hours' => $hours,
-    //                     'class_type' => $classType
-    //                 ]);
-    //             } else {
-    //                 $hasSpecialProject = true;
-
-    //                 if ($classType === 'LECTURE') {
-    //                     $specialLectureHoursSum += $hours;
-    //                 } else {
-    //                     $specialLabHoursSum += $hours;
-    //                 }
-
-    //                 $specialAttendances->push([
-    //                     'type' => 'extra',
-    //                     'data' => $teaching,
-    //                     'hours' => $hours,
-    //                     'class_type' => $classType
-    //                 ]);
-    //             }
-
-    //             $allAttendances->push([
-    //                 'type' => 'extra',
-    //                 'section' => $teaching->class->section_num ?? 'N/A',
-    //                 'date' => $teaching->class_date . ' ' . $teaching->start_time,
-    //                 'data' => $teaching,
-    //                 'hours' => $hours,
-    //                 'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
-    //                 'class_type' => $classType
-    //             ]);
-    //         }
-
-    //         // ดึงข้อมูลการทำงานพิเศษ
-    //         $extraAttendances = ExtraAttendances::with(['classes.course.subjects', 'classes.major'])
-    //             ->where('student_id', $student->id)
-    //             ->where('approve_status', 'A')
-    //             ->whereYear('start_work', $selectedDate->year)
-    //             ->whereMonth('start_work', $selectedDate->month)
-    //             ->get();
-
-    //         foreach ($extraAttendances as $attendance) {
-    //             $hours = $attendance->duration / 60;
-    //             $majorType = $attendance->classes && $attendance->classes->major
-    //                 ? $attendance->classes->major->major_type
-    //                 : 'N';
-    //             $classType = $attendance->class_type === 'L' ? 'LAB' : 'LECTURE';
-
-    //             if ($majorType === 'N') {
-    //                 $hasRegularProject = true;
-
-    //                 if ($classType === 'LECTURE') {
-    //                     $regularLectureHoursSum += $hours;
-    //                 } else {
-    //                     $regularLabHoursSum += $hours;
-    //                 }
-
-    //                 $regularAttendances->push([
-    //                     'type' => 'special',
-    //                     'data' => $attendance,
-    //                     'hours' => $hours,
-    //                     'class_type' => $classType
-    //                 ]);
-    //             } else {
-    //                 $hasSpecialProject = true;
-
-    //                 if ($classType === 'LECTURE') {
-    //                     $specialLectureHoursSum += $hours;
-    //                 } else {
-    //                     $specialLabHoursSum += $hours;
-    //                 }
-
-    //                 $specialAttendances->push([
-    //                     'type' => 'special',
-    //                     'data' => $attendance,
-    //                     'hours' => $hours,
-    //                     'class_type' => $classType
-    //                 ]);
-    //             }
-
-    //             $allAttendances->push([
-    //                 'type' => 'special',
-    //                 'section' => $attendance->classes ? $attendance->classes->section_num : 'N/A',
-    //                 'date' => $attendance->start_work,
-    //                 'data' => $attendance,
-    //                 'hours' => $hours,
-    //                 'teaching_type' => $majorType === 'N' ? 'regular' : 'special',
-    //                 'class_type' => $classType
-    //             ]);
-    //         }
-
-    //         // ดึงอัตราค่าตอบแทน
-    //         $regularRate = $this->getCompensationRate('regular', 'LECTURE', $student->degree_level ?? 'undergraduate');
-    //         $specialRate = $this->getCompensationRate('special', 'LECTURE', $student->degree_level ?? 'undergraduate');
-
-    //         // คำนวณค่าตอบแทน
-    //         $regularPay = ($regularLectureHoursSum + $regularLabHoursSum) * $regularRate;
-    //         $specialPay = ($specialLectureHoursSum + $specialLabHoursSum) * $specialRate;
-
-    //         // ตรวจสอบว่าเป็นผู้ช่วยสอนระดับบัณฑิตศึกษาและสอนในโครงการพิเศษหรือไม่
-    //         $isGraduate = in_array($student->degree_level, ['master', 'doctoral', 'graduate']);
-    //         $isFixedPayment = $isGraduate && $hasSpecialProject;
-
-    //         if ($isFixedPayment) {
-    //             // ดึงอัตราเหมาจ่ายจากฐานข้อมูล
-    //             $fixedAmount = $this->getFixedCompensationRate('special', $student->degree_level ?? 'graduate');
-    //             $specialPay = $fixedAmount ?? 4000; // ค่าเริ่มต้น 4,000 บาท
-    //         }
-
-    //         $totalPay = $regularPay + $specialPay;
-
-    //         // คำนวณสัดส่วนเงินระหว่างโครงการปกติและโครงการพิเศษ
-    //         $regularProportion = 0;
-    //         $specialProportion = 0;
-
-    //         if ($totalPay > 0) {
-    //             $regularProportion = $regularPay / $totalPay;
-    //             $specialProportion = $specialPay / $totalPay;
-    //         }
-
-    //         // ตรวจสอบว่ามีการเบิกจ่ายแล้วหรือไม่ และตรวจสอบงบประมาณคงเหลือ
-    //         $isExceeded = $totalPay > $remainingBudget;
-    //         $actualTotalPay = $totalPay;
-    //         $actualRegularPay = $regularPay;
-    //         $actualSpecialPay = $specialPay;
-
-    //         if ($transaction) {
-    //             // ถ้ามีการบันทึกรายการเบิกจ่ายแล้ว ใช้ยอดตามที่บันทึก และคำนวณตามสัดส่วน
-    //             $actualTotalPay = $transaction->actual_amount;
-    //             $actualRegularPay = $actualTotalPay * $regularProportion;
-    //             $actualSpecialPay = $actualTotalPay * $specialProportion;
-    //         } else if ($isExceeded) {
-    //             // ถ้ายังไม่มีการบันทึกและเกินงบประมาณคงเหลือ จำกัดไม่เกินงบประมาณคงเหลือ และคำนวณตามสัดส่วน
-    //             $actualTotalPay = $remainingBudget;
-    //             $actualRegularPay = $actualTotalPay * $regularProportion;
-    //             $actualSpecialPay = $actualTotalPay * $specialProportion;
-    //         }
-
-    //         $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
-
-    //         $compensationRates = [
-    //             'regularLecture' => $regularRate,
-    //             'specialLecture' => $specialRate
-    //         ];
-
-    //         $pdf = PDF::loadView('exports.detailPDF', compact(
-    //             'student',
-    //             'semester',
-    //             'attendancesBySection',
-    //             'selectedYearMonth',
-    //             'monthText',
-    //             'year',
-    //             'compensationRates',
-    //             'headName',
-    //             'formattedDate',
-    //             'teacherFullTitle',
-    //             'hasRegularProject',
-    //             'hasSpecialProject',
-    //             'isFixedPayment',
-    //             'fixedAmount',
-    //             'specialPay',
-    //             'regularAttendances',
-    //             'specialAttendances',
-    //             'regularLectureHoursSum',
-    //             'regularLabHoursSum',
-    //             'specialLectureHoursSum',
-    //             'specialLabHoursSum',
-    //             'actualTotalPay',
-    //             'actualRegularPay',
-    //             'actualSpecialPay',
-    //             'totalPay',
-    //             'transaction',
-    //             'isExceeded',
-    //             'remainingBudget'
-    //         ));
-
-    //         $pdf->setPaper('A4');
-    //         $fileName = 'TA-Compensation-Detail-' . $student->student_id . '-' . $selectedYearMonth . '.pdf';
-
-    //         return $pdf->download($fileName);
-    //     } catch (\Exception $e) {
-    //         Log::error('PDF Export Error: ' . $e->getMessage());
-    //         return back()->with('error', 'เกิดข้อผิดพลาดในการสร้าง PDF: ' . $e->getMessage());
-    //     }
-    // }
-
-
-    // version 2
-    // public function exportTaDetailPDF($id)
-    // {
-    //     try {
-    //         $selectedYearMonth = request('month');
-
-    //         // Get student data with proper joins to ensure relationships are loaded
-    //         $student = Students::findOrFail($id);
-    //         $course_id = request('course_id');
-
-    //         // Find the course_ta record reliably
-    //         $ta = CourseTas::where('student_id', $id)
-    //             ->where('course_id', $course_id)
-    //             ->firstOrFail();
-
-    //         $course = $ta->course;
-    //         $semester = $course->semesters;
-
-    //         // Get attendance data
-    //         $attendanceData = $this->getAttendancesData($id, $course_id, $selectedYearMonth);
-
-    //         // Filter the attendances by teaching type (regular or special)
-    //         $regularAttendances = $attendanceData['regularAttendances'];
-    //         $specialAttendances = $attendanceData['specialAttendances'];
-
-    //         // More accurate flags for whether regular or special project exist
-    //         $hasRegularProject = $regularAttendances->isNotEmpty();
-    //         $hasSpecialProject = $specialAttendances->isNotEmpty();
-
-    //         // Make sure to pass these properly filtered collections to the view
-    //         $data = [
-    //             'student' => $student,
-    //             'course' => $course,
-    //             'semester' => $semester,
-    //             'attendancesBySection' => $attendanceData['attendancesBySection'],
-    //             'selectedYearMonth' => $selectedYearMonth,
-    //             'monthText' => \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth)->locale('th')->monthName,
-    //             'year' => \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth)->year + 543,
-    //             'compensationRates' => [
-    //                 'regularLecture' => $this->getCompensationRate('regular', 'LECTURE', $student->degree_level ?? 'undergraduate'),
-    //                 'regularLab' => $this->getCompensationRate('regular', 'LAB', $student->degree_level ?? 'undergraduate'),
-    //                 'specialLecture' => $this->getCompensationRate('special', 'LECTURE', $student->degree_level ?? 'undergraduate'),
-    //                 'specialLab' => $this->getCompensationRate('special', 'LAB', $student->degree_level ?? 'undergraduate')
-    //             ],
-    //             'headName' => 'ผศ. ดร.คำรณ สุนัติ',
-    //             'formattedDate' => [
-    //                 'day' => \Carbon\Carbon::now()->day,
-    //                 'month' => \Carbon\Carbon::now()->locale('th')->monthName,
-    //                 'year' => \Carbon\Carbon::now()->year + 543
-    //             ],
-    //             'teacherFullTitle' => $this->getTeacherFullTitle($course),
-    //             'hasRegularProject' => $hasRegularProject,
-    //             'hasSpecialProject' => $hasSpecialProject,
-    //             'regularAttendances' => $regularAttendances,
-    //             'specialAttendances' => $specialAttendances,
-    //             'regularLectureHoursSum' => $attendanceData['regularLectureHoursSum'],
-    //             'regularLabHoursSum' => $attendanceData['regularLabHoursSum'],
-    //             'specialLectureHoursSum' => $attendanceData['specialLectureHoursSum'],
-    //             'specialLabHoursSum' => $attendanceData['specialLabHoursSum'],
-    //             'isFixedPayment' => $attendanceData['isFixedPayment'],
-    //             'fixedAmount' => $attendanceData['fixedAmount'],
-    //             'specialPay' => $attendanceData['specialPay']
-    //         ];
-
-    //         // Get transaction data if it exists
-    //         $transaction = CompensationTransaction::where('student_id', $id)
-    //             ->where('course_id', $course_id)
-    //             ->where('month_year', $selectedYearMonth)
-    //             ->first();
-
-    //         if ($transaction) {
-    //             $data['transaction'] = $transaction;
-    //             $data['actualRegularPay'] = $data['regularLecturePay'] + $data['regularLabPay'];
-    //             $data['actualSpecialPay'] = $data['specialPay'];
-    //         }
-
-    //         $pdf = PDF::loadView('exports.detailPDF', $data);
-    //         $pdf->setPaper('A4');
-
-    //         return $pdf->download('TA-Compensation-Detail-' . $student->student_id . '-' . $selectedYearMonth . '.pdf');
-    //     } catch (\Exception $e) {
-    //         Log::error('PDF Export Error: ' . $e->getMessage());
-    //         return back()->with('error', 'เกิดข้อผิดพลาดในการสร้าง PDF: ' . $e->getMessage());
-    //     }
-    // }
 
     // version 3
     public function exportTaDetailPDF($id)
@@ -1399,407 +980,6 @@ class AdminController extends Controller
         return $textBaht . 'ถ้วน';
     }
 
-    // version 1
-    // public function exportResultPDF($id)
-    // {
-    //     try {
-    //         $selectedYearMonth = request('month');
-
-    //         $ta = CourseTas::with(['student', 'course.semesters', 'course.teachers'])
-    //             ->whereHas('student', function ($query) use ($id) {
-    //                 $query->where('id', $id);
-    //             })
-    //             ->first();
-
-    //         if (!$ta) {
-    //             return back()->with('error', 'ไม่พบข้อมูลผู้ช่วยสอน');
-    //         }
-
-    //         $student = $ta->student;
-    //         $semester = $ta->course->semesters;
-
-    //         $teacherName = $ta->course->teachers->name ?? 'อาจารย์ผู้สอน';
-    //         $teacherPosition = $ta->course->teachers->position ?? '';
-    //         $teacherDegree = $ta->course->teachers->degree ?? '';
-    //         $teacherFullTitle = trim($teacherPosition . ' ' . $teacherDegree . '.' . ' ' . $teacherName);
-
-    //         $headName = 'ผศ. ดร.คำรณ สุนัติ';
-
-    //         $selectedDate = \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth);
-
-    //         $currentDate = \Carbon\Carbon::now();
-    //         $thaiMonth = $currentDate->locale('th')->monthName;
-    //         $thaiYear = $currentDate->year + 543;
-    //         $formattedDate = [
-    //             'day' => $currentDate->day,
-    //             'month' => $thaiMonth,
-    //             'year' => $thaiYear
-    //         ];
-
-    //         $monthText = $selectedDate->locale('th')->monthName . ' ' . ($selectedDate->year + 543);
-    //         $year = $selectedDate->year + 543;
-
-    //         // Initialize collections and variables
-    //         $allAttendances = collect();
-    //         $regularAttendances = collect();
-    //         $specialAttendances = collect();
-
-    //         $hasRegularProject = false;
-    //         $hasSpecialProject = false;
-
-    //         $regularLectureHours = 0;
-    //         $regularLabHours = 0;
-    //         $specialLectureHours = 0;
-    //         $specialLabHours = 0;
-
-    //         // ดึงข้อมูลการสอนปกติ
-    //         $teachings = Teaching::with(['attendance', 'teacher', 'class.course.subjects', 'class.major'])
-    //             ->where('class_id', 'LIKE', $ta->course_id . '%')
-    //             ->whereYear('start_time', $selectedDate->year)
-    //             ->whereMonth('start_time', $selectedDate->month)
-    //             ->whereHas('attendance', function ($query) use ($student) {
-    //                 $query->where('student_id', $student->id)
-    //                     ->where('approve_status', 'A');
-    //             })
-    //             ->get()
-    //             ->groupBy(function ($teaching) {
-    //                 return $teaching->class->section_num;
-    //             });
-
-    //         // ประมวลผลข้อมูลการสอนปกติ
-    //         foreach ($teachings as $section => $sectionTeachings) {
-    //             foreach ($sectionTeachings as $teaching) {
-    //                 $startTime = \Carbon\Carbon::parse($teaching->start_time);
-    //                 $endTime = \Carbon\Carbon::parse($teaching->end_time);
-    //                 $hours = $endTime->diffInMinutes($startTime) / 60;
-
-    //                 $majorType = $teaching->class->major->major_type ?? 'N';
-    //                 $classType = $teaching->class_type === 'L' ? 'LAB' : 'LECTURE';
-
-    //                 if ($majorType === 'N' || $majorType === '') {
-    //                     $hasRegularProject = true;
-
-    //                     if ($classType === 'LECTURE') {
-    //                         $regularLectureHours += $hours;
-    //                     } else {
-    //                         $regularLabHours += $hours;
-    //                     }
-
-    //                     $regularAttendances->push([
-    //                         'type' => 'regular',
-    //                         'data' => $teaching,
-    //                         'hours' => $hours,
-    //                         'class_type' => $classType
-    //                     ]);
-    //                 } else {
-    //                     $hasSpecialProject = true;
-
-    //                     if ($classType === 'LECTURE') {
-    //                         $specialLectureHours += $hours;
-    //                     } else {
-    //                         $specialLabHours += $hours;
-    //                     }
-
-    //                     $specialAttendances->push([
-    //                         'type' => 'regular',
-    //                         'data' => $teaching,
-    //                         'hours' => $hours,
-    //                         'class_type' => $classType
-    //                     ]);
-    //                 }
-
-    //                 $allAttendances->push([
-    //                     'type' => 'regular',
-    //                     'section' => $section,
-    //                     'date' => $teaching->start_time,
-    //                     'data' => $teaching,
-    //                     'hours' => $hours,
-    //                     'teaching_type' => ($majorType === 'N' || $majorType === '') ? 'regular' : 'special',
-    //                     'class_type' => $classType
-    //                 ]);
-    //             }
-    //         }
-
-    //         // ดึงข้อมูลการสอนชดเชย
-    //         $extraTeachingIds = Attendances::where('student_id', $student->id)
-    //             ->where('is_extra', true)
-    //             ->where('approve_status', 'A')
-    //             ->whereNotNull('extra_teaching_id')
-    //             ->pluck('extra_teaching_id')
-    //             ->toArray();
-
-    //         $extraTeachings = ExtraTeaching::with(['class.major', 'class.course.subjects'])
-    //             ->whereIn('extra_class_id', $extraTeachingIds)
-    //             ->whereBetween('class_date', [
-    //                 $selectedDate->startOfMonth()->format('Y-m-d'),
-    //                 $selectedDate->endOfMonth()->format('Y-m-d')
-    //             ])
-    //             ->get();
-
-    //         // ประมวลผลข้อมูลการสอนชดเชย
-    //         foreach ($extraTeachings as $teaching) {
-    //             $startTime = \Carbon\Carbon::parse($teaching->start_time);
-    //             $endTime = \Carbon\Carbon::parse($teaching->end_time);
-    //             $hours = $endTime->diffInMinutes($startTime) / 60;
-
-    //             $majorType = $teaching->class->major->major_type ?? 'N';
-    //             $classType = $teaching->class_type === 'L' ? 'LAB' : 'LECTURE';
-
-    //             if ($majorType === 'N' || $majorType === '') {
-    //                 $hasRegularProject = true;
-
-    //                 if ($classType === 'LECTURE') {
-    //                     $regularLectureHours += $hours;
-    //                 } else {
-    //                     $regularLabHours += $hours;
-    //                 }
-
-    //                 $regularAttendances->push([
-    //                     'type' => 'extra',
-    //                     'data' => $teaching,
-    //                     'hours' => $hours,
-    //                     'class_type' => $classType
-    //                 ]);
-    //             } else {
-    //                 $hasSpecialProject = true;
-
-    //                 if ($classType === 'LECTURE') {
-    //                     $specialLectureHours += $hours;
-    //                 } else {
-    //                     $specialLabHours += $hours;
-    //                 }
-
-    //                 $specialAttendances->push([
-    //                     'type' => 'extra',
-    //                     'data' => $teaching,
-    //                     'hours' => $hours,
-    //                     'class_type' => $classType
-    //                 ]);
-    //             }
-
-    //             $allAttendances->push([
-    //                 'type' => 'extra',
-    //                 'section' => $teaching->class->section_num ?? 'N/A',
-    //                 'date' => $teaching->class_date . ' ' . $teaching->start_time,
-    //                 'data' => $teaching,
-    //                 'hours' => $hours,
-    //                 'teaching_type' => ($majorType === 'N' || $majorType === '') ? 'regular' : 'special',
-    //                 'class_type' => $classType
-    //             ]);
-    //         }
-
-    //         // ดึงข้อมูลการทำงานพิเศษ
-    //         $extraAttendances = ExtraAttendances::with(['classes.course.subjects', 'classes.major'])
-    //             ->where('student_id', $student->id)
-    //             ->where('approve_status', 'A')
-    //             ->whereYear('start_work', $selectedDate->year)
-    //             ->whereMonth('start_work', $selectedDate->month)
-    //             ->get();
-
-    //         // ประมวลผลข้อมูลการทำงานพิเศษ
-    //         foreach ($extraAttendances as $attendance) {
-    //             $hours = $attendance->duration / 60;
-
-    //             // ตรวจสอบและป้องกันกรณีข้อมูลไม่ครบถ้วน
-    //             if (!$attendance->classes || !$attendance->classes->major) {
-    //                 // กรณีไม่มีข้อมูล major เราถือว่าเป็นโครงการปกติ (N)
-    //                 $majorType = 'N';
-    //             } else {
-    //                 $majorType = $attendance->classes->major->major_type ?? 'N';
-    //             }
-
-    //             $classType = $attendance->class_type === 'L' ? 'LAB' : 'LECTURE';
-
-    //             if ($majorType === 'N' || $majorType === '') {
-    //                 $hasRegularProject = true;
-
-    //                 if ($classType === 'LECTURE') {
-    //                     $regularLectureHours += $hours;
-    //                 } else {
-    //                     $regularLabHours += $hours;
-    //                 }
-
-    //                 $regularAttendances->push([
-    //                     'type' => 'special',
-    //                     'data' => $attendance,
-    //                     'hours' => $hours,
-    //                     'class_type' => $classType
-    //                 ]);
-    //             } else {
-    //                 $hasSpecialProject = true;
-
-    //                 if ($classType === 'LECTURE') {
-    //                     $specialLectureHours += $hours;
-    //                 } else {
-    //                     $specialLabHours += $hours;
-    //                 }
-
-    //                 $specialAttendances->push([
-    //                     'type' => 'special',
-    //                     'data' => $attendance,
-    //                     'hours' => $hours,
-    //                     'class_type' => $classType
-    //                 ]);
-    //             }
-
-    //             $allAttendances->push([
-    //                 'type' => 'special',
-    //                 'section' => $attendance->classes ? $attendance->classes->section_num : 'N/A',
-    //                 'date' => $attendance->start_work,
-    //                 'data' => $attendance,
-    //                 'hours' => $hours,
-    //                 'teaching_type' => ($majorType === 'N' || $majorType === '') ? 'regular' : 'special',
-    //                 'class_type' => $classType
-    //             ]);
-    //         }
-
-    //         // ดึงอัตราค่าตอบแทน
-    //         $degreeLevel = $student->degree_level ?? 'undergraduate';
-    //         $regularLectureRate = $this->getCompensationRate('regular', 'LECTURE', $degreeLevel);
-    //         $regularLabRate = $this->getCompensationRate('regular', 'LAB', $degreeLevel);
-    //         $specialLectureRate = $this->getCompensationRate('special', 'LECTURE', $degreeLevel);
-    //         $specialLabRate = $this->getCompensationRate('special', 'LAB', $degreeLevel);
-
-    //         // คำนวณค่าตอบแทน
-    //         $regularLecturePay = $regularLectureHours * $regularLectureRate;
-    //         $regularLabPay = $regularLabHours * $regularLabRate;
-    //         $specialLecturePay = $specialLectureHours * $specialLectureRate;
-    //         $specialLabPay = $specialLabHours * $specialLabRate;
-
-    //         $regularPay = $regularLecturePay + $regularLabPay;
-    //         $specialPay = $specialLecturePay + $specialLabPay;
-
-    //         // ตรวจสอบว่าเป็นผู้ช่วยสอนระดับบัณฑิตศึกษาและสอนในโครงการพิเศษหรือไม่
-    //         $isGraduate = in_array($student->degree_level, ['master', 'doctoral', 'graduate']);
-    //         $isFixedPayment = $isGraduate && $hasSpecialProject;
-    //         $fixedAmount = null;
-
-    //         if ($isFixedPayment) {
-    //             // ดึงอัตราเหมาจ่ายจากฐานข้อมูล
-    //             $fixedRate = CompensationRate::where('teaching_type', 'special')
-    //                 ->where('degree_level', 'graduate')
-    //                 ->where('is_fixed_payment', true)
-    //                 ->where('status', 'active')
-    //                 ->first();
-
-    //             if ($fixedRate && $fixedRate->fixed_amount > 0) {
-    //                 $fixedAmount = $fixedRate->fixed_amount;
-    //             } else {
-    //                 $fixedAmount = 4000; // ค่าเริ่มต้น 4,000 บาท
-    //             }
-
-    //             $specialPay = $fixedAmount;
-    //         }
-
-    //         $totalPay = $regularPay + $specialPay;
-
-    //         // ตรวจสอบว่ามีการบันทึกรายการเบิกจ่ายไว้หรือไม่
-    //         $transaction = CompensationTransaction::where('student_id', $student->id)
-    //             ->where('course_id', $ta->course_id)
-    //             ->where('month_year', $selectedYearMonth)
-    //             ->first();
-
-    //         // กำหนดยอดรับจริงให้เท่ากับยอดคำนวณปกติ (ไม่มีการแบ่งส่วน)
-    //         $actualRegularPay = $regularPay;
-    //         $actualSpecialPay = $specialPay;
-    //         $actualTotalPay = $totalPay;
-
-    //         // ถ้ามีการบันทึกรายการในตาราง CompensationTransaction ให้ใช้ค่านั้นเป็นยอดรวมทั้งหมด
-    //         if ($transaction) {
-    //             // ไม่มีการแบ่งยอดระหว่างโครงการ ใช้ยอดตามที่คำนวณไว้
-    //             $actualTotalPay = $transaction->actual_amount;
-
-    //             // ตัวแปรเหล่านี้ใช้เฉพาะในการแสดงผล ไม่มีผลต่อการเบิกจ่ายจริง
-    //             $actualRegularPay = $hasRegularProject ? $regularPay : 0;
-    //             $actualSpecialPay = $hasSpecialProject ? $specialPay : 0;
-    //         }
-
-    //         // เรียงข้อมูลตามวันที่และจัดกลุ่มตาม section
-    //         $attendancesBySection = $allAttendances->sortBy('date')->groupBy('section');
-
-    //         // เตรียมข้อมูลอัตราค่าตอบแทน
-    //         $compensationRates = [
-    //             'regularLecture' => $regularLectureRate,
-    //             'regularLab' => $regularLabRate,
-    //             'specialLecture' => $specialLectureRate,
-    //             'specialLab' => $specialLabRate
-    //         ];
-
-    //         // คำนวณจำนวนเงินในแต่ละแบบการจ่าย (ตามชั่วโมงและเหมาจ่าย)
-    //         $hourlySpecialPay = ($specialLectureHours * $specialLectureRate) + ($specialLabHours * $specialLabRate);
-    //         $fixedSpecialPay = $isFixedPayment ? ($fixedAmount ?? 4000) : 0;
-
-    //         $courseBudget = CourseBudget::where('course_id', $ta->course_id)->first();
-    //         $remainingBudget = $courseBudget ? $courseBudget->remaining_budget : 0;
-
-    //         // ถ้ายังไม่มีข้อมูลงบประมาณ ให้สร้างขึ้นใหม่
-    //         // if (!$courseBudget) {
-    //         //     $remainingBudget = $totalBudget; // ยังไม่มีการใช้เลย คงเหลือเท่ากับงบทั้งหมด
-    //         // }
-
-    //         // คำนวณสัดส่วนเงินระหว่างโครงการปกติและโครงการพิเศษ
-    //         $regularProportion = 0;
-    //         $specialProportion = 0;
-
-    //         if ($totalPay > 0) {
-    //             $regularProportion = $regularPay / $totalPay;
-    //             $specialProportion = $specialPay / $totalPay;
-    //         }
-
-    //         // กำหนดยอดเงินจริงตามการคำนวณปกติ
-    //         $actualTotalPay = $totalPay;
-    //         $actualRegularPay = $regularPay;
-    //         $actualSpecialPay = $specialPay;
-
-    //         // ถ้ามีการบันทึกรายการในตาราง CompensationTransaction
-    //         if ($transaction) {
-    //             // คำนวณยอดตามสัดส่วน
-    //             $actualTotalPay = $transaction->actual_amount;
-    //             $actualRegularPay = $actualTotalPay * $regularProportion;
-    //             $actualSpecialPay = $actualTotalPay * $specialProportion;
-    //         }
-
-    //         // สร้าง PDF
-    //         $pdf = PDF::loadView('exports.resultPDF', compact(
-    //             'student',
-    //             'semester',
-    //             'attendancesBySection',
-    //             'selectedYearMonth',
-    //             'monthText',
-    //             'year',
-    //             'compensationRates',
-    //             'headName',
-    //             'formattedDate',
-    //             'teacherFullTitle',
-    //             'hasRegularProject',
-    //             'hasSpecialProject',
-    //             'isFixedPayment',
-    //             'fixedAmount',
-    //             'specialPay',
-    //             'regularPay',
-    //             'totalPay',
-    //             'hourlySpecialPay',
-    //             'fixedSpecialPay',
-    //             'actualRegularPay',
-    //             'actualSpecialPay',
-    //             'actualTotalPay',
-    //             'transaction',
-    //             'regularLectureHours',
-    //             'regularLabHours',
-    //             'specialLectureHours',
-    //             'specialLabHours'
-    //         ));
-
-    //         $pdf->setPaper('A4', 'landscape');
-    //         $fileName = 'TA-Result-' . $student->student_id . '-' . $selectedYearMonth . '.pdf';
-
-    //         return $pdf->download($fileName);
-    //     } catch (\Exception $e) {
-    //         Log::error('PDF Export Error: ' . $e->getMessage());
-    //         Log::error($e->getTraceAsString()); // เพิ่ม stack trace เพื่อช่วยในการแก้ไขข้อผิดพลาด
-    //         return back()->with('error', 'เกิดข้อผิดพลาดในการสร้าง PDF: ' . $e->getMessage());
-    //     }
-    // }
 
     // version 2
     public function exportResultPDF($id)
@@ -2566,6 +1746,7 @@ class AdminController extends Controller
 
             $regularPay = $regularLecturePay + $regularLabPay;
 
+
             // ตรวจสอบการเหมาจ่ายสำหรับนักศึกษาระดับบัณฑิตศึกษาที่สอนในโครงการพิเศษ
             $isFixedPayment = false;
             $fixedAmount = null;
@@ -2627,6 +1808,8 @@ class AdminController extends Controller
                 $actualSpecialPay = $actualTotalPay * $specialProportion;
             }
 
+
+
             $regularAttendances = $allAttendances->filter(function ($attendance) {
                 return $attendance['teaching_type'] === 'regular';
             })->sortBy('date')->values();
@@ -2665,6 +1848,7 @@ class AdminController extends Controller
                 return back()->with('error', 'ไม่พบไฟล์ Template Excel');
             }
 
+
             $spreadsheet = IOFactory::load($templatePath);
 
             $regularSheet = $spreadsheet->getSheet(0);
@@ -2700,7 +1884,7 @@ class AdminController extends Controller
                         \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                         : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                         \Carbon\Carbon::parse($attendance['data']->start_work)
-                            ->addMinutes($attendance['data']->duration)->format('H:i');
+                        ->addMinutes($attendance['data']->duration)->format('H:i');
 
                     $lectureHours = 0;
                     $labHours = 0;
@@ -2755,9 +1939,32 @@ class AdminController extends Controller
             $regularSheet->setCellValue('G' . $rateRow, number_format($regularLectureRate, 2));
             $regularSheet->setCellValue('H' . $rateRow, number_format($regularLabRate, 2));
 
+            if ($transaction && $transaction->is_adjusted) {
+                // กรณีมีการปรับยอด ใช้ยอดที่ปรับแล้ว
+                // $regularSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
+                $regularSheet->setCellValue('C21', number_format($transaction->actual_amount, 2));
+                // $regularSheet->setCellValue('D21', 'บาท');
+            } elseif ($isExceeded) {
+                // กรณีเกินงบประมาณที่เหลือ แต่ยังไม่มีการเบิกจ่าย
+                // $regularSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
+                $regularSheet->setCellValue('C21', number_format($remainingBudget, 2));
+                // $regularSheet->setCellValue('D21', 'บาท');
+            } else {
+                // กรณีปกติ ไม่มีการปรับยอด
+                // $regularSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
+                $regularSheet->setCellValue('C21', number_format($regularPay, 2));
+                // $regularSheet->setCellValue('D21', 'บาท');
+            }
+
             $payRow = 17;
             // แสดงยอดเงินรับจริงสำหรับโครงการปกติ
-            $regularSheet->setCellValue('I' . $payRow, number_format($actualRegularPay, 2));
+            // $regularSheet->setCellValue('I' . $payRow, number_format($actualRegularPay, 2));
+
+            $regularSheet->setCellValueExplicit(
+                'I' . $payRow,
+                '=' . number_format($regularLectureHours, 2) . '*' . number_format($regularLectureRate, 2) . '+' . number_format($regularLabHours, 2) . '*' . number_format($regularLabRate, 2),
+                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_FORMULA
+            );
 
             $signatureRow = 26;
             $regularSheet->setCellValue('A' . $signatureRow, '(' . $student->name . ')');
@@ -2765,7 +1972,7 @@ class AdminController extends Controller
             $regularSheet->setCellValue('G' . $signatureRow, '(ผศ. ดร.คำรณ สุนัติ)');
 
             // สร้างแผ่นงานสำหรับโครงการพิเศษ ถ้ามีข้อมูล
-            if ($specialAttendances->isNotEmpty() || $specialPay > 0) {
+            if ($regularAttendances->isEmpty() && $specialAttendances->isNotEmpty()) {
                 $specialSheet = clone $spreadsheet->getSheet(0);
                 $specialSheet->setTitle('พิเศษ');
                 $spreadsheet->addSheet($specialSheet);
@@ -2802,7 +2009,7 @@ class AdminController extends Controller
                             \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                             : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                             \Carbon\Carbon::parse($attendance['data']->start_work)
-                                ->addMinutes($attendance['data']->duration)->format('H:i');
+                            ->addMinutes($attendance['data']->duration)->format('H:i');
 
                         $lectureHours = 0;
                         $labHours = 0;
@@ -2861,17 +2068,37 @@ class AdminController extends Controller
                     $specialSheet->setCellValue('G' . $rateRow, number_format($specialLectureRate, 2));
                     $specialSheet->setCellValue('H' . $rateRow, number_format($specialLabRate, 2));
                 }
-
-                $payRow = 17;
-                // แสดงยอดเงินรับจริงสำหรับโครงการพิเศษ
-                if ($isFixedPayment) {
-                    // กรณีเหมาจ่าย แสดงยอดเงินพร้อมระบุว่าเป็นการเหมาจ่าย
-                    $specialSheet->setCellValue('I' . $payRow, number_format($actualSpecialPay, 2));
+                if ($transaction && $transaction->is_adjusted) {
+                    // กรณีมีการปรับยอด ใช้ยอดที่ปรับแล้ว
+                    // $specialSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
+                    $specialSheet->setCellValue('C21', number_format($transaction->actual_amount, 2));
+                    // $specialSheet->setCellValue('D21', 'บาท');
+                } elseif ($isExceeded) {
+                    // กรณีเกินงบประมาณที่เหลือ แต่ยังไม่มีการเบิกจ่าย
+                    // $specialSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
+                    $specialSheet->setCellValue('C21', number_format($remainingBudget, 2));
+                    // $specialSheet->setCellValue('D21', 'บาท');
                 } else {
-                    $specialSheet->setCellValue('I' . $payRow, number_format($actualSpecialPay, 2));
+                    // กรณีปกติ ไม่มีการปรับยอด
+                    $amountToDisplay = $isFixedPayment ? $fixedAmount : $specialPay;
+                    // $specialSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
+                    $specialSheet->setCellValue('C21', number_format($amountToDisplay, 2));
+                    // $specialSheet->setCellValue('D21', 'บาท');
                 }
 
-
+                $payRow = 17;
+                // แสดงยอดเงินรับจริงสำหรับโครงการพิเศษโดยใช้สูตร Excel
+                if ($isFixedPayment) {
+                    // กรณีเหมาจ่าย ไม่ต้องใช้สูตร ใช้ค่าคงที่แทน
+                    $specialSheet->setCellValue('I' . $payRow, number_format($fixedAmount, 2));
+                } else {
+                    // กรณีคิดตามชั่วโมง ใช้สูตรคำนวณ
+                    $specialSheet->setCellValueExplicit(
+                        'I' . $payRow,
+                        '=' . number_format($specialLectureHours, 2) . '*' . number_format($specialLectureRate, 2) . '+' . number_format($specialLabHours, 2) . '*' . number_format($specialLabRate, 2),
+                        \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_FORMULA
+                    );
+                }
 
                 // สร้างหน้าหลักฐานการเบิกจ่าย
                 $hasEvidenceSheet = false;
@@ -2907,7 +2134,27 @@ class AdminController extends Controller
                     }
 
                     // แสดงจำนวนเงินที่ได้รับจริง
-                    $specialEvidenceSheet->setCellValue('F10', number_format($actualSpecialPay, 2));
+                    // $specialEvidenceSheet->setCellValue('F10', number_format($actualSpecialPay, 2));
+                    if ($transaction && $transaction->is_adjusted) {
+                        // กรณีมีการปรับยอด ใช้ยอดที่ปรับแล้ว
+                        $specialEvidenceSheet->setCellValue('F10', number_format($transaction->actual_amount, 2));
+                    } elseif ($isExceeded) {
+                        // กรณีเกินงบประมาณที่เหลือ แต่ยังไม่มีการเบิกจ่าย
+                        $specialEvidenceSheet->setCellValue('F10', number_format($remainingBudget, 2));
+                    } else {
+                        // กรณีปกติ ไม่มีการปรับยอด
+                        if ($isFixedPayment) {
+                            // กรณีเหมาจ่าย ใช้ค่า fixedAmount
+                            $specialEvidenceSheet->setCellValue('F10', number_format($fixedAmount, 2));
+                        } else {
+                            // กรณีคิดตามชั่วโมง ใช้สูตรคำนวณ
+                            $specialEvidenceSheet->setCellValueExplicit(
+                                'F10',
+                                '=' . number_format($specialLectureHours, 2) . '*' . number_format($specialLectureRate, 2) . '+' . number_format($specialLabHours, 2) . '*' . number_format($specialLabRate, 2),
+                                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_FORMULA
+                            );
+                        }
+                    }
 
                     // แสดงยอดรวมเป็นตัวอักษร
                     $specialEvidenceSheet->setCellValue('C17', '(' . $this->convertNumberToThaiBaht($actualSpecialPay) . ')');

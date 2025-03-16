@@ -50,7 +50,7 @@
                                     <h5 class="card-title mb-0">ภาคการศึกษาสำหรับผู้ดูแลระบบ</h5>
                                 </div>
                                 <div class="card-body">
-                                    <form action="{{ route('layout.admin.taUsers') }}" method="GET">
+                                    <form action="{{ route('layout.admin.taUsers') }}" method="GET" id="semesterForm">
                                         <div class="row g-3 align-items-center">
                                             <div class="col-md-8">
                                                 <label for="admin_semester_id"
@@ -80,6 +80,7 @@
                             </div>
                         </div>
                     </div>
+
                     <h4>จัดการข้อมูลผู้ช่วยสอน</h4>
                     <div class="card mb-4 p-2">
                         <div class="card-body">
@@ -87,7 +88,15 @@
                                 <div class="col-md-6">
                                     <h5 class="card-title">รายวิชาที่มีผู้ช่วยสอน</h5>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-3">
+                                    <select id="curriculumFilter" class="form-select">
+                                        <option value="">ทั้งหมด (หลักสูตร)</option>
+                                        @foreach ($curriculums as $curriculum)
+                                            <option value="{{ $curriculum->name_th }}">{{ $curriculum->name_th }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
                                     <input type="text" id="searchInput" class="form-control"
                                         placeholder="ค้นหารายวิชา, รหัสวิชา, หรือชื่ออาจารย์...">
                                 </div>
@@ -98,6 +107,7 @@
                                         <th>ลำดับ</th>
                                         <th>รหัสวิชา</th>
                                         <th>ชื่อวิชา</th>
+                                        <th>หลักสูตร</th>
                                         <th>อาจารย์ผู้สอน</th>
                                         <th>จำนวน TA ที่ได้รับอนุมัติ</th>
                                         <th></th>
@@ -109,6 +119,7 @@
                                             <td>{{ $index + 1 }}</td>
                                             <td>{{ $course->subjects->subject_id ?? 'N/A' }}</td>
                                             <td>{{ $course->subjects->name_en ?? 'N/A' }}</td>
+                                            <td>{{ $course->curriculums->name_th ?? 'N/A' }}</td>
                                             <td>
                                                 @if ($course->teachers)
                                                     {{ $course->teachers->title_th }} {{ $course->teachers->name }}
@@ -127,7 +138,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="6" class="text-center">ไม่พบข้อมูลรายวิชาที่มีผู้ช่วยสอน</td>
+                                            <td colspan="7" class="text-center">ไม่พบข้อมูลรายวิชาที่มีผู้ช่วยสอน</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -145,21 +156,33 @@
                 console.log('Script loaded'); // Debug log
 
                 const searchInput = document.getElementById('searchInput');
+                const curriculumFilter = document.getElementById('curriculumFilter');
                 const tableRows = document.querySelectorAll('.table-row');
 
                 console.log('Found rows:', tableRows.length); // Debug log
 
-                if (searchInput && tableRows.length > 0) {
-                    searchInput.addEventListener('input', function() {
-                        console.log('Search input:', this.value); // Debug log
+                function filterTable() {
+                    const searchTerm = searchInput.value.toLowerCase();
+                    const curriculumValue = curriculumFilter.value.toLowerCase();
 
-                        const searchTerm = this.value.toLowerCase();
+                    tableRows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        const curriculumCell = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
 
-                        tableRows.forEach(row => {
-                            const text = row.textContent.toLowerCase();
-                            row.style.display = text.includes(searchTerm) ? '' : 'none';
-                        });
+                        const matchesSearch = text.includes(searchTerm);
+                        const matchesCurriculum = curriculumValue === '' || curriculumCell.includes(
+                            curriculumValue);
+
+                        row.style.display = (matchesSearch && matchesCurriculum) ? '' : 'none';
                     });
+                }
+
+                if (searchInput && tableRows.length > 0) {
+                    searchInput.addEventListener('input', filterTable);
+                }
+
+                if (curriculumFilter && tableRows.length > 0) {
+                    curriculumFilter.addEventListener('change', filterTable);
                 }
             });
         </script>

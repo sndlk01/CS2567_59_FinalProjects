@@ -756,13 +756,24 @@ class TeacherController extends Controller
     {
         try {
             $user = Auth::user();
-            $localTeacher = Teachers::where('user_id', $user->id)->first();
-            $tdbmService = new TDBMApiService();
-            $allCourses = collect($tdbmService->getCourses());
-            $allSubjects = collect($tdbmService->getSubjects());
+            $teacher = Teachers::where('user_id', $user->id)->first();
 
-            $teacherCourses = $allCourses->where('owner_teacher_id', $localTeacher->teacher_id);
+            // ดึงข้อมูลภาคการศึกษาที่กำหนดให้เห็น
+            $activeSemester = $this->getActiveSemester();
 
+            if (!$activeSemester) {
+                return view('layouts.teacher.subject', ['subjects' => [], 'currentSemester' => null])
+                    ->with('error', 'ไม่พบข้อมูลภาคการศึกษาที่กำหนดให้แสดง');
+            }
+
+            // ดึงข้อมูลรายวิชาที่อาจารย์สอนในภาคการศึกษาที่กำหนด จากฐานข้อมูลโดยตรง
+            $teacherCourses = Courses::where('owner_teacher_id', $teacher->teacher_id)
+                ->where('semester_id', $activeSemester->semester_id)
+                ->where('status', 'A')
+                ->with('subjects') // eager load ข้อมูล subjects เพื่อไม่ต้องดึงข้อมูลซ้ำๆ
+                ->get();
+
+            // ดึงจำนวน TA ในแต่ละคอร์ส
             $subjectsWithTAs = CourseTas::whereIn('course_id', $teacherCourses->pluck('course_id'))
                 ->select('course_id', DB::raw('COUNT(DISTINCT student_id) as ta_count'))
                 ->groupBy('course_id')
@@ -771,18 +782,17 @@ class TeacherController extends Controller
             $subjects = [];
             foreach ($subjectsWithTAs as $courseTa) {
                 $course = $teacherCourses->firstWhere('course_id', $courseTa->course_id);
-                if (!$course)
+                if (!$course || !$course->subjects) {
                     continue;
+                }
 
-                $subject = $allSubjects->firstWhere('subject_id', $course['subject_id']);
-                if (!$subject)
-                    continue;
+                $subject = $course->subjects;
+                $subjectId = $subject->subject_id;
 
-                $subjectId = $subject['subject_id'];
                 if (!isset($subjects[$subjectId])) {
                     $subjects[$subjectId] = [
                         'subject_id' => $subjectId,
-                        'name_en' => $subject['name_en'],
+                        'name_en' => $subject->name_en,
                         'ta_count' => $courseTa->ta_count,
                         'courses' => [$course]
                     ];
@@ -792,10 +802,14 @@ class TeacherController extends Controller
                 }
             }
 
-            return view('layouts.teacher.subject', ['subjects' => array_values($subjects)]);
+            return view('layouts.teacher.subject', [
+                'subjects' => array_values($subjects),
+                'currentSemester' => $activeSemester
+            ]);
         } catch (\Exception $e) {
             Log::error($e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'เกิดข้อผิดพลาดในการดึงข้อมูล'], 500);
+            return view('layouts.teacher.subject', ['subjects' => []])
+                ->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
 
@@ -810,17 +824,30 @@ class TeacherController extends Controller
         }
 
         try {
+            // ดึงข้อมูลภาคการศึกษาที่กำหนดให้เห็น
+            $activeSemester = $this->getActiveSemester();
+
+            if (!$activeSemester) {
+                return redirect()->back()->with('error', 'ไม่พบข้อมูลภาคการศึกษาที่กำหนดให้แสดง');
+            }
+
             $apiCourses = collect($tdbmApiService->getCourses());
             $apiSubjects = collect($tdbmApiService->getSubjects());
 
             $teacherCourseIds = $apiCourses
-                ->where('owner_teacher_id', (string) $teacher->teacher_id)  // เปลี่ยนจาก id เป็น teacher_id
+                ->where('owner_teacher_id', (string) $teacher->teacher_id)
                 ->where('status', 'A')
+                // กรองเฉพาะคอร์สในภาคการศึกษาที่กำหนด
+                ->where('semester_id', (string) $activeSemester->semester_id)
                 ->pluck('course_id')
                 ->toArray();
 
-            $courseTas = CourseTas::with(['student', 'courseTaClasses.requests'])
+            // ดึงข้อมูล CourseTas ที่อยู่ในคอร์สของอาจารย์และอยู่ในภาคการศึกษาที่กำหนดเท่านั้น
+            $courseTas = CourseTas::with(['student', 'courseTaClasses.requests', 'course'])
                 ->whereIn('course_id', $teacherCourseIds)
+                ->whereHas('course', function ($query) use ($activeSemester) {
+                    $query->where('semester_id', $activeSemester->semester_id);
+                })
                 ->get();
 
             // แปลงข้อมูล
@@ -845,7 +872,6 @@ class TeacherController extends Controller
                     'course' => $subject['subject_id'] . ' ' . $subject['name_en'],
                     'student_id' => $courseTa->student->student_id,
                     'student_name' => $courseTa->student->name,
-                    // 'student_name' => $courseTa->student->name,
                     'status' => $latestRequest ? strtolower($latestRequest->status) : 'w',
                     'approved_at' => $latestRequest ? $latestRequest->approved_at : null,
                     'comment' => $latestRequest ? $latestRequest->comment : '',
@@ -854,7 +880,11 @@ class TeacherController extends Controller
 
             Log::info('Formatted Course TAs count: ' . $formattedCourseTas->count());
 
-            return view('layouts.teacher.teacherHome', ['courseTas' => $formattedCourseTas]);
+            // ส่งข้อมูลภาคการศึกษาไปด้วยเพื่อแสดงในหน้า view
+            return view('layouts.teacher.teacherHome', [
+                'courseTas' => $formattedCourseTas,
+                'currentSemester' => $activeSemester
+            ]);
         } catch (\Exception $e) {
             Log::error('Error in showTARequests: ' . $e->getMessage());
             return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
