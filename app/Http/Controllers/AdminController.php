@@ -27,7 +27,7 @@ use App\Exports\TaAttendanceExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\{Auth, DB, Log, Storage};
 use PhpOffice\PhpSpreadsheet\IOFactory;
-
+use App\Services\TDBMSyncService;
 
 
 use Illuminate\Http\Request;
@@ -42,6 +42,29 @@ class AdminController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
+    }
+
+    // function for sync all data from api into database
+    public function syncAllData()
+    {
+        try {
+            set_time_limit(300);
+
+            // ดึง TDBMSyncService จาก service container
+            $syncService = app(TDBMSyncService::class);
+
+            // เรียกใช้ syncAll method
+            $result = $syncService->syncAll();
+
+            if ($result) {
+                return redirect()->back()->with('success', 'ซิงค์ข้อมูลทั้งหมดสำเร็จ');
+            } else {
+                return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการซิงค์ข้อมูล');
+            }
+        } catch (\Exception $e) {
+            Log::error('Error syncing all data: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการซิงค์ข้อมูล: ' . $e->getMessage());
+        }
     }
 
     public function adminHome()

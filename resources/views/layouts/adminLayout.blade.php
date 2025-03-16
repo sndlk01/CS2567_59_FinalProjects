@@ -42,15 +42,13 @@
             </a>
         </div>
         <hr class="horizontal dark mt-0">
-        <div class="collapse navbar-collapse  w-auto " id="sidenav-collapse-main">
+        <div class="collapse navbar-collapse w-auto" id="sidenav-collapse-main">
             <ul class="navbar-nav">
                 <li class="nav-item">
                     <a class="nav-link " href="{{ url('/announces') }}">
                         <div
                             class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
-
                             <i class="ni ni-collection text-primary text-sm opacity-10"></i>
-
                         </div>
                         <span class="nav-link-text ms-1">จัดการประกาศ</span>
                     </a>
@@ -59,7 +57,6 @@
                     <a class="nav-link" href="/admin-ta-requests">
                         <div
                             class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
-
                             <i class="ni ni-archive-2 text-primary text-sm opacity-10"></i>
                         </div>
                         <span class="nav-link-text ms-1">คำร้องขอผู้ช่วยสอน</span>
@@ -69,13 +66,28 @@
                     <a class="nav-link" href="/admin/tausers">
                         <div
                             class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
-
                             <i class="ni ni-circle-08 text-primary text-sm opacity-10"></i>
                         </div>
                         <span class="nav-link-text ms-1">จัดการข้อมูลผู้ช่วยสอน</span>
                     </a>
                 </li>
             </ul>
+
+            <!-- ปุ่มซิงค์ข้อมูลทั้งหมด อยู่ด้านล่างสุด -->
+            <div class="mt-5">
+                <ul class="navbar-nav">
+                    <li class="nav-item mt-3">
+                        <a class="nav-link bg-primary" href="{{ route('admin.sync-all-data') }}"
+                            style="border-radius: 0.5rem; margin: 0 16px;">
+                            <div
+                                class="icon icon-shape icon-sm text-center me-2 d-flex align-items-center justify-content-center">
+                                <i class="ni ni-cloud-download-95 text-white text-sm opacity-10"></i>
+                            </div>
+                            <span class="nav-link-text ms-1 text-white">ซิงค์ข้อมูลทั้งหมด</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </aside>
 

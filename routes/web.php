@@ -29,8 +29,7 @@ Route::post('/complete-profile', [ProfileController::class, 'saveCompleteProfile
 
 //Ta Routes List
 Route::middleware(['auth', 'user-access:user'])->group(function () {
-
-    // Route::get('/home', [HomeController::class, 'index'])->name('home');
+    // Route to display the home page
     Route::get('/home', [TaController::class, 'showAnnounces'])->name('home');
 
     // Route to display the request form
@@ -43,7 +42,6 @@ Route::middleware(['auth', 'user-access:user'])->group(function () {
     Route::get('/statusrequest', [RequestsController::class, 'showTARequests'])->name('layouts.ta.statusRequest');
 
     // Route to display the disbursement form
-    // Route::get('/disbursements', [TaController::class, 'disbursements'])->name('layout.ta.disbursements');
     Route::get('/disbursements', [DisbursementsController::class, 'disbursements'])->name('layout.ta.disbursements');
     Route::post('/disbursements', [DisbursementsController::class, 'uploads'])->name('layout.ta.disbursements');
     Route::get('/ta/documents/download/{id}', [DisbursementsController::class, 'downloadDocument'])->name('layout.ta.download-document');
@@ -117,6 +115,9 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
         ->name('admin.course-budgets.compensation.save');
 
     Route::post('/admin/update-user-semester', [AdminController::class, 'updateUserSemester'])->name('layout.admin.updateUserSemester');
+
+    // Route for sync all data from api into database
+    Route::get('/admin/sync-all-data', [App\Http\Controllers\AdminController::class, 'syncAllData'])->name('admin.sync-all-data');
 });
 
 //Teacher Routes List
