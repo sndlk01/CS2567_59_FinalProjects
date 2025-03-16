@@ -508,16 +508,16 @@ class CreateUsersSeeder extends Seeder
                 'type' => '2',
                 'password' => bcrypt('1234'),
             ],
-            [
-                'prefix' => 'นาย',
-                'name' => 'ชาคริต ปรากฎ',
-                'student_id' => '643021316-6',
-                'email' => 'chakit.p@kkumail.com',
-                'card_id' => '1199654564565',
-                'phone' => '0812345678',
-                'type' => '0',
-                'password' => bcrypt('1234'),
-            ],
+            // [
+            //     'prefix' => 'นาย',
+            //     'name' => 'ชาคริต ปรากฎ',
+            //     'student_id' => '643021316-6',
+            //     'email' => 'chakit.p@kkumail.com',
+            //     'card_id' => '1199654564565',
+            //     'phone' => '0812345678',
+            //     'type' => '0',
+            //     'password' => bcrypt('1234'),
+            // ],
         ];
 
         foreach ($users as $key => $value) {
