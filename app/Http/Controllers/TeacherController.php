@@ -329,34 +329,114 @@ class TeacherController extends Controller
         return view('layouts.teacher.subject', compact('subjects'));
     }
 
+    // public function subjectDetail($course_id)
+    // {
+    //     try {
+    //         $currentDate = now();
+    //         $semester = ($currentDate->month >= 6 && $currentDate->month <= 11) ? 1 : 2;
+    //         $year = $currentDate->year + 543;
+    //         if ($currentDate->month >= 1 && $currentDate->month <= 5) {
+    //             $year -= 1;
+    //         }
+
+    //         $tdbmService = new TDBMApiService();
+    //         $course = collect($tdbmService->getCourses())->firstWhere('course_id', $course_id);
+
+    //         if (!$course) {
+    //             throw new \Exception('Course not found');
+    //         }
+
+    //         $subject = collect($tdbmService->getSubjects())->firstWhere('subject_id', $course['subject_id']);
+    //         $teacher = collect($tdbmService->getTeachers())->firstWhere('teacher_id', $course['owner_teacher_id']);
+
+    //         $course['subject'] = $subject;
+    //         $course['teacher'] = $teacher;
+    //         $course['current_semester'] = [
+    //             'semester' => $semester,
+    //             'year' => $year
+    //         ];
+
+    //         $teaching_assistants = CourseTas::with(['student', 'courseTaClasses.requests'])
+    //             ->where('course_id', $course_id)
+    //             ->get()
+    //             ->map(function ($ta) {
+    //                 $latestRequest = $ta->courseTaClasses
+    //                     ->flatMap->requests
+    //                     ->sortByDesc('created_at')
+    //                     ->first();
+
+    //                 return [
+    //                     'id' => $ta->id,
+    //                     'name' => $ta->student->name,
+    //                     'email' => $ta->student->email,
+    //                     'student_id' => $ta->student->student_id,
+    //                     'status' => $latestRequest ? strtolower($latestRequest->status) : 'W'
+    //                 ];
+    //             });
+
+    //         $course['teaching_assistants'] = $teaching_assistants;
+
+    //         return view('layouts.teacher.subjectDetail', compact('course'));
+    //     } catch (\Exception $e) {
+    //         Log::error($e->getMessage());
+    //         return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล');
+    //     }
+    // }
+
     public function subjectDetail($course_id)
     {
         try {
-            $currentDate = now();
-            $semester = ($currentDate->month >= 6 && $currentDate->month <= 11) ? 1 : 2;
-            $year = $currentDate->year + 543;
-            if ($currentDate->month >= 1 && $currentDate->month <= 5) {
-                $year -= 1;
+            // ดึงข้อมูลภาคการศึกษาที่กำหนดให้เห็น
+            $activeSemester = $this->getActiveSemester();
+
+            if (!$activeSemester) {
+                return back()->with('error', 'ไม่พบข้อมูลภาคการศึกษาที่กำหนดให้แสดง');
             }
 
-            $tdbmService = new TDBMApiService();
-            $course = collect($tdbmService->getCourses())->firstWhere('course_id', $course_id);
+            // ดึงข้อมูลคอร์สจากฐานข้อมูลโดยตรง พร้อมความสัมพันธ์ที่เกี่ยวข้อง
+            $course = Courses::with(['subjects', 'teachers', 'semesters', 'curriculums'])
+                ->where('course_id', $course_id)
+                ->where('semester_id', $activeSemester->semester_id)
+                ->first();
 
             if (!$course) {
-                throw new \Exception('Course not found');
+                return back()->with('error', 'ไม่พบข้อมูลรายวิชา หรือรายวิชาไม่อยู่ในภาคการศึกษาที่กำหนด');
             }
 
-            $subject = collect($tdbmService->getSubjects())->firstWhere('subject_id', $course['subject_id']);
-            $teacher = collect($tdbmService->getTeachers())->firstWhere('teacher_id', $course['owner_teacher_id']);
-
-            $course['subject'] = $subject;
-            $course['teacher'] = $teacher;
-            $course['current_semester'] = [
-                'semester' => $semester,
-                'year' => $year
+            // จัดเตรียมข้อมูลในรูปแบบที่ต้องการใช้ในหน้า view
+            $formattedCourse = [
+                'course_id' => $course->course_id,
+                'subject_id' => $course->subject_id,
+                'semester_id' => $course->semester_id,
+                'owner_teacher_id' => $course->owner_teacher_id,
+                'status' => $course->status,
+                'subject' => [
+                    'subject_id' => $course->subjects->subject_id ?? 'N/A',
+                    'name_en' => $course->subjects->name_en ?? 'N/A',
+                    'name_th' => $course->subjects->name_th ?? 'N/A',
+                ],
+                'teacher' => [
+                    'teacher_id' => $course->teachers->teacher_id ?? 'N/A',
+                    'name' => $course->teachers->name ?? 'N/A',
+                    'title_th' => $course->teachers->title_th ?? '',
+                    'lastname_th' => $course->teachers->lastname_th ?? '',
+                    'position' => $course->teachers->position ?? '',
+                    'degree' => $course->teachers->degree ?? '',
+                ],
+                'current_semester' => [
+                    'semester' => $activeSemester->semesters,
+                    'year' => $activeSemester->year,
+                    'start_date' => $activeSemester->start_date,
+                    'end_date' => $activeSemester->end_date,
+                ],
+                'curriculum' => [
+                    'name_th' => $course->curriculums->name_th ?? 'N/A',
+                    'name_en' => $course->curriculums->name_en ?? 'N/A',
+                ]
             ];
 
-            $teaching_assistants = CourseTas::with(['student', 'courseTaClasses.requests'])
+            // ดึงข้อมูลผู้ช่วยสอนที่เกี่ยวข้องกับคอร์สนี้
+            $teachingAssistants = CourseTas::with(['student', 'courseTaClasses.requests'])
                 ->where('course_id', $course_id)
                 ->get()
                 ->map(function ($ta) {
@@ -367,19 +447,22 @@ class TeacherController extends Controller
 
                     return [
                         'id' => $ta->id,
-                        'name' => $ta->student->name,
-                        'email' => $ta->student->email,
-                        'student_id' => $ta->student->student_id,
-                        'status' => $latestRequest ? strtolower($latestRequest->status) : 'W'
+                        'name' => $ta->student->name ?? 'N/A',
+                        'email' => $ta->student->email ?? 'N/A',
+                        'student_id' => $ta->student->student_id ?? 'N/A',
+                        'status' => $latestRequest ? strtolower($latestRequest->status) : 'w'
                     ];
                 });
 
-            $course['teaching_assistants'] = $teaching_assistants;
+            $formattedCourse['teaching_assistants'] = $teachingAssistants;
 
-            return view('layouts.teacher.subjectDetail', compact('course'));
+            return view('layouts.teacher.subjectDetail', [
+                'course' => $formattedCourse,
+                'currentSemester' => $activeSemester
+            ]);
         } catch (\Exception $e) {
-            Log::error($e->getMessage());
-            return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล');
+            Log::error('Error in subjectDetail: ' . $e->getMessage());
+            return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
 
