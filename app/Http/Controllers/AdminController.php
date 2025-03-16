@@ -136,7 +136,8 @@ class AdminController extends Controller
                     'coursesWithTAs' => collect(),
                     'semesters' => $semesters,
                     'selectedSemester' => null,
-                    'userSelectedSemester' => $userSelectedSemester
+                    'userSelectedSemester' => $userSelectedSemester,
+                    'curriculums' => collect()
                 ])->with('warning', 'ไม่พบข้อมูลภาคการศึกษาที่เลือก');
             }
 
@@ -149,6 +150,7 @@ class AdminController extends Controller
                 ->with([
                     'subjects',
                     'teachers',
+                    'curriculums', // เพิ่มความสัมพันธ์กับตาราง curriculums
                     'course_tas.student',
                     'course_tas.courseTaClasses.requests' => function ($query) {
                         $query->where('status', 'A')
@@ -157,13 +159,17 @@ class AdminController extends Controller
                 ])
                 ->get();
 
+            // ดึงข้อมูลหลักสูตรทั้งหมดเพื่อใช้ในการกรอง
+            $curriculums = \App\Models\Curriculums::orderBy('name_th')->get();
+
             Log::info('จำนวนรายวิชาที่มี TA: ' . $coursesWithTAs->count());
 
             return view('layouts.admin.taUsers', [
                 'coursesWithTAs' => $coursesWithTAs,
                 'semesters' => $semesters,
                 'selectedSemester' => $selectedSemester,
-                'userSelectedSemester' => $userSelectedSemester
+                'userSelectedSemester' => $userSelectedSemester,
+                'curriculums' => $curriculums
             ]);
         } catch (\Exception $e) {
             Log::error('Error in taUsers: ' . $e->getMessage());
@@ -776,7 +782,7 @@ class AdminController extends Controller
             // dd([
             //     'student_degree' => $student->degree_level,
             //     'regularLectureRate' => $regularLectureRate,
-            //     'regularLabRate' => $regularLabRate, 
+            //     'regularLabRate' => $regularLabRate,
             //     'specialLectureRate' => $specialLectureRate,
             //     'specialLabRate' => $specialLabRate
             // ]);            // dd($allAttendances);
@@ -1841,7 +1847,7 @@ class AdminController extends Controller
             if (!file_exists($templatePath)) {
                 return back()->with('error', 'ไม่พบไฟล์ Template Excel');
             }
-            
+
 
             $spreadsheet = IOFactory::load($templatePath);
 
@@ -1878,7 +1884,7 @@ class AdminController extends Controller
                         \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                         : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                         \Carbon\Carbon::parse($attendance['data']->start_work)
-                            ->addMinutes($attendance['data']->duration)->format('H:i');
+                        ->addMinutes($attendance['data']->duration)->format('H:i');
 
                     $lectureHours = 0;
                     $labHours = 0;
@@ -2003,7 +2009,7 @@ class AdminController extends Controller
                             \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                             : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                             \Carbon\Carbon::parse($attendance['data']->start_work)
-                                ->addMinutes($attendance['data']->duration)->format('H:i');
+                            ->addMinutes($attendance['data']->duration)->format('H:i');
 
                         $lectureHours = 0;
                         $labHours = 0;

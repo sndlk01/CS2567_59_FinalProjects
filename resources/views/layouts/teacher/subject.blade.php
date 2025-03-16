@@ -9,9 +9,18 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <h4>รายวิชาทั้งหมดที่มีผู้ช่วยสอน</h4>
+
+                    @if (isset($currentSemester))
+                        <div class="alert alert-info">
+                            กำลังแสดงข้อมูลภาคการศึกษา: {{ $currentSemester->year }}/{{ $currentSemester->semesters }}
+                            ({{ \Carbon\Carbon::parse($currentSemester->start_date)->format('d/m/Y') }} -
+                            {{ \Carbon\Carbon::parse($currentSemester->end_date)->format('d/m/Y') }})
+                        </div>
+                    @endif
+
                     <div class="container shadow-lg bg-body rounded p-5">
                         @if (empty($subjects))
-                            <p>ไม่พบรายวิชาที่มีผู้ช่วยสอน</p>
+                            <p>ไม่พบรายวิชาที่มีผู้ช่วยสอนในภาคการศึกษานี้</p>
                         @else
                             <table class="table">
                                 <thead>

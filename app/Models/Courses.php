@@ -45,7 +45,7 @@ class Courses extends Model
 
     public function curriculums()
     {
-        return $this->belongsTo(Curriculums::class, 'cur_id');
+        return $this->belongsTo(Curriculums::class, 'cur_id', 'cur_id');
     }
 
     // ความสัมพันธ์กับ Classes
