@@ -83,14 +83,14 @@ class CourseBudgetController extends Controller
 
             if ($courseBudget) {
                 $usedBudget = $courseBudget->used_budget;
-                $courseBudget->total_students = $totalStudents; 
+                $courseBudget->total_students = $totalStudents;
                 $courseBudget->total_budget = $totalBudget;
                 $courseBudget->remaining_budget = $totalBudget - $usedBudget;
                 $courseBudget->save();
             } else {
                 $courseBudget = new CourseBudget();
                 $courseBudget->course_id = $courseId;
-                $courseBudget->total_students = $totalStudents; 
+                $courseBudget->total_students = $totalStudents;
                 $courseBudget->total_budget = $totalBudget;
                 $courseBudget->used_budget = 0;
                 $courseBudget->remaining_budget = $totalBudget;
@@ -179,10 +179,6 @@ class CourseBudgetController extends Controller
         }
     }
 
-    /**
-     * บันทึกการเบิกจ่ายค่าตอบแทน
-     */
-
     public function saveCompensation(Request $request)
     {
         $validated = $request->validate([
@@ -196,54 +192,10 @@ class CourseBudgetController extends Controller
             'is_adjusted' => 'boolean'
         ]);
 
-        $courseBudget = CourseBudget::where('course_id', $validated['course_id'])->first();
-        $remainingBudget = $courseBudget ? $courseBudget->remaining_budget : 0;
-
-        // ตรวจสอบว่ามีข้อมูลการสอนในเดือนนี้หรือไม่
-        $startDate = Carbon::createFromFormat('Y-m', $validated['month_year'])->startOfMonth();
-        $endDate = Carbon::createFromFormat('Y-m', $validated['month_year'])->endOfMonth();
-
-        $hasTeachingData = Teaching::whereBetween('start_time', [$startDate, $endDate])
-            ->orWhereHas('attendance', function ($query) use ($validated) {
-                $query->where('student_id', $validated['student_id']);
-            })
-            ->exists();
-
-        if (!$hasTeachingData) {
-            return redirect()->route('admin.compensation-preview', [
-                'student_id' => $validated['student_id'],
-                'course_id' => $validated['course_id'],
-                'month' => $validated['month_year']
-            ])->with('error', 'ไม่มีข้อมูลการสอนในเดือนนี้');
-        }
-
-        // ตรวจสอบงบประมาณคงเหลือ
-        if ($remainingBudget <= 0) {
-            return redirect()->route('admin.compensation-preview', [
-                'student_id' => $validated['student_id'],
-                'course_id' => $validated['course_id'],
-                'month' => $validated['month_year']
-            ])->with('error', 'เงินในรายวิชาหมดแล้ว ไม่สามารถเบิกจ่ายได้');
-        }
-
-        // ตรวจสอบว่าจำนวนเงินที่ต้องการเบิกจ่ายเกินงบประมาณคงเหลือหรือไม่
-        if ($validated['actual_amount'] > $remainingBudget) {
-            return redirect()->route('admin.compensation-preview', [
-                'student_id' => $validated['student_id'],
-                'course_id' => $validated['course_id'],
-                'month' => $validated['month_year']
-            ])->with('error', 'เงินในรายวิชาไม่พอ กรุณาปรับจำนวนเงินที่ต้องการเบิกจ่าย');
-        }
-
-
-
-        $isAdjusted = $request->has('is_adjusted') ? $request->is_adjusted :
-            ($validated['calculated_amount'] != $validated['actual_amount']);
-
         try {
             DB::beginTransaction();
 
-            // ตรวจสอบว่ามีการเบิกจ่ายในเดือนนี้ไปแล้วหรือไม่
+            // Check if there's already a transaction for this month
             $existingTransaction = CompensationTransaction::where('student_id', $validated['student_id'])
                 ->where('course_id', $validated['course_id'])
                 ->where('month_year', $validated['month_year'])
@@ -253,7 +205,31 @@ class CourseBudgetController extends Controller
                 throw new \Exception('มีการเบิกจ่ายค่าตอบแทนสำหรับเดือนนี้ไปแล้ว');
             }
 
-            // บันทึกรายการเบิกจ่าย
+            // Get the course budget
+            $courseBudget = CourseBudget::where('course_id', $validated['course_id'])->first();
+
+            // If there's no budget record, create one
+            if (!$courseBudget) {
+                // Get course details
+                $course = Courses::with('classes')->findOrFail($validated['course_id']);
+                $totalStudents = $course->classes->sum('enrolled_num');
+                $totalBudget = $totalStudents * 300; // 300 บาทต่อคน
+
+                $courseBudget = new CourseBudget();
+                $courseBudget->course_id = $validated['course_id'];
+                $courseBudget->total_students = $totalStudents;
+                $courseBudget->total_budget = $totalBudget;
+                $courseBudget->used_budget = 0;
+                $courseBudget->remaining_budget = $totalBudget;
+                $courseBudget->save();
+            }
+
+            // Check remaining budget
+            if ($validated['actual_amount'] > $courseBudget->remaining_budget) {
+                throw new \Exception('งบประมาณคงเหลือไม่เพียงพอ (' . number_format($courseBudget->remaining_budget, 2) . ' บาท)');
+            }
+
+            // Create transaction
             $transaction = new CompensationTransaction();
             $transaction->course_id = $validated['course_id'];
             $transaction->student_id = $validated['student_id'];
@@ -261,64 +237,26 @@ class CourseBudgetController extends Controller
             $transaction->hours_worked = $validated['hours_worked'];
             $transaction->calculated_amount = $validated['calculated_amount'];
             $transaction->actual_amount = $validated['actual_amount'];
-            $transaction->is_adjusted = $isAdjusted;
-            $transaction->adjustment_reason = $isAdjusted ? $validated['adjustment_reason'] : null;
+            $transaction->is_adjusted = $request->has('is_adjusted') ? $request->is_adjusted : ($validated['calculated_amount'] != $validated['actual_amount']);
+            $transaction->adjustment_reason = $transaction->is_adjusted ? $validated['adjustment_reason'] : null;
             $transaction->save();
 
-            // อัปเดตหรือสร้างงบประมาณรายวิชา
-            $courseBudget = CourseBudget::where('course_id', $validated['course_id'])->first();
-            $remainingBudget = $courseBudget ? $courseBudget->remaining_budget : 0;
-
-            if ($validated['actual_amount'] > $remainingBudget) {
-                // หากเกิน ให้ redirect ไปยังหน้า preview พร้อมข้อความแจ้งเตือน
-                return redirect()->route('admin.compensation-preview', [
-                    'student_id' => $validated['student_id'],
-                    'course_id' => $validated['course_id'],
-                    'month' => $validated['month_year']
-                ])->with('error', 'งบประมาณคงเหลือไม่เพียงพอ กรุณาปรับจำนวนเงินที่ต้องการเบิกจ่าย');
-            }
-
-
-            if (!$courseBudget) {
-                // สร้างงบประมาณรายวิชาใหม่ถ้ายังไม่มี
-                try {
-                    $budget = $this->calculateAndSaveCourseBudget($validated['course_id']);
-                    $courseBudget = CourseBudget::where('course_id', $validated['course_id'])->first();
-                } catch (\Exception $e) {
-                    // หากยังไม่สามารถสร้างได้จากเมธอดข้างต้น ให้สร้าง record ใหม่โดยตรง
-                    Log::warning('Failed to create budget using calculateAndSaveCourseBudget: ' . $e->getMessage());
-
-                    $course = Courses::with('classes')->findOrFail($validated['course_id']);
-                    $totalStudents = $course->classes->sum('enrolled_num');
-                    $totalBudget = $totalStudents * 300; // 300 บาทต่อคน
-
-                    $courseBudget = new CourseBudget();
-                    $courseBudget->course_id = $validated['course_id'];
-                    $courseBudget->total_students = $totalStudents; // ใช้ total_students ตามโครงสร้างตาราง
-                    $courseBudget->total_budget = $totalBudget;
-                    $courseBudget->used_budget = 0;
-                    $courseBudget->remaining_budget = $totalBudget;
-                    $courseBudget->save();
-                }
-            }
-
-            if (!$courseBudget) {
-                throw new \Exception('ไม่สามารถสร้างข้อมูลงบประมาณรายวิชาได้');
-            }
-
-            // อัปเดตยอดใช้งบประมาณ
+            // Update budget
             $courseBudget->used_budget += $validated['actual_amount'];
             $courseBudget->remaining_budget = $courseBudget->total_budget - $courseBudget->used_budget;
             $courseBudget->save();
 
             DB::commit();
 
-            return redirect()->route('admin.ta.profile', $validated['student_id'])
-                ->with('success', 'บันทึกการเบิกจ่ายค่าตอบแทนเรียบร้อยแล้ว');
+            return redirect()->route('admin.ta.profile', [
+                'student_id' => $validated['student_id'],
+                'course_id' => $validated['course_id']
+            ])->with('success', 'บันทึกการเบิกจ่ายค่าตอบแทนเรียบร้อยแล้ว');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error saving compensation: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
+
+            return back()->withInput()->with('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage());
         }
     }
 
@@ -403,7 +341,7 @@ class CourseBudgetController extends Controller
         $endDate = Carbon::createFromFormat('Y-m', $yearMonth)->endOfMonth();
 
 
-        
+
         // ดึงข้อมูลการสอนปกติ
         $regularTeachings = Teaching::with(['attendance', 'class.major'])
             ->whereHas('attendance', function ($query) use ($studentId) {
@@ -428,7 +366,7 @@ class CourseBudgetController extends Controller
             ->pluck('extra_teaching_id')
             ->toArray();
 
-            $extraAttendances = ExtraAttendances::with(['classes.major'])
+        $extraAttendances = ExtraAttendances::with(['classes.major'])
             ->where('student_id', $studentId)
             ->where('approve_status', 'A')
             ->whereBetween('start_work', [$startDate, $endDate])
@@ -447,16 +385,16 @@ class CourseBudgetController extends Controller
 
         foreach ($extraAttendances as $teaching) {
             $hours = $teaching->duration / 60;
-            
+
             // ตรวจสอบว่ามีข้อมูล major และ class_type
             if (!$teaching->classes || !$teaching->classes->major) {
                 Log::warning("ExtraAttendance ID {$teaching->id} missing classes or major data");
                 continue;
             }
-            
+
             $majorType = $teaching->classes->major->major_type ?? 'N';
             $classType = $teaching->class_type === 'L' ? 'LAB' : 'LECTURE';
-            
+
             // คำนวณชั่วโมงตามประเภท
             if ($majorType === 'N') {
                 if ($classType === 'LECTURE') {
@@ -472,7 +410,7 @@ class CourseBudgetController extends Controller
                 }
             }
         }
-        
+
 
         foreach ($regularTeachings as $teaching) {
             $startTime = Carbon::parse($teaching->start_time);

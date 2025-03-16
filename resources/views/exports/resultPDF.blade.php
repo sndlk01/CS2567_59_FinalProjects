@@ -145,122 +145,44 @@
 
 <body>
     @php
-        // สร้าง arrays สำหรับเก็บข้อมูล
+        // สร้างข้อมูลสำหรับแสดงผลจากข้อมูลที่ได้รับมา
         $regularData = [];
         $specialData = [];
-        $regularTotalAmount = 0;
-        $specialTotalAmount = 0;
-        $actualRegularTotal = isset($actualRegularPay) ? $actualRegularPay : 0;
-        $actualSpecialTotal = isset($actualSpecialPay) ? $actualSpecialPay : 0;
 
-        // กรองข้อมูลโครงการปกติ
-        foreach ($attendancesBySection as $section => $attendances) {
-            $sectionRegularAttendances = $attendances->filter(function ($attendance) {
-                if ($attendance['type'] === 'regular') {
-                    return isset($attendance['data']->class->major) &&
-                        $attendance['data']->class->major->major_type !== 'S';
-                } else {
-                    return isset($attendance['data']->classes->major) &&
-                        $attendance['data']->classes->major->major_type !== 'S';
-                }
-            });
-
-            if ($sectionRegularAttendances->isNotEmpty()) {
-                // นับจำนวนชั่วโมงและคำนวณจำนวนเงิน
-                $totalHours = 0;
-                $subjectId = '';
-
-                foreach ($sectionRegularAttendances as $attendance) {
-                    $totalHours += $attendance['hours'];
-
-                    // เก็บรหัสวิชา
-                    if (empty($subjectId)) {
-                        if ($attendance['type'] === 'regular' && isset($attendance['data']->class->course->subjects)) {
-                            $subjectId = $attendance['data']->class->course->subjects->subject_id ?? '';
-                        } elseif (isset($attendance['data']->classes->course->subjects)) {
-                            $subjectId = $attendance['data']->classes->course->subjects->subject_id ?? '';
-                        }
-                    }
-                }
-
-                // คำนวณจำนวนเงินจากชั่วโมงรวม
-                $amount = $totalHours * $compensationRates['regularLecture'];
-                $regularTotalAmount += $amount;
-
-                // เพิ่มข้อมูล
-                $regularData[] = [
-                    'section' => $section,
-                    'type' => 'ปกติ',
-                    'hours' => $totalHours,
-                    'rate' => $compensationRates['regularLecture'],
-                    'amount' => $amount,
-                    'subject_id' => $subjectId,
-                ];
-            }
+        // ข้อมูลโครงการปกติ
+        if ($hasRegularProject) {
+            $regularData[] = [
+                'section' => 'ทุก section',
+                'type' => 'ปกติ',
+                'hours' => $regularLectureHours + $regularLabHours,
+                'rate' => $compensationRates['regularLecture'],
+                'amount' => $regularPay,
+                'subject_id' => $course->subjects->subject_id ?? '',
+            ];
         }
 
-        // กรองข้อมูลโครงการพิเศษ
-        foreach ($attendancesBySection as $section => $attendances) {
-            $sectionSpecialAttendances = $attendances->filter(function ($attendance) {
-                if ($attendance['type'] === 'regular') {
-                    return isset($attendance['data']->class->major) &&
-                        $attendance['data']->class->major->major_type === 'S';
-                } else {
-                    return isset($attendance['data']->classes->major) &&
-                        $attendance['data']->classes->major->major_type === 'S';
-                }
-            });
-
-            if ($sectionSpecialAttendances->isNotEmpty()) {
-                // นับจำนวนชั่วโมงและคำนวณจำนวนเงิน
-                $totalHours = 0;
-                $subjectId = '';
-
-                foreach ($sectionSpecialAttendances as $attendance) {
-                    $totalHours += $attendance['hours'];
-
-                    // เก็บรหัสวิชา
-                    if (empty($subjectId)) {
-                        if ($attendance['type'] === 'regular' && isset($attendance['data']->class->course->subjects)) {
-                            $subjectId = $attendance['data']->class->course->subjects->subject_id ?? '';
-                        } elseif (isset($attendance['data']->classes->course->subjects)) {
-                            $subjectId = $attendance['data']->classes->course->subjects->subject_id ?? '';
-                        }
-                    }
-                }
-
-                // กำหนดค่า rate และ amount ตามประเภทการจ่าย
-                $rate = $compensationRates['specialLecture'];
-                $amount = $totalHours * $rate;
-
-                // ถ้าเป็นแบบเหมาจ่าย
-                if ($isFixedPayment && isset($fixedAmount) && $fixedAmount > 0) {
-                    $rate = 'เหมาจ่าย ' . number_format($fixedAmount, 0) . ' บาท';
-                    $amount = $fixedAmount;
-                }
-
-                $specialTotalAmount += $amount;
-
-                // เพิ่มข้อมูล
-                $specialData[] = [
-                    'section' => $section,
-                    'type' => 'พิเศษ',
-                    'hours' => $totalHours,
-                    'rate' => $rate,
-                    'amount' => $amount,
-                    'subject_id' => $subjectId,
-                    'is_fixed' => $isFixedPayment,
-                ];
-            }
+        // ข้อมูลโครงการพิเศษ
+        if ($hasSpecialProject) {
+            $specialData[] = [
+                'section' => 'ทุก section',
+                'type' => 'พิเศษ',
+                'hours' => $specialLectureHours + $specialLabHours,
+                'rate' => $isFixedPayment
+                    ? 'เหมาจ่าย ' . number_format($fixedAmount, 0) . ' บาท'
+                    : $compensationRates['specialLecture'],
+                'amount' => $specialPay,
+                'subject_id' => $course->subjects->subject_id ?? '',
+                'is_fixed' => $isFixedPayment,
+            ];
         }
 
-        // ตรวจสอบว่ามีข้อมูลโครงการปกติหรือโครงการพิเศษหรือไม่
-        $hasRegularData = count($regularData) > 0;
-        $hasSpecialData = count($specialData) > 0;
+        // กำหนดค่าทั้งหมดสำหรับแสดงผล
+        $actualRegularPay = isset($actualRegularPay) ? $actualRegularPay : $regularPay;
+        $actualSpecialPay = isset($actualSpecialPay) ? $actualSpecialPay : $specialPay;
     @endphp
 
     <!--  โครงการปกติ แสดงเฉพาะเมื่อมีข้อมูล -->
-    @if ($hasRegularData)
+    @if ($hasRegularProject)
         <h3>หลักฐานการจ่ายเงินอื่น ๆ</h3>
 
         <div class="center" style="line-height: 1;">
@@ -270,7 +192,7 @@
                 ข้าพเจ้าผู้มีรายนามข้างท้ายนี้ได้รับเงินจากส่วนราชการ วิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น
                 เป็นค่าตอบแทนผู้ช่วยสอนและผู้ช่วยปฏิบัติงาน
                 <br>สาขาวิชาวิทยาการคอมพิวเตอร์
-                ประจำ{{ $semester->semesters == 'ต้น' ? 'ภาคต้น' : ($semester->semesters == 'ปลาย' ? 'ภาคปลาย' : 'ภาคฤดูร้อน') }}
+                ประจำ{{ $semester->semesters == '1' ? 'ภาคต้น' : ($semester->semesters == '2' ? 'ภาคปลาย' : 'ภาคฤดูร้อน') }}
                 ปีการศึกษา {{ $year }}
                 <br>ตามหนังสืออนุมัติที่ ........... ลงวันที่ เดือน พ.ศ. {{ $year }}
                 ได้เป็นการถูกต้องแล้วจึงลงลายมือชื่อไว้เป็นสำคัญ
@@ -278,12 +200,14 @@
         </div>
 
         <div class="center" style="margin: 5px 0;">
+            @php
+                $degreeLevel = $student->degree_level ?? 'undergraduate';
+                $isGraduate = in_array($degreeLevel, ['master', 'doctoral', 'graduate']);
+            @endphp
             <h3>รายวิชาระดับ
-                (<span
-                    style="display: inline-block; width: 10px;">{{ $student->degree_level == 'bachelor' ? '/' : ' ' }}</span>)
+                (<span style="display: inline-block; width: 10px;">{{ !$isGraduate ? '/' : ' ' }}</span>)
                 ปริญญาตรี
-                (<span
-                    style="display: inline-block; width: 10px;">{{ $student->degree_level == 'master' || $student->degree_level == 'doctoral' ? '/' : ' ' }}</span>)
+                (<span style="display: inline-block; width: 10px;">{{ $isGraduate ? '/' : ' ' }}</span>)
                 บัณฑิตศึกษา <br>
                 (<span style="display: inline-block; width: 10px;">/</span>) ภาคปกติ
                 (<span style="display: inline-block; width: 10px;"> </span>) โครงการพิเศษ
@@ -328,7 +252,7 @@
                         <td class="center">{{ number_format($data['amount'], 0) }}</td>
                         <td class="center">
                             @if (isset($transaction) && $transaction)
-                                {{ number_format($actualRegularTotal, 0) }}
+                                {{ number_format($actualRegularPay, 0) }}
                             @else
                                 {{ number_format($data['amount'], 0) }}
                             @endif
@@ -341,13 +265,13 @@
 
                 <tr>
                     <td colspan="6" class="center"><strong>รวมเบิกเป็นเงินทั้งสิ้น</strong></td>
-                    <td colspan="4" class="center"><strong>{{ number_format($actualRegularTotal, 2) }}</strong>
+                    <td colspan="4" class="center"><strong>{{ number_format($actualRegularPay, 2) }}</strong>
                     </td>
                 </tr>
                 <tr>
                     <td colspan="2" class="center"><strong>(ตัวอักษร)</strong></td>
                     <td colspan="8" class="center"><strong>
-                            {{ \App\Helpers\ThaiNumberHelper::convertToText(number_format($actualRegularTotal, 2, '.', '')) }}ถ้วน
+                            {{ \App\Helpers\ThaiNumberHelper::convertToText(number_format($actualRegularPay, 2, '.', '')) }}ถ้วน
                         </strong>
                     </td>
                 </tr>
@@ -370,13 +294,13 @@
             </table>
         </div>
 
-        @if ($hasSpecialData)
+        @if ($hasSpecialProject)
             <div class="page-break"></div>
         @endif
     @endif
 
     <!--  โครงการพิเศษ แสดงเฉพาะเมื่อมีข้อมูล -->
-    @if ($hasSpecialData)
+    @if ($hasSpecialProject)
         <h3>หลักฐานการจ่ายเงินอื่น ๆ</h3>
 
         <div class="center" style="line-height: 1;">
@@ -386,7 +310,7 @@
                 ข้าพเจ้าผู้มีรายนามข้างท้ายนี้ได้รับเงินจากส่วนราชการ วิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น
                 เป็นค่าตอบแทนผู้ช่วยสอนและผู้ช่วยปฏิบัติงาน
                 <br>สาขาวิชาวิทยาการคอมพิวเตอร์
-                ประจำ{{ $semester->semesters == 'ต้น' ? 'ภาคต้น' : ($semester->semesters == 'ปลาย' ? 'ภาคปลาย' : 'ภาคฤดูร้อน') }}
+                ประจำ{{ $semester->semesters == '1' ? 'ภาคต้น' : ($semester->semesters == '2' ? 'ภาคปลาย' : 'ภาคฤดูร้อน') }}
                 ปีการศึกษา {{ $year }}
                 <br>ตามหนังสืออนุมัติที่ ........... ลงวันที่ เดือน พ.ศ. {{ $year }}
                 ได้เป็นการถูกต้องแล้วจึงลงลายมือชื่อไว้เป็นสำคัญ
@@ -394,12 +318,14 @@
         </div>
 
         <div class="center" style="margin: 5px 0;">
+            @php
+                $degreeLevel = $student->degree_level ?? 'undergraduate';
+                $isGraduate = in_array($degreeLevel, ['master', 'doctoral', 'graduate']);
+            @endphp
             <h3>รายวิชาระดับ
-                (<span
-                    style="display: inline-block; width: 10px;">{{ $student->degree_level == 'bachelor' ? '/' : ' ' }}</span>)
+                (<span style="display: inline-block; width: 10px;">{{ !$isGraduate ? '/' : ' ' }}</span>)
                 ปริญญาตรี
-                (<span
-                    style="display: inline-block; width: 10px;">{{ $student->degree_level == 'master' || $student->degree_level == 'doctoral' ? '/' : ' ' }}</span>)
+                (<span style="display: inline-block; width: 10px;">{{ $isGraduate ? '/' : ' ' }}</span>)
                 บัณฑิตศึกษา <br>
                 (<span style="display: inline-block; width: 10px;"> </span>) ภาคปกติ
                 (<span style="display: inline-block; width: 10px;">/</span>) โครงการพิเศษ
@@ -454,18 +380,14 @@
                         <td class="center">{{ number_format($data['amount'], 0) }}</td>
                         <td class="center">
                             @if (isset($transaction) && $transaction)
-                                {{ number_format($transaction->actual_amount, 2) }}
+                                {{ number_format($actualSpecialPay, 2) }}
                             @else
                                 {{ number_format($specialPay, 2) }}
                             @endif
                         </td>
                         <td></td>
                         <td></td>
-                        <td>
-                            {{ $data['subject_id'] }}
-                            @if ($isFixedPayment)
-                            @endif
-                        </td>
+                        <td>{{ $data['subject_id'] }}</td>
                     </tr>
                 @endforeach
 
@@ -473,7 +395,7 @@
                     <td colspan="6" class="center"><strong>รวมเบิกเป็นเงินทั้งสิ้น</strong></td>
                     <td colspan="4" class="center"><strong>
                             @if (isset($transaction) && $transaction)
-                                {{ number_format($transaction->actual_amount, 2) }}
+                                {{ number_format($actualSpecialPay, 2) }}
                             @else
                                 {{ number_format($specialPay, 2) }}
                             @endif
@@ -485,9 +407,9 @@
                     <td colspan="8" class="center">
                         <strong>
                             {{ \App\Helpers\ThaiNumberHelper::convertToText(
-                                isset($transaction) && $transaction 
-                                    ? number_format($transaction->actual_amount, 2, '.', '') 
-                                    : number_format($specialPay, 2, '.', '')
+                                isset($transaction) && $transaction
+                                    ? number_format($actualSpecialPay, 2, '.', '')
+                                    : number_format($specialPay, 2, '.', ''),
                             ) }}ถ้วน
                         </strong>
                     </td>
@@ -512,7 +434,7 @@
         </div>
     @endif
 
-    @if (!$hasRegularData && !$hasSpecialData)
+    @if (!$hasRegularProject && !$hasSpecialProject)
         <h3>หลักฐานการจ่ายเงินอื่น ๆ</h3>
         <div class="center" style="margin-top: 30px;">
             <p>ไม่พบข้อมูลการลงเวลาในช่วงเวลาที่เลือก</p>
