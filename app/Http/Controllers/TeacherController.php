@@ -73,16 +73,11 @@ class TeacherController extends Controller
             $teacher = Auth::user()->teacher;
 
             // หาเทอมปัจจุบัน
-            $currentSemester = collect($this->tdbmService->getSemesters())
-                ->filter(function ($semester) {
-                    $startDate = \Carbon\Carbon::parse($semester['start_date']);
-                    $endDate = \Carbon\Carbon::parse($semester['end_date']);
-                    $now = \Carbon\Carbon::now();
-                    return $now->between($startDate, $endDate);
-                })->first();
-
+            $allSemesters = collect($this->tdbmService->getSemesters());
+            $currentSemester = $allSemesters->sortByDesc('start_date')->first();
+            
             if (!$currentSemester) {
-                return back()->with('error', 'ไม่พบข้อมูลภาคการศึกษาปัจจุบัน');
+                return back()->with('error', 'ไม่พบข้อมูลภาคการศึกษา');
             }
 
             $courses = Courses::where('owner_teacher_id', $teacher->teacher_id)
