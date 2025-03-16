@@ -584,62 +584,79 @@ class CourseBudgetController extends Controller
         ];
     }
 
+
     /**
      * ดึงอัตราค่าตอบแทนจากฐานข้อมูล
      */
-    private function getCompensationRate($teachingType, $classType, $degreeLevel)
+    private function getCompensationRate($teachingType, $classType, $degreeLevel = 'undergraduate')
     {
+        // แปลงค่า degree_level ให้ตรงกับที่เก็บในฐานข้อมูล
+        $mappedDegreeLevel = $degreeLevel;
+        if (in_array($degreeLevel, ['master', 'doctoral'])) {
+            $mappedDegreeLevel = 'graduate';
+        } else if (in_array($degreeLevel, ['bachelor', 'bachelor_degree'])) {
+            $mappedDegreeLevel = 'undergraduate';
+        }
+
+        // ลองค้นหาในฐานข้อมูลก่อน
         $rate = CompensationRate::where('teaching_type', $teachingType)
             ->where('class_type', $classType)
-            ->where('degree_level', $degreeLevel)
+            ->where('degree_level', $mappedDegreeLevel)  // ใช้ค่าที่แปลงแล้ว
             ->where('status', 'active')
             ->where('is_fixed_payment', false)
             ->first();
 
-        if (!$rate) {
-            // ใช้ค่าเริ่มต้นถ้าไม่พบอัตราในฐานข้อมูล
-            if ($degreeLevel === 'undergraduate') {
-                if ($teachingType === 'regular') {
-                    return 40; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคปกติ
-                } else {
-                    return 50; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคพิเศษ
-                }
-            } else { // graduate
-                if ($teachingType === 'regular') {
-                    return 50; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคปกติ
-                } else {
-                    return 60; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ (กรณีไม่ใช้เหมาจ่าย)
-                }
+        // ถ้าพบข้อมูลในฐานข้อมูล ให้ใช้ค่าจากฐานข้อมูล
+        if ($rate) {
+            return $rate->rate_per_hour;
+        }
+
+        // กรณีไม่พบข้อมูลในฐานข้อมูล ให้ใช้ค่าเริ่มต้น
+        if ($mappedDegreeLevel === 'undergraduate') {
+            if ($teachingType === 'regular') {
+                return 40; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคปกติ
+            } else {
+                return 50; // ผู้ช่วยสอน ป.ตรี ที่สอน ภาคพิเศษ
+            }
+        } else { // graduate
+            if ($teachingType === 'regular') {
+                return 50; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคปกติ
+            } else {
+                return 60; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ (กรณีไม่ใช้เหมาจ่าย)
             }
         }
-
-        return $rate->rate_per_hour;
     }
 
-    /**
-     * ดึงอัตราค่าตอบแทนแบบเหมาจ่ายจากฐานข้อมูล
-     */
+
     private function getFixedCompensationRate($teachingType, $degreeLevel)
-    {
-        Log::debug("Fetching fixed rate for: {$teachingType}, {$degreeLevel}");
+{
+    // แปลงค่า degree_level ให้ตรงกับที่เก็บในฐานข้อมูล
+    $mappedDegreeLevel = $degreeLevel;
+    if (in_array($degreeLevel, ['master', 'doctoral'])) {
+        $mappedDegreeLevel = 'graduate';
+    } else if (in_array($degreeLevel, ['bachelor', 'bachelor_degree'])) {
+        $mappedDegreeLevel = 'undergraduate';
+    }
+    
+    // ค้นหาข้อมูลในฐานข้อมูล
+    $rate = CompensationRate::where('teaching_type', $teachingType)
+        ->where('degree_level', $mappedDegreeLevel)  // ใช้ค่าที่แปลงแล้ว
+        ->where('status', 'active')
+        ->where('is_fixed_payment', true)
+        ->first();
 
-        $rate = CompensationRate::where('teaching_type', $teachingType)
-            ->where('degree_level', $degreeLevel)
-            ->where('status', 'active')
-            ->where('is_fixed_payment', true)
-            ->first();
+    // ถ้าพบข้อมูลในฐานข้อมูล ให้ใช้ค่าจากฐานข้อมูล
+    if ($rate) {
+        return $rate->fixed_amount;
+    }
 
-        if ($rate) {
-            Log::debug("Found fixed rate: " . $rate->fixed_amount);
-            return $rate->fixed_amount;
-        }
-
-        Log::debug("No fixed rate found, using default");
-        // ใช้ค่าเริ่มต้นถ้าไม่พบอัตราในฐานข้อมูล
-        if ($degreeLevel === 'graduate' && $teachingType === 'special') {
+    // ใช้ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
+    if ($mappedDegreeLevel === 'graduate') {
+        if ($teachingType === 'special') {
             return 4000; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ เหมาจ่ายรายเดือน
         }
-
-        return null;
     }
+
+    return null; // กรณีไม่ใช่ประเภทที่เหมาจ่าย
+}
 }

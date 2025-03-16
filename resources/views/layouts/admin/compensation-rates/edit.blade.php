@@ -91,25 +91,36 @@
     </div>
 
     <script>
+        // แก้ไข JavaScript ในไฟล์ edit.blade.php เพื่อให้จัดการกับการแสดง/ซ่อนฟิลด์ได้ถูกต้อง
+
         document.addEventListener('DOMContentLoaded', function() {
             const isFixedPayment = document.getElementById('is_fixed_payment');
             const fixedAmountContainer = document.getElementById('fixed_amount_container');
             const ratePerHourContainer = document.getElementById('rate_per_hour').parentElement;
+            const ratePerHourInput = document.getElementById('rate_per_hour');
+            const fixedAmountInput = document.getElementById('fixed_amount');
 
-            // ตั้งค่าเริ่มต้น
-            if (isFixedPayment.checked) {
-                ratePerHourContainer.style.display = 'none';
-            }
-
-            isFixedPayment.addEventListener('change', function() {
-                if (this.checked) {
+            function updateInputVisibility() {
+                if (isFixedPayment.checked) {
                     fixedAmountContainer.style.display = 'block';
                     ratePerHourContainer.style.display = 'none';
+                    // ยกเลิก required สำหรับ rate_per_hour และเพิ่ม required สำหรับ fixed_amount
+                    ratePerHourInput.removeAttribute('required');
+                    fixedAmountInput.setAttribute('required', 'required');
                 } else {
                     fixedAmountContainer.style.display = 'none';
                     ratePerHourContainer.style.display = 'block';
+                    // เพิ่ม required กลับคืนสำหรับ rate_per_hour และยกเลิก required สำหรับ fixed_amount
+                    ratePerHourInput.setAttribute('required', 'required');
+                    fixedAmountInput.removeAttribute('required');
                 }
-            });
+            }
+
+            // เรียกใช้ฟังก์ชันตอนโหลดหน้า
+            updateInputVisibility();
+
+            // เรียกใช้ฟังก์ชันเมื่อมีการเปลี่ยนแปลง checkbox
+            isFixedPayment.addEventListener('change', updateInputVisibility);
         });
     </script>
 @endsection

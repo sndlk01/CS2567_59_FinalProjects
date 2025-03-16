@@ -635,27 +635,27 @@
                                                 @endif
 
                                                 @if ($compensation['specialHours'] > 0)
-                                                    <div class="row mb-2">
-                                                        <div class="col-7">
-                                                            <i class="fas fa-money-bill-wave text-success me-2"></i>
-                                                            <strong>โครงการพิเศษ:</strong>
-                                                        </div>
-                                                        <div class="col-5 text-end">
-                                                            @if ($isGraduate)
-                                                                {{ number_format($fixedAmount, 2) }} บาท
-                                                                <span class="d-block text-muted">
-                                                                    <span class="badge bg-info">เหมาจ่าย</span>
-                                                                </span>
-                                                            @else
-                                                                {{ number_format($compensation['specialPay'], 2) }} บาท
-                                                                <span class="d-block text-muted">
-                                                                    {{ number_format($compensation['rates']['specialLecture'], 2) }}
-                                                                    บาท/ชม.
-                                                                </span>
-                                                            @endif
-                                                        </div>
+                                                <div class="row mb-2">
+                                                    <div class="col-7">
+                                                        <i class="fas fa-money-bill-wave text-success me-2"></i>
+                                                        <strong>โครงการพิเศษ:</strong>
                                                     </div>
-                                                @endif
+                                                    <div class="col-5 text-end">
+                                                        @if ($isFixedPayment)
+                                                            {{ number_format($fixedAmount, 2) }} บาท
+                                                            <span class="d-block text-muted">
+                                                                <span class="badge bg-info">เหมาจ่าย</span>
+                                                            </span>
+                                                        @else
+                                                            {{ number_format($compensation['specialPay'], 2) }} บาท
+                                                            <span class="d-block text-muted">
+                                                                {{ number_format($compensation['rates']['specialLecture'], 2) }}
+                                                                บาท/ชม.
+                                                            </span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @endif
 
                                                 <div class="row fw-bold border-top pt-2 mt-2">
                                                     <div class="col-7">
