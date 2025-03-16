@@ -392,14 +392,24 @@ class AdminController extends Controller
         try {
             $student = Students::find($student_id);
             $course_id = request('course_id');
-            // if (!$course_id) {
-            //     return back()->with('error', 'กรุณาระบุรหัสรายวิชา');
-            // }
 
-            // $ta = CourseTas::with(['student', 'course.semesters'])
-            //     ->where('student_id', $student_id)
-            //     ->where('course_id', $course_id)
-            //     ->firstOrFail();
+            // ดึงข้อมูลภาคการศึกษาที่เจ้าหน้าที่กำหนดให้แสดง
+            $setting = DB::table('setting_semesters')->where('key', 'user_active_semester_id')->first();
+            $userSelectedSemesterId = $setting ? $setting->value : null;
+
+            if (!$userSelectedSemesterId) {
+                // ถ้าไม่พบการตั้งค่า ใช้ภาคการศึกษาล่าสุด
+                $semester = Semesters::orderBy('year', 'desc')
+                    ->orderBy('semesters', 'desc')
+                    ->first();
+            } else {
+                $semester = Semesters::find($userSelectedSemesterId);
+            }
+
+            if (!$semester) {
+                return back()->with('error', 'ไม่พบข้อมูลภาคการศึกษาที่กำหนดให้แสดง');
+            }
+
             $ta = CourseTas::where('student_id', $student_id)
                 ->where('course_id', $course_id)
                 ->first();
@@ -412,14 +422,18 @@ class AdminController extends Controller
 
             $course = $ta->course;
             $student = $ta->student;
-            $semester = $ta->course->semesters;
+
+            // ตรวจสอบว่าคอร์สอยู่ในภาคการศึกษาที่กำหนดหรือไม่
+            if ($course->semester_id != $semester->semester_id) {
+                return back()->with('error', 'รายวิชานี้ไม่อยู่ในภาคการศึกษาที่กำหนดให้แสดง');
+            }
 
             $start = \Carbon\Carbon::parse($semester->start_date)->startOfDay();
             $end = \Carbon\Carbon::parse($semester->end_date)->endOfDay();
 
-            if (!\Carbon\Carbon::now()->between($start, $end)) {
-                return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
-            }
+            // if (!\Carbon\Carbon::now()->between($start, $end)) {
+            //     return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
+            // }
 
             $monthsInSemester = [];
             if ($start->year === $end->year) {
@@ -625,13 +639,6 @@ class AdminController extends Controller
                 'total' => $regularLectureHours + $regularLabHours + $specialLectureHours + $specialLabHours
             ]);
 
-            //dump("Student degree level: " . ($student->degree_level ?? 'Not set'));
-
-            // $regularLectureRate = $this->getCompensationRate('regular', 'LECTURE', $student->degree_level ?? 'undergraduate');
-            // $regularLabRate = $this->getCompensationRate('regular', 'LAB', $student->degree_level ?? 'undergraduate');
-            // $specialLectureRate = $this->getCompensationRate('special', 'LECTURE', $student->degree_level ?? 'undergraduate');
-            // $specialLabRate = $this->getCompensationRate('special', 'LAB', $student->degree_level ?? 'undergraduate');
-
             $regularLectureRate = $this->getCompensationRate('regular', 'LECTURE', $student->degree_level ?? 'undergraduate');
             $regularLabRate = $this->getCompensationRate('regular', 'LAB', $student->degree_level ?? 'undergraduate');
             $specialLectureRate = $this->getCompensationRate('special', 'LECTURE', $student->degree_level ?? 'undergraduate');
@@ -779,13 +786,7 @@ class AdminController extends Controller
             $attendancesBySection = $allAttendances->groupBy('section');
             // เพิ่มบรรทัดนี้เพื่อกำหนดค่า courseTa
             $courseTa = $ta;
-            // dd([
-            //     'student_degree' => $student->degree_level,
-            //     'regularLectureRate' => $regularLectureRate,
-            //     'regularLabRate' => $regularLabRate,
-            //     'specialLectureRate' => $specialLectureRate,
-            //     'specialLabRate' => $specialLabRate
-            // ]);            // dd($allAttendances);
+
             // ส่งข้อมูลทั้งหมดไปยัง view
             return view('layouts.admin.detailsById', compact(
                 'student',

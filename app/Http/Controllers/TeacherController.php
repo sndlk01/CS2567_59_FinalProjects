@@ -75,7 +75,7 @@ class TeacherController extends Controller
             // หาเทอมปัจจุบัน
             $allSemesters = collect($this->tdbmService->getSemesters());
             $currentSemester = $allSemesters->sortByDesc('start_date')->first();
-            
+
             if (!$currentSemester) {
                 return back()->with('error', 'ไม่พบข้อมูลภาคการศึกษา');
             }
@@ -324,60 +324,6 @@ class TeacherController extends Controller
         return view('layouts.teacher.subject', compact('subjects'));
     }
 
-    // public function subjectDetail($course_id)
-    // {
-    //     try {
-    //         $currentDate = now();
-    //         $semester = ($currentDate->month >= 6 && $currentDate->month <= 11) ? 1 : 2;
-    //         $year = $currentDate->year + 543;
-    //         if ($currentDate->month >= 1 && $currentDate->month <= 5) {
-    //             $year -= 1;
-    //         }
-
-    //         $tdbmService = new TDBMApiService();
-    //         $course = collect($tdbmService->getCourses())->firstWhere('course_id', $course_id);
-
-    //         if (!$course) {
-    //             throw new \Exception('Course not found');
-    //         }
-
-    //         $subject = collect($tdbmService->getSubjects())->firstWhere('subject_id', $course['subject_id']);
-    //         $teacher = collect($tdbmService->getTeachers())->firstWhere('teacher_id', $course['owner_teacher_id']);
-
-    //         $course['subject'] = $subject;
-    //         $course['teacher'] = $teacher;
-    //         $course['current_semester'] = [
-    //             'semester' => $semester,
-    //             'year' => $year
-    //         ];
-
-    //         $teaching_assistants = CourseTas::with(['student', 'courseTaClasses.requests'])
-    //             ->where('course_id', $course_id)
-    //             ->get()
-    //             ->map(function ($ta) {
-    //                 $latestRequest = $ta->courseTaClasses
-    //                     ->flatMap->requests
-    //                     ->sortByDesc('created_at')
-    //                     ->first();
-
-    //                 return [
-    //                     'id' => $ta->id,
-    //                     'name' => $ta->student->name,
-    //                     'email' => $ta->student->email,
-    //                     'student_id' => $ta->student->student_id,
-    //                     'status' => $latestRequest ? strtolower($latestRequest->status) : 'W'
-    //                 ];
-    //             });
-
-    //         $course['teaching_assistants'] = $teaching_assistants;
-
-    //         return view('layouts.teacher.subjectDetail', compact('course'));
-    //     } catch (\Exception $e) {
-    //         Log::error($e->getMessage());
-    //         return back()->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล');
-    //     }
-    // }
-
     public function subjectDetail($course_id)
     {
         try {
@@ -461,21 +407,30 @@ class TeacherController extends Controller
         }
     }
 
-    // version test monthapprove
     public function taDetail($ta_id)
     {
         try {
-            $ta = CourseTas::with(['student', 'course.semesters'])->findOrFail($ta_id);
+            // ดึงข้อมูล CourseTa พร้อมความสัมพันธ์
+            $ta = CourseTas::with(['student', 'course'])->findOrFail($ta_id);
             $student = $ta->student;
-            $semester = $ta->course->semesters;
             $currentTeacher = Auth::user()->teacher;
+
+            // ดึงข้อมูลภาคการศึกษาที่กำหนดให้เห็น
+            $activeSemester = $this->getActiveSemester();
+
+            if (!$activeSemester) {
+                return back()->with('error', 'ไม่พบข้อมูลภาคการศึกษาที่กำหนดให้แสดง');
+            }
+
+            // ตรวจสอบว่า course อยู่ในภาคการศึกษาที่กำหนดหรือไม่
+            if ($ta->course->semester_id != $activeSemester->semester_id) {
+                return back()->with('error', 'รายวิชานี้ไม่อยู่ในภาคการศึกษาที่กำหนดให้แสดง');
+            }
+
+            $semester = $activeSemester; // ใช้ activeSemester แทน
 
             $start = \Carbon\Carbon::parse($semester->start_date)->startOfDay();
             $end = \Carbon\Carbon::parse($semester->end_date)->endOfDay();
-
-            if (!\Carbon\Carbon::now()->between($start, $end)) {
-                return back()->with('error', 'ไม่อยู่ในช่วงภาคการศึกษาปัจจุบัน');
-            }
 
             // สร้างรายการเดือน
             $monthsInSemester = [];
@@ -508,13 +463,16 @@ class TeacherController extends Controller
             // เตรียม teaching_ids สำหรับการลงเวลาปกติ
             $teachingIds = $regularAttendances->pluck('teaching_id')->toArray();
 
-            // ดึงรายวิชาที่อาจารย์คนปัจจุบันเป็นเจ้าของ
+            // ดึงรายวิชาที่อาจารย์คนปัจจุบันเป็นเจ้าของในภาคการศึกษาที่กำหนด
             $coursesOwnedByTeacher = Courses::where('owner_teacher_id', $currentTeacher->teacher_id)
-                ->pluck('course_id')->toArray();
+                ->where('semester_id', $activeSemester->semester_id) // กรองตามภาคการศึกษาที่กำหนด
+                ->pluck('course_id')
+                ->toArray();
 
             // ดึงข้อมูล Class ที่อยู่ในรายวิชาที่อาจารย์เป็นเจ้าของ
             $classesInTeacherCourses = Classes::whereIn('course_id', $coursesOwnedByTeacher)
-                ->pluck('class_id')->toArray();
+                ->pluck('class_id')
+                ->toArray();
 
             // ดึงข้อมูลการสอนตาม teaching_ids ที่ได้
             $teachings = Teaching::with(['teacher', 'class'])
@@ -659,7 +617,8 @@ class TeacherController extends Controller
                 'monthsInSemester',
                 'selectedYearMonth',
                 'isMonthApproved',
-                'approvalNote'
+                'approvalNote',
+                'activeSemester' // ส่ง activeSemester ไปให้ view ด้วย
             ));
         } catch (\Exception $e) {
             Log::error('Exception in taDetail: ' . $e->getMessage());
