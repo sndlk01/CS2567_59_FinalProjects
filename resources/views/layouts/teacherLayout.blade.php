@@ -4,8 +4,6 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="apple-touch-icon" sizes="76x76" href="/assets/img/apple-icon.png">
-    {{-- <link rel="icon" type="image/png" href="/assets/img/favicon.png"> --}}
     <title>@yield('title')</title>
     <!--     Fonts and icons     -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap" rel="stylesheet">
@@ -71,33 +69,6 @@
                         <span class="nav-link-text ms-1">ข้อมูลรายวิชา</span>
                     </a>
                 </li>
-                {{-- <li class="nav-item">
-                    <a class="nav-link " href="../pages/billing.html">
-                        <div
-                            class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
-                            <i class="ni ni-credit-card text-success text-sm opacity-10"></i>
-                        </div>
-                        <span class="nav-link-text ms-1">Billing</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link " href="../pages/virtual-reality.html">
-                        <div
-                            class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
-                            <i class="ni ni-app text-info text-sm opacity-10"></i>
-                        </div>
-                        <span class="nav-link-text ms-1">Virtual Reality</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link " href="../pages/rtl.html">
-                        <div
-                            class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
-                            <i class="ni ni-world-2 text-danger text-sm opacity-10"></i>
-                        </div>
-                        <span class="nav-link-text ms-1">RTL</span>
-                    </a>
-                </li> --}}
             </ul>
         </div>
     </aside>
@@ -138,6 +109,7 @@
                                     {{ Auth::user()->name }}
                                 </a>
                                 <div class="dropdown-menu dropdown-menu-end my-0" aria-labelledby="navbarDropdown">
+                                    <a class="dropdown-item" href="{{ route('teacher.change-password') }}">เปลี่ยนรหัสผ่าน</a>
                                     <a class="dropdown-item" href="{{ route('logout') }}"
                                         onclick="event.preventDefault();
                                             document.getElementById('logout-form').submit();">

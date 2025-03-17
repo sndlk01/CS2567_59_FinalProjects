@@ -118,6 +118,10 @@ Route::middleware(['auth', 'user-access:admin'])->group(function () {
 
     // Route for sync all data from api into database
     Route::get('/admin/sync-all-data', [App\Http\Controllers\AdminController::class, 'syncAllData'])->name('admin.sync-all-data');
+
+    // Route for change password
+    Route::get('/admin/change-password', [AdminController::class, 'showChangePasswordForm'])->name('admin.change-password');
+    Route::post('/admin/change-password', [AdminController::class, 'changePassword'])->name('admin.update-password');
 });
 
 //Teacher Routes List
@@ -139,6 +143,10 @@ Route::middleware(['auth', 'user-access:teacher'])->group(function () {
         Route::put('/{id}', [TeacherController::class, 'update'])->name('update');
         Route::get('/{request}', [TeacherController::class, 'showTARequest'])->name('show');
     });
+
+    // Route for chacge password
+    Route::get('/teacher/change-password', [TeacherController::class, 'showChangePasswordForm'])->name('teacher.change-password');
+    Route::post('/teacher/change-password', [TeacherController::class, 'changePassword'])->name('teacher.update-password');
 });
 
 Route::fallback(function () {

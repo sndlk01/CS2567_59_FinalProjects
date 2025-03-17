@@ -21,7 +21,7 @@ use App\Models\{
     ExtraTeaching
 };
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{Auth, DB, Log};
+use Illuminate\Support\Facades\{Auth, DB, Log, Hash};
 use App\Services\TDBMApiService;
 
 
@@ -39,7 +39,43 @@ class TeacherController extends Controller
         $this->tdbmService = $tdbmService;
     }
 
-    // เพิ่มในทั้ง TaController และ TeacherController
+    /**
+     * แสดงฟอร์มเปลี่ยนรหัสผ่านของอาจารย์
+     */
+    public function showChangePasswordForm()
+    {
+        return view('layouts.teacher.change-password');
+    }
+
+    /**
+     * ดำเนินการเปลี่ยนรหัสผ่านของอาจารย์
+     */
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'password' => 'required|min:8|confirmed',
+        ], [
+            'current_password.required' => 'กรุณาระบุรหัสผ่านปัจจุบัน',
+            'password.required' => 'กรุณาระบุรหัสผ่านใหม่',
+            'password.min' => 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร',
+            'password.confirmed' => 'ยืนยันรหัสผ่านไม่ตรงกัน',
+        ]);
+
+        $user = \App\Models\User::find(Auth::id());
+
+        // ตรวจสอบรหัสผ่านปัจจุบัน
+        if (!Hash::check($request->current_password, $user->password)) {
+            return back()->withErrors(['current_password' => 'รหัสผ่านปัจจุบันไม่ถูกต้อง']);
+        }
+
+        // อัปเดตรหัสผ่านใหม่
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        return redirect()->route('teacher.home')->with('success', 'เปลี่ยนรหัสผ่านสำเร็จ');
+    }
+
     private function getActiveSemester()
     {
         // ลองดึงจาก session ก่อน

@@ -25,7 +25,7 @@ use App\Models\{
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\TaAttendanceExport;
 use Maatwebsite\Excel\Facades\Excel;
-use Illuminate\Support\Facades\{Auth, DB, Log, Storage};
+use Illuminate\Support\Facades\{Auth, DB, Log, Storage, Hash};
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use App\Services\TDBMSyncService;
 
@@ -42,6 +42,43 @@ class AdminController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
+    }
+
+    /**
+     * แสดงฟอร์มเปลี่ยนรหัสผ่านของผู้ดูแลระบบ
+     */
+    public function showChangePasswordForm()
+    {
+        return view('layouts.admin.change-password');
+    }
+
+    /**
+     * ดำเนินการเปลี่ยนรหัสผ่านของผู้ดูแลระบบ
+     */
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'password' => 'required|min:8|confirmed',
+        ], [
+            'current_password.required' => 'กรุณาระบุรหัสผ่านปัจจุบัน',
+            'password.required' => 'กรุณาระบุรหัสผ่านใหม่',
+            'password.min' => 'รหัสผ่านต้องมีความยาวอย่างน้อย 8 ตัวอักษร',
+            'password.confirmed' => 'ยืนยันรหัสผ่านไม่ตรงกัน',
+        ]);
+
+        $user = \App\Models\User::find(Auth::id());
+
+        // ตรวจสอบรหัสผ่านปัจจุบัน
+        if (!Hash::check($request->current_password, $user->password)) {
+            return back()->withErrors(['current_password' => 'รหัสผ่านปัจจุบันไม่ถูกต้อง']);
+        }
+
+        // อัปเดตรหัสผ่านใหม่
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        return redirect()->route('admin.home')->with('success', 'เปลี่ยนรหัสผ่านสำเร็จ');
     }
 
     // function for sync all data from api into database
