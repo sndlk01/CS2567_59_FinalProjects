@@ -21,35 +21,43 @@ class GoogleAuthController extends Controller
         try {
             // รับข้อมูลจาก Google
             $google_user = Socialite::driver('google')->user();
+            $email = $google_user->getEmail();
 
-            // ตรวจสอบว่าอีเมลเป็น @kkumail.com หรือไม่
-            // $email = $google_user->getEmail();
-            // if (!str_ends_with($email, '@kkumail.com')) {
-            //     return redirect()->route('login')->with(['error' => 'คุณสามารถเข้าสู่ระบบได้เฉพาะอีเมล @kkumail.com เท่านั้น']);
-            // }
+            // ตรวจสอบโดเมนของอีเมล
+            $is_student = str_ends_with($email, '@kkumail.com');
+            $is_teacher = str_ends_with($email, '@kku.ac.th');
+
+            // ถ้าไม่ใช่ทั้งอีเมลนักศึกษาหรืออาจารย์ให้แสดงข้อความแจ้งเตือน
+            if (!$is_student && !$is_teacher) {
+                return redirect()->route('login')->with(['error' => 'คุณสามารถเข้าสู่ระบบได้เฉพาะอีเมล @kkumail.com หรือ @kku.ac.th เท่านั้น']);
+            }
 
             // ค้นหาผู้ใช้จาก Google ID
             $user = User::where('google_id', $google_user->getId())->first();
 
             // ถ้าไม่พบ ให้ค้นหาผู้ใช้จากอีเมล
-            // ถ้าไม่พบ ให้ค้นหาผู้ใช้จากอีเมล
             if (!$user) {
-                $user = User::where('email', $google_user->getEmail())->first();
+                $user = User::where('email', $email)->first();
 
                 if (!$user) {
-                    // สร้างผู้ใช้ใหม่
+                    // สำหรับอาจารย์ ต้องมีข้อมูลในระบบก่อน
+                    if ($is_teacher) {
+                        return redirect()->route('login')->with(['error' => 'ไม่พบข้อมูลอาจารย์ในระบบ กรุณาติดต่อผู้ดูแลระบบ']);
+                    }
+
+                    // สร้างผู้ใช้ใหม่สำหรับนักศึกษา
                     $user = User::create([
-                        'name' => $google_user->getName(), // ใช้ชื่อเต็มจาก Google
-                        'email' => $google_user->getEmail(),
+                        'name' => $google_user->getName(),
+                        'email' => $email,
                         'google_id' => $google_user->getId(),
-                        'password' => null, // ไม่จำเป็นต้องมีรหัสผ่าน
+                        'password' => null,
+                        'type' => 0, // 0 สำหรับนักศึกษา (user)
                     ]);
                 } else {
-                    // ถ้าผู้ใช้งานมีอยู่แล้วและต้องการอัปเดตข้อมูล
+                    // อัปเดตข้อมูลผู้ใช้ที่มีอยู่แล้ว
                     $user->update([
-                        'name' => $google_user->getName(), // อัปเดตชื่อเต็ม
-                        'google_id' => $google_user->getId(), // อัปเดต Google ID
-                        'email' => $google_user->getEmail(), // อัปเดตอีเมล หากจำเป็น
+                        // 'name' => $google_user->getName(),
+                        'google_id' => $google_user->getId(),
                     ]);
                 }
             }
@@ -57,13 +65,19 @@ class GoogleAuthController extends Controller
             // เข้าสู่ระบบ
             Auth::login($user);
 
-            // Check if the user needs to complete their profile
-            if (!$user->prefix || !$user->student_id || !$user->card_id || !$user->phone) {
-                return redirect()->route('complete.profile');
-            }
+            // จัดการการนำทางหลังจากเข้าสู่ระบบสำเร็จ
+            if ($is_teacher) {
+                // อาจารย์ไปที่หน้า teacher.home
+                return redirect()->route('teacher.home');
+            } else {
+                // นักศึกษา - ตรวจสอบว่าต้องกรอกข้อมูลเพิ่มเติมหรือไม่
+                if (!$user->prefix || !$user->student_id || !$user->card_id || !$user->phone) {
+                    return redirect()->route('complete.profile');
+                }
 
-            // เปลี่ยนเส้นทางไปยังหน้าที่ตั้งใจไว้
-            return redirect()->intended('home');
+                // เปลี่ยนเส้นทางไปยังหน้าหลัก
+                return redirect()->intended('home');
+            }
         } catch (\Throwable $th) {
             // บันทึกข้อผิดพลาดสำหรับการดีบัก
             Log::error('Google Login Error: ' . $th->getMessage());

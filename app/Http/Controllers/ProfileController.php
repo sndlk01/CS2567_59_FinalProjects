@@ -28,9 +28,24 @@ class ProfileController extends Controller
         ]);
 
         // ดึงข้อมูล user ที่ล็อกอิน
-        $user = Auth::user();
+        // $user = Auth::user();
 
         // อัปเดตข้อมูล
+        // $user->update([
+        //     'prefix' => $request->input('prefix'),
+        //     'name' => $request->input('name'),
+        //     'student_id' => $request->input('student_id'),
+        //     'card_id' => $request->input('card_id'),
+        //     'phone' => $request->input('phone'),
+        // ])->save();
+
+        // solution 2
+        $user = User::find(Auth::id()); // ตรวจสอบว่ามี user_id หรือไม่
+
+        if (!$user) {
+            return redirect()->back()->with('error', 'User not found');
+        }
+
         $user->update([
             'prefix' => $request->input('prefix'),
             'name' => $request->input('name'),
@@ -38,21 +53,6 @@ class ProfileController extends Controller
             'card_id' => $request->input('card_id'),
             'phone' => $request->input('phone'),
         ]);
-
-        // solution 2
-        // $user = User::find($user_id); // ตรวจสอบว่ามี user_id หรือไม่
-
-        // if (!$user) {
-        //     return redirect()->back()->with('error', 'User not found');
-        // }
-
-        // $user->update([
-        //     'prefix' => $request->input('prefix'),
-        //     'name' => $request->input('name'),
-        //     'student_id' => $request->input('student_id'),
-        //     'card_id' => $request->input('card_id'),
-        //     'phone' => $request->input('phone'),
-        // ]);
 
         if ($request->filled('password')) {
             $user->password = bcrypt($request->input('password')); // เข้ารหัสรหัสผ่าน

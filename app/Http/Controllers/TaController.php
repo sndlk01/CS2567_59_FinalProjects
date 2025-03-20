@@ -1062,25 +1062,25 @@ class TaController extends Controller
             'phone' => 'nullable|string|max:11',
             'student_id' => 'nullable|string|max:11',
             'email' => 'required|email|unique:users,email,' . Auth::id(),
-            'degree_level' => 'nullable|string|max:256',
         ]);
 
         $user = Auth::user();
 
         DB::beginTransaction();
         try {
+            // อัปเดตข้อมูลเฉพาะในตาราง users
             $userUpdateData = [
                 'prefix' => $request->prefix,
                 'name' => $request->name,
                 'card_id' => $request->card_id,
                 'phone' => $request->phone,
                 'student_id' => $request->student_id,
-                'email' => $request->email,
-                'degree_level' => $request->degree_level
+                'email' => $request->email
             ];
 
             User::where('id', $user->id)->update($userUpdateData);
 
+            // อัปเดตรหัสผ่านถ้ามีการกรอก
             if ($request->filled('password')) {
                 $request->validate([
                     'password' => 'required|min:8|confirmed'
@@ -1090,7 +1090,8 @@ class TaController extends Controller
                 ]);
             }
 
-            if ($user->type === "user") {  // เปลี่ยนเงื่อนไขจาก type == 0 เป็น type === "user"
+            // อัปเดตข้อมูลในตาราง students (ถ้าเป็น user ประเภท "user")
+            if ($user->type === "user") {
                 $studentData = [
                     'prefix' => $request->prefix,
                     'name' => $request->name,
@@ -1098,17 +1099,18 @@ class TaController extends Controller
                     'card_id' => $request->card_id,
                     'phone' => $request->phone,
                     'email' => $request->email
+                    // ไม่มี degree_level ในนี้แล้ว
                 ];
 
                 Students::updateOrCreate(
-                    ['user_id' => $user->id],  // เงื่อนไขค้นหา
-                    $studentData               // ข้อมูลที่จะอัพเดตหรือสร้างใหม่
+                    ['user_id' => $user->id],
+                    $studentData
                 );
             }
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'อัพเดตข้อมูลเรียบร้อยแล้ว');
+            return redirect()->route('home')->with('success', 'อัพเดตข้อมูลเรียบร้อยแล้ว');
         } catch (\Exception $e) {
             DB::rollback();
             return redirect()->back()

@@ -88,7 +88,7 @@
             </div>
         </nav>
 
-        <main class="py-4">
+        <main>
             {{-- {!! Toastr::message() !!} --}}
             @yield('content')
         </main>
