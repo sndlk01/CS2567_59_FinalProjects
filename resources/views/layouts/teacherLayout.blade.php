@@ -66,7 +66,7 @@
                             class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
                             <i class="ni ni-calendar-grid-58 text-primary text-sm opacity-10"></i>
                         </div>
-                        <span class="nav-link-text ms-1">ข้อมูลรายวิชา</span>
+                        <span class="nav-link-text ms-1">ข้อมูลผู้ช่วยสอน</span>
                     </a>
                 </li>
             </ul>
@@ -169,6 +169,7 @@
     <script src="https://kit.fontawesome.com/2db00bb8e9.js" crossorigin="anonymous"></script>
     <!-- Control Center for Soft Dashboard: parallax effects, scripts for the example pages etc -->
     {{-- <script src="/assets/js/argon-dashboard.min.js?v=2.0.4"></script> --}}
+    @stack('scripts')
 </body>
 
 </html>

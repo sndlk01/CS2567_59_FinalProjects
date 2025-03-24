@@ -976,8 +976,27 @@ class TeacherController extends Controller
             foreach ($courseTaIds as $index => $courseTaId) {
                 $courseTa = CourseTas::findOrFail($courseTaId);
 
+                // ตรวจสอบสถานะปัจจุบันของคำร้อง
                 $courseTaClasses = CourseTaClasses::where('course_ta_id', $courseTaId)->get();
+                $latestRequest = null;
 
+                // หาคำร้องล่าสุดเพื่อตรวจสอบสถานะปัจจุบัน
+                foreach ($courseTaClasses as $class) {
+                    $request = Requests::where('course_ta_class_id', $class->id)
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+
+                    if ($request && (!$latestRequest || $request->created_at > $latestRequest->created_at)) {
+                        $latestRequest = $request;
+                    }
+                }
+
+                // ถ้าสถานะปัจจุบันเป็น 'A' 
+                if ($latestRequest && strtoupper($latestRequest->status) === 'A') {
+                    continue;
+                }
+
+                // ถ้าไม่มี courseTaClasses ให้สร้างใหม่
                 if ($courseTaClasses->isEmpty()) {
                     $courseTaClass = CourseTaClasses::create([
                         'course_ta_id' => $courseTaId,
@@ -986,6 +1005,7 @@ class TeacherController extends Controller
                     $courseTaClasses = collect([$courseTaClass]);
                 }
 
+                // อัปเดตสถานะสำหรับทุก class
                 foreach ($courseTaClasses as $courseTaClass) {
                     Requests::updateOrCreate(
                         ['course_ta_class_id' => $courseTaClass->id],

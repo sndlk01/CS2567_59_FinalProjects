@@ -53,7 +53,7 @@
                                         <td>{{ $ta['name'] }}</td>
                                         <td>{{ $ta['email'] }}</td>
                                         <td>
-                                            <a class="fw-bold" href="{{ url('/subject/subjectDetail/taDetail/' . $ta['id']) }}">
+                                            <a class="btn btn-primary btn-sm" href="{{ url('/subject/subjectDetail/taDetail/' . $ta['id']) }}">
                                                 ตรวจสอบข้อมูล
                                             </a>
                                         </td>

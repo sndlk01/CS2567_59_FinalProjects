@@ -40,7 +40,7 @@
                                             <td>{{ $subject['name_en'] }}</td>
                                             <td>{{ $subject['ta_count'] }}</td>
                                             <td>
-                                                <a class="fw-bold"
+                                                <a class="btn btn-primary btn-sm"
                                                     href="{{ url('/teacher/subjectDetail/' . $subject['courses'][0]['course_id']) }}">
                                                     รายละเอียดผู้ช่วยสอน
                                                 </a>
