@@ -29,6 +29,7 @@
                                         <th scope="col">รหัสวิชา</th>
                                         <th scope="col">ชื่อวิชา</th>
                                         <th scope="col">จำนวนผู้ช่วยสอน</th>
+                                        <th scope="col">รายการรออนุมัติ</th>
                                         <th scope="col"></th>
                                     </tr>
                                 </thead>
@@ -39,6 +40,13 @@
                                             <td>{{ $subject['subject_id'] }}</td>
                                             <td>{{ $subject['name_en'] }}</td>
                                             <td>{{ $subject['ta_count'] }}</td>
+                                            <td>
+                                                @if(isset($subject['pending_attendances']) && $subject['pending_attendances'] > 0)
+                                                    <span class="badge bg-danger">{{ $subject['pending_attendances'] }}</span>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
                                             <td>
                                                 <a class="btn btn-primary btn-sm"
                                                     href="{{ url('/teacher/subjectDetail/' . $subject['courses'][0]['course_id']) }}">

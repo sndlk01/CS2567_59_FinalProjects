@@ -46,6 +46,11 @@
                             <i class="ni ni-tv-2 text-primary text-sm opacity-10"></i>
                         </div>
                         <span class="nav-link-text ms-1">คำร้องการสมัครผู้ช่วยสอน</span>
+                        @if (session('pendingRequestsCount') && session('pendingRequestsCount') > 0)
+                            <span class="ms-2 badge rounded-pill bg-danger">
+                                {{ session('pendingRequestsCount') }}
+                            </span>
+                        @endif
                     </a>
                 </li>
 
@@ -56,17 +61,26 @@
                             <i class="ni ni-send text-primary text-sm opacity-10"></i>
                         </div>
                         <span class="nav-link-text ms-1">ยื่นคำร้องขอผู้ช่วยสอน</span>
+                        @if (session('pendingRequestsCount') && session('pendingRequestsCount') > 0)
+                            <span class="ms-2 badge rounded-pill bg-danger">
+                                {{ session('pendingRequestsCount') }}
+                            </span>
+                        @endif
                     </a>
                 </li>
 
 
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url('/subject') }}">
-                        <div
-                            class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
+                    <a class="nav-link " href="{{ url('/subject') }}">
+                        <div class="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
                             <i class="ni ni-calendar-grid-58 text-primary text-sm opacity-10"></i>
                         </div>
                         <span class="nav-link-text ms-1">ข้อมูลผู้ช่วยสอน</span>
+                        @if(session('pendingAttendancesCount') && session('pendingAttendancesCount') > 0)
+                            <span class="ms-2 badge rounded-pill bg-danger">
+                                {{ session('pendingAttendancesCount') }}
+                            </span>
+                        @endif
                     </a>
                 </li>
             </ul>
@@ -109,7 +123,8 @@
                                     {{ Auth::user()->name }}
                                 </a>
                                 <div class="dropdown-menu dropdown-menu-end my-0" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="{{ route('teacher.change-password') }}">เปลี่ยนรหัสผ่าน</a>
+                                    <a class="dropdown-item"
+                                        href="{{ route('teacher.change-password') }}">เปลี่ยนรหัสผ่าน</a>
                                     <a class="dropdown-item" href="{{ route('logout') }}"
                                         onclick="event.preventDefault();
                                             document.getElementById('logout-form').submit();">
@@ -144,6 +159,17 @@
             @yield('content')
         </div>
     </main>
+    <style>
+        .badge.bg-danger {
+            font-size: 12px;
+            width: 20px;
+            height: 20px;
+            padding: 7px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
 
 
     {{-- <script>
