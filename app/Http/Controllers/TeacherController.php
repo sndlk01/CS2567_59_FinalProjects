@@ -175,6 +175,32 @@ class TeacherController extends Controller
         return view('layouts.teacher.ta-request.create', compact('course', 'availableStudents'));
     }
 
+    private function updatePendingRequestsCount()
+    {
+        $user = Auth::user();
+        $teacher = Teachers::where('user_id', $user->id)->first();
+
+        if ($teacher) {
+            // ดึงข้อมูลภาคการศึกษาที่กำลังใช้งาน
+            $activeSemester = $this->getActiveSemester();
+
+            if ($activeSemester) {
+                // นับคำขอที่รออนุมัติใหม่
+                $pendingRequestsCount = CourseTas::whereHas('course', function ($query) use ($teacher, $activeSemester) {
+                    $query->where('owner_teacher_id', $teacher->teacher_id)
+                        ->where('semester_id', $activeSemester->semester_id);
+                })
+                    ->whereHas('courseTaClasses.requests', function ($query) {
+                        $query->where('status', 'w'); // เป็นตัวพิมพ์เล็กตามที่ใช้ในระบบของคุณ
+                    })
+                    ->count();
+
+                // บันทึกลงใน session เพื่อให้สามารถเข้าถึงได้จากทุกหน้า
+                session(['pendingRequestsCount' => $pendingRequestsCount]);
+            }
+        }
+    }
+
     public function storeTARequest(Request $request)
     {
         $validated = $request->validate([
@@ -227,7 +253,7 @@ class TeacherController extends Controller
                     'total_hours_per_week' => $totalHours
                 ]);
             }
-
+            $this->updatePendingRequestsCount();
             DB::commit();
             return redirect()->route('teacher.ta-requests.index')
                 ->with('success', 'บันทึกคำร้องขอ TA สำเร็จ');
@@ -644,6 +670,8 @@ class TeacherController extends Controller
 
             // ใช้ formattedTeachings แทน teachings
             $teachings = $formattedTeachings;
+            $pendingAttendancesCount = $this->countPendingAttendances();
+            session(['pendingAttendancesCount' => $pendingAttendancesCount]);
 
             return view('layouts.teacher.taDetail', compact(
                 'student',
@@ -654,7 +682,8 @@ class TeacherController extends Controller
                 'selectedYearMonth',
                 'isMonthApproved',
                 'approvalNote',
-                'activeSemester' // ส่ง activeSemester ไปให้ view ด้วย
+                'activeSemester',
+                'pendingAttendancesCount'
             ));
         } catch (\Exception $e) {
             Log::error('Exception in taDetail: ' . $e->getMessage());
@@ -780,7 +809,8 @@ class TeacherController extends Controller
                 // คำนวณจำนวนรายการที่อนุมัติแต่ละประเภท
                 $message = "อนุมัติรายการที่เลือกเรียบร้อยแล้ว ";
                 $message .= "(ปกติ: {$normalCount}, สอนชดเชย: {$extraTeachingCount}, งานพิเศษ: {$extraAttendanceCount})";
-
+                $pendingAttendancesCount = $this->countPendingAttendances();
+                session(['pendingAttendancesCount' => $pendingAttendancesCount]);
                 return back()->with('success', $message);
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -858,7 +888,24 @@ class TeacherController extends Controller
                 if (!$course || !$course->subjects) {
                     continue;
                 }
+                $classIds = Classes::where('course_id', $course->course_id)->pluck('class_id')->toArray();
+                $pendingAttendances = Attendances::whereHas('teaching', function ($query) use ($classIds) {
+                    $query->whereIn('class_id', $classIds);
+                })
+                    ->where(function ($query) {
+                        $query->whereNull('approve_status')
+                            ->orWhere('approve_status', '!=', 'a');
+                    })
+                    ->count();
 
+                $pendingExtraAttendances = ExtraAttendances::whereIn('class_id', $classIds)
+                    ->where(function ($query) {
+                        $query->whereNull('approve_status')
+                            ->orWhere('approve_status', '!=', 'a');
+                    })
+                    ->count();
+
+                $totalPending = $pendingAttendances + $pendingExtraAttendances;
                 $subject = $course->subjects;
                 $subjectId = $subject->subject_id;
 
@@ -867,17 +914,21 @@ class TeacherController extends Controller
                         'subject_id' => $subjectId,
                         'name_en' => $subject->name_en,
                         'ta_count' => $courseTa->ta_count,
+                        'pending_attendances' => $totalPending,
                         'courses' => [$course]
                     ];
                 } else {
                     $subjects[$subjectId]['ta_count'] += $courseTa->ta_count;
+                    $subjects[$subjectId]['pending_attendances'] += $totalPending;
                     $subjects[$subjectId]['courses'][] = $course;
                 }
             }
-
+            $pendingAttendancesCount = $this->countPendingAttendances();
+            session(['pendingAttendancesCount' => $pendingAttendancesCount]);
             return view('layouts.teacher.subject', [
                 'subjects' => array_values($subjects),
-                'currentSemester' => $activeSemester
+                'currentSemester' => $activeSemester,
+                'pendingAttendancesCount' => $pendingAttendancesCount
             ]);
         } catch (\Exception $e) {
             Log::error($e->getMessage());
@@ -885,6 +936,21 @@ class TeacherController extends Controller
                 ->with('error', 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' . $e->getMessage());
         }
     }
+
+    public function countPendingRequests($teacherId, $semesterId)
+    {
+        return CourseTas::whereHas('course', function ($query) use ($semesterId) {
+            $query->where('semester_id', $semesterId);
+        })
+            ->whereHas('course', function ($query) use ($teacherId) {
+                $query->where('owner_teacher_id', $teacherId);
+            })
+            ->whereHas('courseTaClasses.requests', function ($query) {
+                $query->where('status', 'W');
+            })
+            ->count();
+    }
+
 
     public function showTARequests(TDBMApiService $tdbmApiService)
     {
@@ -939,6 +1005,7 @@ class TeacherController extends Controller
 
                 $latestRequest = $courseTa->courseTaClasses->flatMap->requests->sortByDesc('created_at')->first();
 
+
                 return [
                     'course_ta_id' => $courseTa->id,
                     'course_id' => $courseTa->course_id,
@@ -951,12 +1018,17 @@ class TeacherController extends Controller
                 ];
             })->filter(); // กรองค่า null ออก
 
+            $pendingRequestsCount = $formattedCourseTas->where('status', 'w')->count();
+            session(['pendingRequestsCount' => $pendingRequestsCount]);
+
+
             Log::info('Formatted Course TAs count: ' . $formattedCourseTas->count());
 
-            // ส่งข้อมูลภาคการศึกษาไปด้วยเพื่อแสดงในหน้า view
             return view('layouts.teacher.teacherHome', [
                 'courseTas' => $formattedCourseTas,
-                'currentSemester' => $activeSemester
+                'currentSemester' => $activeSemester,
+                'pendingRequestsCount' => $pendingRequestsCount
+
             ]);
         } catch (\Exception $e) {
             Log::error('Error in showTARequests: ' . $e->getMessage());
@@ -976,8 +1048,27 @@ class TeacherController extends Controller
             foreach ($courseTaIds as $index => $courseTaId) {
                 $courseTa = CourseTas::findOrFail($courseTaId);
 
+                // ตรวจสอบสถานะปัจจุบันของคำร้อง
                 $courseTaClasses = CourseTaClasses::where('course_ta_id', $courseTaId)->get();
+                $latestRequest = null;
 
+                // หาคำร้องล่าสุดเพื่อตรวจสอบสถานะปัจจุบัน
+                foreach ($courseTaClasses as $class) {
+                    $request = Requests::where('course_ta_class_id', $class->id)
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+
+                    if ($request && (!$latestRequest || $request->created_at > $latestRequest->created_at)) {
+                        $latestRequest = $request;
+                    }
+                }
+
+                // ถ้าสถานะปัจจุบันเป็น 'A' 
+                if ($latestRequest && strtoupper($latestRequest->status) === 'A') {
+                    continue;
+                }
+
+                // ถ้าไม่มี courseTaClasses ให้สร้างใหม่
                 if ($courseTaClasses->isEmpty()) {
                     $courseTaClass = CourseTaClasses::create([
                         'course_ta_id' => $courseTaId,
@@ -986,6 +1077,7 @@ class TeacherController extends Controller
                     $courseTaClasses = collect([$courseTaClass]);
                 }
 
+                // อัปเดตสถานะสำหรับทุก class
                 foreach ($courseTaClasses as $courseTaClass) {
                     Requests::updateOrCreate(
                         ['course_ta_class_id' => $courseTaClass->id],
@@ -997,7 +1089,7 @@ class TeacherController extends Controller
                     );
                 }
             }
-
+            $this->updatePendingRequestsCount();
             DB::commit();
             return redirect()->back()->with('success', 'อัพเดทสถานะสำเร็จ');
         } catch (\Exception $e) {
@@ -1005,5 +1097,51 @@ class TeacherController extends Controller
             Log::error('Error updating TA request status: ' . $e->getMessage());
             return redirect()->back()->with('error', 'เกิดข้อผิดพลาดในการอัพเดทสถานะ: ' . $e->getMessage());
         }
+    }
+
+    private function countPendingAttendances()
+    {
+        $user = Auth::user();
+        $teacher = Teachers::where('user_id', $user->id)->first();
+
+        if (!$teacher) {
+            return 0;
+        }
+
+        $activeSemester = $this->getActiveSemester();
+        if (!$activeSemester) {
+            return 0;
+        }
+
+        // ดึงรายวิชาที่อาจารย์คนปัจจุบันเป็นเจ้าของ
+        $coursesOwnedByTeacher = Courses::where('owner_teacher_id', $teacher->teacher_id)
+            ->where('semester_id', $activeSemester->semester_id)
+            ->pluck('course_id')
+            ->toArray();
+
+        // ดึงข้อมูล Class ที่อยู่ในรายวิชาที่อาจารย์เป็นเจ้าของ
+        $classesInTeacherCourses = Classes::whereIn('course_id', $coursesOwnedByTeacher)
+            ->pluck('class_id')
+            ->toArray();
+
+        // นับการลงเวลาปกติที่รออนุมัติ
+        $pendingAttendances = Attendances::whereHas('teaching', function ($query) use ($classesInTeacherCourses) {
+            $query->whereIn('class_id', $classesInTeacherCourses);
+        })
+            ->where(function ($query) {
+                $query->whereNull('approve_status')
+                    ->orWhere('approve_status', '!=', 'a');
+            })
+            ->count();
+
+        // นับการลงเวลาพิเศษที่รออนุมัติ
+        $pendingExtraAttendances = ExtraAttendances::whereIn('class_id', $classesInTeacherCourses)
+            ->where(function ($query) {
+                $query->whereNull('approve_status')
+                    ->orWhere('approve_status', '!=', 'a');
+            })
+            ->count();
+
+        return $pendingAttendances + $pendingExtraAttendances;
     }
 }

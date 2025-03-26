@@ -119,17 +119,17 @@
                                                     </td>
                                                     <td>{{ $request->details->sum(function ($detail) {return $detail->students->count();}) }}
                                                     </td>
-                                                    <td>
+                                                    {{-- <td>
                                                         @if ($request->status === 'W')
                                                             <a href="{{ route('teacher.ta-requests.edit', $request->id) }}"
                                                                 class="btn btn-primary px-4 me-2">
                                                                 แก้ไขคำร้อง
                                                             </a>
                                                         @endif
-                                                    </td>
+                                                    </td> --}}
                                                     <td>
                                                         <a href="{{ route('teacher.ta-requests.show', $request->id) }}"
-                                                            class="btn btn-info btn-sm">
+                                                            class="btn btn-primary btn-sm">
                                                             ดูรายละเอียด
                                                         </a>
                                                     </td>

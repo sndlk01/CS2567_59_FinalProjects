@@ -66,6 +66,11 @@
                             <i class="ni ni-circle-08 text-primary text-sm opacity-10"></i>
                         </div>
                         <span class="nav-link-text ms-1">จัดการข้อมูลผู้ช่วยสอน</span>
+                        @if(($pendingRequestsCount ?? 0) > 0)
+      <span class="ms-2 badge rounded-pill bg-danger">
+        {{ $pendingRequestsCount }}
+      </span>
+    @endif
                     </a>
                 </li>
             </ul>

@@ -326,10 +326,17 @@
 
         <div class="clear"></div>
         <div style="margin-top: 20px;">
-            <p>หมายเหตุ : ขอเบิกจ่ายเพียง
-                {{ number_format(isset($actualRegularPay) ? $actualRegularPay : ($regularLectureHoursSum + $regularLabHoursSum) * $compensationRates['regularLecture'], 2) }}
+            <p>หมายเหตุ : ขอเบิกจ่ายเพียง 
+                @if (isset($transaction) && $transaction)
+                    {{ number_format($actual_total_pay, 2) }}
+                @else
+                    {{ number_format($regularPay + $specialPay, 2) }}
+                @endif
                 บาท
             </p>
+            @if ($is_adjusted ?? false)
+                <p>{{ $adjustment_reason ?? '' }}</p>
+            @endif
         </div>
 
         <div class="signature-section">
@@ -556,10 +563,17 @@
         <div class="clear"></div>
         <div style="margin-top: 20px;">
             <div style="margin-top: 20px;">
-                <p>หมายเหตุ : ขอเบิกจ่ายเพียง
-                    {{ number_format(isset($actualSpecialPay) ? $actualSpecialPay : $specialPay, 2) }}
+                <p>หมายเหตุ : ขอเบิกจ่ายเพียง 
+                    @if (isset($transaction) && $transaction)
+                        {{ number_format($actual_total_pay, 2) }}
+                    @else
+                        {{ number_format($regularPay + $specialPay, 2) }}
+                    @endif
                     บาท
                 </p>
+                @if ($is_adjusted ?? false)
+                    <p>{{ $adjustment_reason ?? '' }}</p>
+                @endif
             </div>
         </div>
 

@@ -635,27 +635,27 @@
                                                 @endif
 
                                                 @if ($compensation['specialHours'] > 0)
-                                                <div class="row mb-2">
-                                                    <div class="col-7">
-                                                        <i class="fas fa-money-bill-wave text-success me-2"></i>
-                                                        <strong>โครงการพิเศษ:</strong>
+                                                    <div class="row mb-2">
+                                                        <div class="col-7">
+                                                            <i class="fas fa-money-bill-wave text-success me-2"></i>
+                                                            <strong>โครงการพิเศษ:</strong>
+                                                        </div>
+                                                        <div class="col-5 text-end">
+                                                            @if ($isFixedPayment)
+                                                                {{ number_format($fixedAmount, 2) }} บาท
+                                                                <span class="d-block text-muted">
+                                                                    <span class="badge bg-info">เหมาจ่าย</span>
+                                                                </span>
+                                                            @else
+                                                                {{ number_format($compensation['specialPay'], 2) }} บาท
+                                                                <span class="d-block text-muted">
+                                                                    {{ number_format($compensation['rates']['specialLecture'], 2) }}
+                                                                    บาท/ชม.
+                                                                </span>
+                                                            @endif
+                                                        </div>
                                                     </div>
-                                                    <div class="col-5 text-end">
-                                                        @if ($isFixedPayment)
-                                                            {{ number_format($fixedAmount, 2) }} บาท
-                                                            <span class="d-block text-muted">
-                                                                <span class="badge bg-info">เหมาจ่าย</span>
-                                                            </span>
-                                                        @else
-                                                            {{ number_format($compensation['specialPay'], 2) }} บาท
-                                                            <span class="d-block text-muted">
-                                                                {{ number_format($compensation['rates']['specialLecture'], 2) }}
-                                                                บาท/ชม.
-                                                            </span>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            @endif
+                                                @endif
 
                                                 <div class="row fw-bold border-top pt-2 mt-2">
                                                     <div class="col-7">
@@ -710,12 +710,11 @@
                                                 @if ($isCompensated)
                                                     <!-- กรณีเบิกจ่ายแล้ว -->
                                                     <div class="text-center mb-4">
-                                                        <i class="fas fa-check-circle text-success"
-                                                            style="font-size: 48px;"></i>
+                                                        <i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>
                                                         <h5 class="mt-3">เบิกจ่ายแล้ว</h5>
                                                         <p>การเบิกจ่ายสำหรับเดือนนี้ได้รับการบันทึกแล้ว</p>
                                                     </div>
-
+                                            
                                                     <div class="mb-3">
                                                         <div class="row mb-2">
                                                             <div class="col-7 text-muted">เบิกจ่ายเมื่อ:</div>
@@ -738,15 +737,13 @@
                                                             </div>
                                                             <div class="row mb-2">
                                                                 <div class="col-12">
-                                                                    <span
-                                                                        class="text-muted">{{ $transaction->adjustment_reason }}</span>
+                                                                    <span class="text-muted">{{ $transaction->adjustment_reason }}</span>
                                                                 </div>
                                                             </div>
                                                         @endif
                                                     </div>
-
-                                                    <button type="button" class="btn btn-success w-100"
-                                                        data-bs-toggle="modal" data-bs-target="#exportModal">
+                                            
+                                                    <button type="button" class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#exportModal">
                                                         <i class="fas fa-download"></i> ดาวน์โหลดเอกสารเบิกจ่าย
                                                     </button>
                                                 @else
@@ -757,84 +754,8 @@
                                                             <strong>ไม่สามารถเบิกจ่ายได้:</strong>
                                                             ค่าตอบแทนที่คำนวณได้มีค่าน้อยกว่าหรือเท่ากับ 0 บาท
                                                         </div>
-                                                    @elseif ($isExceeded || $compensation['totalPay'] > $remainingBudget)
-                                                        <!-- กรณีงบประมาณไม่พอ - แสดงฟอร์มปรับยอดทันที -->
-                                                        <div class="alert alert-warning">
-                                                            <strong>คำเตือน:</strong> ค่าตอบแทนเกินงบประมาณคงเหลือ
-                                                        </div>
-
-                                                        <form
-                                                            action="{{ route('admin.course-budgets.compensation.save') }}"
-                                                            method="POST">
-                                                            @csrf
-                                                            <input type="hidden" name="student_id"
-                                                                value="{{ $student->id }}">
-                                                            <input type="hidden" name="course_id"
-                                                                value="{{ $course->course_id }}">
-                                                            <input type="hidden" name="month_year"
-                                                                value="{{ $selectedYearMonth }}">
-                                                            <input type="hidden" name="calculated_amount"
-                                                                value="{{ $compensation['totalPay'] }}">
-                                                            <input type="hidden" name="hours_worked"
-                                                                value="{{ $compensation['regularHours'] + $compensation['specialHours'] }}">
-                                                            <input type="hidden" name="is_adjusted" value="1">
-
-                                                            <div class="mb-3">
-                                                                <div class="row mb-2">
-                                                                    <div class="col-7 text-muted">ค่าตอบแทนที่คำนวณได้:
-                                                                    </div>
-                                                                    <div class="col-5 text-end">
-                                                                        {{ number_format($compensation['totalPay'], 2) }}
-                                                                        บาท
-                                                                    </div>
-                                                                </div>
-                                                                <div class="row mb-2">
-                                                                    <div class="col-7 text-muted">งบประมาณคงเหลือ:</div>
-                                                                    <div class="col-5 text-end text-danger fw-bold">
-                                                                        {{ number_format($remainingBudget, 2) }} บาท
-                                                                    </div>
-                                                                </div>
-                                                                <div class="row mb-2">
-                                                                    <div class="col-7 text-muted">ส่วนต่าง:</div>
-                                                                    <div class="col-5 text-end text-danger">
-                                                                        {{ number_format($compensation['totalPay'] - $remainingBudget, 2) }}
-                                                                        บาท
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-
-                                                            <div class="mb-3">
-                                                                <label for="actual_amount"
-                                                                    class="form-label">เบิกจ่ายเพียง (บาท):</label>
-                                                                <input type="number" step="0.01" name="actual_amount"
-                                                                    id="actual_amount" class="form-control"
-                                                                    value="{{ number_format($remainingBudget, 2, '.', '') }}"
-                                                                    max="{{ $remainingBudget }}" min="0" required>
-                                                                <small class="text-danger">ค่าตอบแทนที่คำนวณได้
-                                                                    {{ number_format($compensation['totalPay'], 2) }} บาท
-                                                                    เกินงบประมาณคงเหลือ
-                                                                    {{ number_format($remainingBudget, 2) }} บาท</small>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label for="adjustment_reason"
-                                                                    class="form-label">เหตุผลในการปรับยอด
-                                                                    (จำเป็นต้องระบุ):</label>
-                                                                <textarea name="adjustment_reason" id="adjustment_reason" class="form-control" rows="2" required>งบประมาณคงเหลือไม่เพียงพอ ต้องปรับลดตามงบประมาณที่มี</textarea>
-                                                            </div>
-                                                            <button type="submit" class="btn btn-primary w-100">
-                                                                <i class="fas fa-save"></i>
-                                                                บันทึกการเบิกจ่ายตามงบประมาณที่เหลือ
-                                                            </button>
-                                                        </form>
                                                     @else
-                                                        <!-- กรณีงบประมาณเพียงพอ -->
-                                                        <div class="text-center mb-4">
-                                                            <i class="fas fa-check-circle text-success"
-                                                                style="font-size: 48px;"></i>
-                                                            <h5 class="mt-3">พร้อมเบิกจ่าย</h5>
-                                                            <p>งบประมาณคงเหลือเพียงพอสำหรับการเบิกจ่ายในเดือนนี้</p>
-                                                        </div>
-
+                                                        <!-- แสดงข้อมูลสรุป -->
                                                         <div class="mb-3">
                                                             <div class="row mb-2">
                                                                 <div class="col-7 text-muted">ค่าตอบแทนที่คำนวณได้:</div>
@@ -844,35 +765,116 @@
                                                             </div>
                                                             <div class="row mb-2">
                                                                 <div class="col-7 text-muted">งบประมาณคงเหลือ:</div>
-                                                                <div class="col-5 text-end">
+                                                                <div class="col-5 text-end {{ $isExceeded ? 'text-danger fw-bold' : '' }}">
                                                                     {{ number_format($remainingBudget, 2) }} บาท
                                                                 </div>
                                                             </div>
+                                            
+                                                            @if ($isExceeded)
+                                                                <div class="alert alert-warning">
+                                                                    <strong>คำเตือน:</strong> ค่าตอบแทนเกินงบประมาณคงเหลือ จำเป็นต้องปรับลดยอด
+                                                                </div>
+                                                            @endif
                                                         </div>
-
-                                                        <form
-                                                            action="{{ route('admin.course-budgets.compensation.save') }}"
-                                                            method="POST">
-                                                            @csrf
-                                                            <input type="hidden" name="student_id"
-                                                                value="{{ $student->id }}">
-                                                            <input type="hidden" name="course_id"
-                                                                value="{{ $course->course_id }}">
-                                                            <input type="hidden" name="month_year"
-                                                                value="{{ $selectedYearMonth }}">
-                                                            <input type="hidden" name="calculated_amount"
-                                                                value="{{ $compensation['totalPay'] }}">
-                                                            <input type="hidden" name="actual_amount"
-                                                                value="{{ $compensation['totalPay'] }}">
-                                                            <input type="hidden" name="hours_worked"
-                                                                value="{{ $compensation['regularHours'] + $compensation['specialHours'] }}">
-                                                            <input type="hidden" name="is_adjusted" value="0">
-
-                                                            <button type="submit" class="btn btn-success w-100">
-                                                                <i class="fas fa-check-circle"></i>
-                                                                บันทึกการเบิกจ่ายเต็มจำนวน
-                                                            </button>
-                                                        </form>
+                                            
+                                                        <!-- ส่วนของ tab สำหรับเลือกวิธีการเบิกจ่าย -->
+                                                        <ul class="nav nav-tabs mb-3" id="paymentTab" role="tablist">
+                                                            <li class="nav-item" role="presentation">
+                                                                <button class="nav-link {{ !$isExceeded ? 'active' : '' }}" id="full-tab" 
+                                                                        data-bs-toggle="tab" data-bs-target="#full-content" 
+                                                                        type="button" role="tab" aria-controls="full-content"
+                                                                        aria-selected="{{ !$isExceeded ? 'true' : 'false' }}">
+                                                                    <i class="fas fa-check-circle"></i> เบิกเต็มจำนวน
+                                                                </button>
+                                                            </li>
+                                                            <li class="nav-item" role="presentation">
+                                                                <button class="nav-link {{ $isExceeded ? 'active' : '' }}" id="adjust-tab" 
+                                                                        data-bs-toggle="tab" data-bs-target="#adjust-content" 
+                                                                        type="button" role="tab" aria-controls="adjust-content"
+                                                                        aria-selected="{{ $isExceeded ? 'true' : 'false' }}">
+                                                                    <i class="fas fa-edit"></i> ปรับยอดการเบิกจ่าย
+                                                                </button>
+                                                            </li>
+                                                        </ul>
+                                            
+                                                        <div class="tab-content border rounded p-3">
+                                                            <!-- เบิกเต็มจำนวน -->
+                                                            <div class="tab-pane fade {{ !$isExceeded ? 'show active' : '' }}" 
+                                                                 id="full-content" role="tabpanel" aria-labelledby="full-tab">
+                                                                
+                                                                @if (!$isExceeded)
+                                                                    <div class="text-center mb-4">
+                                                                        <i class="fas fa-check-circle text-success" style="font-size: 48px;"></i>
+                                                                        <h5 class="mt-3">พร้อมเบิกจ่าย</h5>
+                                                                        <p>งบประมาณคงเหลือเพียงพอสำหรับการเบิกจ่ายในเดือนนี้</p>
+                                                                        <h4 class="text-success">{{ number_format($compensation['totalPay'], 2) }} บาท</h4>
+                                                                    </div>
+                                                                @else
+                                                                    <div class="alert alert-danger">
+                                                                        <i class="fas fa-exclamation-triangle"></i> 
+                                                                        ไม่สามารถเบิกเต็มจำนวนได้เนื่องจากงบประมาณคงเหลือไม่เพียงพอ
+                                                                    </div>
+                                                                @endif
+                                            
+                                                                <form action="{{ route('admin.course-budgets.compensation.save') }}" method="POST">
+                                                                    @csrf
+                                                                    <input type="hidden" name="student_id" value="{{ $student->id }}">
+                                                                    <input type="hidden" name="course_id" value="{{ $course->course_id }}">
+                                                                    <input type="hidden" name="month_year" value="{{ $selectedYearMonth }}">
+                                                                    <input type="hidden" name="calculated_amount" value="{{ $compensation['totalPay'] }}">
+                                                                    <input type="hidden" name="actual_amount" value="{{ $compensation['totalPay'] }}">
+                                                                    <input type="hidden" name="hours_worked" value="{{ $compensation['regularHours'] + $compensation['specialHours'] }}">
+                                                                    <input type="hidden" name="is_adjusted" value="0">
+                                            
+                                                                    <button type="submit" class="btn btn-success w-100" {{ $isExceeded ? 'disabled' : '' }}>
+                                                                        <i class="fas fa-check-circle"></i> บันทึกการเบิกจ่ายเต็มจำนวน
+                                                                    </button>
+                                                                </form>
+                                                            </div>
+                                            
+                                                            <!-- ปรับยอดการเบิกจ่าย -->
+                                                            <div class="tab-pane fade {{ $isExceeded ? 'show active' : '' }}" 
+                                                                 id="adjust-content" role="tabpanel" aria-labelledby="adjust-tab">
+                                                                
+                                                                <form action="{{ route('admin.course-budgets.compensation.save') }}" method="POST">
+                                                                    @csrf
+                                                                    <input type="hidden" name="student_id" value="{{ $student->id }}">
+                                                                    <input type="hidden" name="course_id" value="{{ $course->course_id }}">
+                                                                    <input type="hidden" name="month_year" value="{{ $selectedYearMonth }}">
+                                                                    <input type="hidden" name="calculated_amount" value="{{ $compensation['totalPay'] }}">
+                                                                    <input type="hidden" name="hours_worked" value="{{ $compensation['regularHours'] + $compensation['specialHours'] }}">
+                                                                    <input type="hidden" name="is_adjusted" value="1">
+                                            
+                                                                    <div class="mb-3">
+                                                                        <label for="actual_amount" class="form-label">จำนวนเงินที่ต้องการเบิกจ่าย (บาท):</label>
+                                                                        <input type="number" step="0.01" name="actual_amount" id="actual_amount" 
+                                                                              class="form-control" 
+                                                                              value="{{ $isExceeded ? number_format($remainingBudget, 2, '.', '') : number_format($compensation['totalPay'], 2, '.', '') }}"
+                                                                              max="{{ min($compensation['totalPay'], $remainingBudget) }}" min="0" required>
+                                                                        
+                                                                        @if ($isExceeded)
+                                                                            <small class="text-danger">
+                                                                                ค่าตอบแทนที่คำนวณได้ {{ number_format($compensation['totalPay'], 2) }} บาท
+                                                                                เกินงบประมาณคงเหลือ {{ number_format($remainingBudget, 2) }} บาท
+                                                                            </small>
+                                                                        @else
+                                                                            <small class="text-muted">
+                                                                                จำนวนเงินสูงสุดที่สามารถเบิกได้คือ {{ number_format(min($compensation['totalPay'], $remainingBudget), 2) }} บาท
+                                                                            </small>
+                                                                        @endif
+                                                                    </div>
+                                            
+                                                                    <div class="mb-3">
+                                                                        <label for="adjustment_reason" class="form-label">เหตุผลในการปรับยอด (จำเป็นต้องระบุ):</label>
+                                                                        <textarea name="adjustment_reason" id="adjustment_reason" class="form-control" rows="2" required>{{ $isExceeded ? 'งบประมาณคงเหลือไม่เพียงพอ ต้องปรับลดตามงบประมาณที่มี' : '' }}</textarea>
+                                                                    </div>
+                                            
+                                                                    <button type="submit" class="btn btn-primary w-100">
+                                                                        <i class="fas fa-save"></i> บันทึกการปรับยอดเบิกจ่าย
+                                                                    </button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
                                                     @endif
                                                 @endif
                                             </div>

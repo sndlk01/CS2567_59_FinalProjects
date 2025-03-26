@@ -22,6 +22,18 @@
                         @if ($courseTas->isEmpty())
                             <p>ไม่พบข้อมูลคำร้องการสมัครในภาคการศึกษานี้</p>
                         @else
+                            @php
+                                // ตรวจสอบว่ามีรายการที่ยังไม่ได้อนุมัติหรือไม่
+                                $hasEditableRequests = false;
+                                foreach ($courseTas as $courseTa) {
+                                    $status = strtolower($courseTa['status'] ?? 'w');
+                                    if ($status !== 'a') {
+                                        $hasEditableRequests = true;
+                                        break;
+                                    }
+                                }
+                            @endphp
+                            
                             <form action="{{ route('teacher.home') }}" method="POST">
                                 @csrf
                                 <table class="table">
@@ -52,7 +64,7 @@
                                                     @elseif ($status === 'r')
                                                         <span class="badge bg-danger">ไม่อนุมัติ</span>
                                                     @elseif ($status === 'a')
-                                                        <span class="badge bg-success">อนุมัติ</span>
+                                                        <span class="badge bg-success">อนุมัติแล้ว</span>
                                                     @else
                                                         <span class="badge bg-secondary">ไม่ระบุ</span>
                                                     @endif
@@ -65,24 +77,30 @@
                                                     @endif
                                                 </td>
                                                 <td>
-                                                    <input type="hidden" name="course_ta_ids[]"
-                                                        value="{{ $courseTa['course_ta_id'] }}">
-                                                    <select name="statuses[]" class="form-select mb-2">
-                                                        <option value="a" {{ $status === 'a' ? 'selected' : '' }}>
-                                                            อนุมัติ</option>
-                                                        <option value="w" {{ $status === 'w' ? 'selected' : '' }}>
-                                                            รอดำเนินการ</option>
-                                                        <option value="r" {{ $status === 'r' ? 'selected' : '' }}>
-                                                            ไม่อนุมัติ</option>
-                                                    </select>
-                                                    <input type="text" name="comments[]" class="form-control mb-2"
-                                                        placeholder="ความคิดเห็น" value="{{ $courseTa['comment'] }}">
+                                                    <input type="hidden" name="course_ta_ids[]" value="{{ $courseTa['course_ta_id'] }}">
+                                                    @if ($status === 'a')
+                                                        <input type="hidden" name="statuses[]" value="a">
+                                                        <input type="hidden" name="comments[]" value="{{ $courseTa['comment'] }}">
+                                                    @else
+                                                        <select name="statuses[]" class="form-select mb-2">
+                                                            <option value="a" {{ $status === 'a' ? 'selected' : '' }}>อนุมัติแล้ว</option>
+                                                            <option value="w" {{ $status === 'w' ? 'selected' : '' }}>รอดำเนินการ</option>
+                                                            <option value="r" {{ $status === 'r' ? 'selected' : '' }}>ไม่อนุมัติ</option>
+                                                        </select>
+                                                        <input type="text" name="comments[]" class="form-control mb-2" placeholder="ความคิดเห็น" value="{{ $courseTa['comment'] }}">
+                                                    @endif
                                                 </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
                                 </table>
-                                <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
+                                @if ($hasEditableRequests)
+                                    <button type="submit" class="btn btn-primary">บันทึกการเปลี่ยนแปลง</button>
+                                @else
+                                    <div class="mt-3 text-success">
+                                        <i class="fas fa-info-circle me-2"></i> ทุกคำร้องได้รับการอนุมัติเรียบร้อยแล้ว
+                                    </div>
+                                @endif
                             </form>
                         @endif
                     </div>

@@ -948,91 +948,121 @@ class AdminController extends Controller
 
     // version 3
     public function exportTaDetailPDF($id)
-    {
-        try {
-            $selectedYearMonth = request('month');
-            $course_id = request('course_id');
+{
+    try {
+        $selectedYearMonth = request('month');
+        $course_id = request('course_id');
 
-            if (!$course_id) {
-                return back()->with('error', 'กรุณาระบุรหัสรายวิชา');
-            }
-
-            // Get student data
-            $student = Students::findOrFail($id);
-
-            // Find the course_ta record
-            $ta = CourseTas::where('student_id', $id)
-                ->where('course_id', $course_id)
-                ->first();
-
-            if (!$ta) {
-                Log::warning("No CourseTas record found for student_id=$id, course_id=$course_id");
-                return back()->with('error', 'ไม่พบข้อมูลผู้ช่วยสอนสำหรับรายวิชานี้');
-            }
-
-            $course = $ta->course;
-            $semester = $course->semesters;
-
-            // Get attendance data using the same method used in the web view
-            $attendanceData = $this->getAttendancesData($id, $course_id, $selectedYearMonth);
-
-            $data = [
-                'student' => $student,
-                'course' => $course,
-                'semester' => $semester,
-                'attendancesBySection' => $attendanceData['attendancesBySection'],
-                'regularAttendances' => $attendanceData['regularAttendances'],
-                'specialAttendances' => $attendanceData['specialAttendances'],
-                'selectedYearMonth' => $selectedYearMonth,
-                'monthText' => \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth)->locale('th')->monthName,
-                'year' => \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth)->year + 543,
-                'compensationRates' => [
-                    'regularLecture' => $this->getCompensationRate('regular', 'LECTURE', $student->degree_level ?? 'undergraduate'),
-                    'regularLab' => $this->getCompensationRate('regular', 'LAB', $student->degree_level ?? 'undergraduate'),
-                    'specialLecture' => $this->getCompensationRate('special', 'LECTURE', $student->degree_level ?? 'undergraduate'),
-                    'specialLab' => $this->getCompensationRate('special', 'LAB', $student->degree_level ?? 'undergraduate')
-                ],
-                'headName' => 'ผศ. ดร.คำรณ สุนัติ',
-                'formattedDate' => [
-                    'day' => \Carbon\Carbon::now()->day,
-                    'month' => \Carbon\Carbon::now()->locale('th')->monthName,
-                    'year' => \Carbon\Carbon::now()->year + 543
-                ],
-                'teacherFullTitle' => $this->getTeacherFullTitle($course),
-                'hasRegularProject' => $attendanceData['hasRegularProject'],
-                'hasSpecialProject' => $attendanceData['hasSpecialProject'],
-                'regularLectureHoursSum' => $attendanceData['regularLectureHoursSum'],
-                'regularLabHoursSum' => $attendanceData['regularLabHoursSum'],
-                'specialLectureHoursSum' => $attendanceData['specialLectureHoursSum'],
-                'specialLabHoursSum' => $attendanceData['specialLabHoursSum'],
-                'isFixedPayment' => $attendanceData['isFixedPayment'],
-                'fixedAmount' => $attendanceData['fixedAmount'],
-                'specialPay' => $attendanceData['specialPay'],
-                'regularPay' => $attendanceData['regularPay']
-            ];
-
-            // Get transaction data if it exists
-            $transaction = CompensationTransaction::where('student_id', $id)
-                ->where('course_id', $course_id)
-                ->where('month_year', $selectedYearMonth)
-                ->first();
-
-            if ($transaction) {
-                $data['transaction'] = $transaction;
-                $data['actualRegularPay'] = $transaction->actual_amount * ($data['regularPay'] / ($data['regularPay'] + $data['specialPay']));
-                $data['actualSpecialPay'] = $transaction->actual_amount * ($data['specialPay'] / ($data['regularPay'] + $data['specialPay']));
-            }
-
-            $pdf = PDF::loadView('exports.detailPDF', $data);
-            $pdf->setPaper('A4');
-
-            return $pdf->download('TA-Compensation-Detail-' . $student->student_id . '-' . $selectedYearMonth . '.pdf');
-        } catch (\Exception $e) {
-            Log::error('PDF Export Error: ' . $e->getMessage());
-            Log::error($e->getTraceAsString());
-            return back()->with('error', 'เกิดข้อผิดพลาดในการสร้าง PDF: ' . $e->getMessage());
+        if (!$course_id) {
+            return back()->with('error', 'กรุณาระบุรหัสรายวิชา');
         }
+
+        // Get student data
+        $student = Students::findOrFail($id);
+
+        // Find the course_ta record
+        $ta = CourseTas::where('student_id', $id)
+            ->where('course_id', $course_id)
+            ->first();
+
+        if (!$ta) {
+            Log::warning("No CourseTas record found for student_id=$id, course_id=$course_id");
+            return back()->with('error', 'ไม่พบข้อมูลผู้ช่วยสอนสำหรับรายวิชานี้');
+        }
+
+        $course = $ta->course;
+        $semester = $course->semesters;
+
+        // Get attendance data using the same method used in the web view
+        $attendanceData = $this->getAttendancesData($id, $course_id, $selectedYearMonth);
+
+        // Get transaction data if it exists
+        $transaction = CompensationTransaction::where('student_id', $student->id)
+            ->where('course_id', $ta->course_id)
+            ->where('month_year', $selectedYearMonth)
+            ->first();
+
+        $actualRegularPay = $attendanceData['regularPay'];
+        $actualSpecialPay = $attendanceData['specialPay'];
+        $actual_total_pay = $attendanceData['regularPay'] + $attendanceData['specialPay'];
+
+        if ($transaction) {
+            $total = $attendanceData['regularPay'] + $attendanceData['specialPay'];
+            if ($total > 0) {
+                $regularProportion = $attendanceData['regularPay'] / $total;
+                $specialProportion = $attendanceData['specialPay'] / $total;
+
+                $actualRegularPay = $transaction->actual_amount * $regularProportion;
+                $actualSpecialPay = $transaction->actual_amount * $specialProportion;
+                $actual_total_pay = $transaction->actual_amount;
+            }
+        }
+
+        $data = [
+            'student' => $student,
+            'course' => $course,
+            'semester' => $semester,
+            'attendancesBySection' => $attendanceData['attendancesBySection'],
+            'regularAttendances' => $attendanceData['regularAttendances'],
+            'specialAttendances' => $attendanceData['specialAttendances'],
+            'selectedYearMonth' => $selectedYearMonth,
+            'monthText' => \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth)->locale('th')->monthName,
+            'year' => \Carbon\Carbon::createFromFormat('Y-m', $selectedYearMonth)->year + 543,
+            'compensationRates' => [
+                'regularLecture' => $this->getCompensationRate('regular', 'LECTURE', $student->degree_level ?? 'undergraduate'),
+                'regularLab' => $this->getCompensationRate('regular', 'LAB', $student->degree_level ?? 'undergraduate'),
+                'specialLecture' => $this->getCompensationRate('special', 'LECTURE', $student->degree_level ?? 'undergraduate'),
+                'specialLab' => $this->getCompensationRate('special', 'LAB', $student->degree_level ?? 'undergraduate')
+            ],
+            'headName' => 'ผศ. ดร.คำรณ สุนัติ',
+            'formattedDate' => [
+                'day' => \Carbon\Carbon::now()->day,
+                'month' => \Carbon\Carbon::now()->locale('th')->monthName,
+                'year' => \Carbon\Carbon::now()->year + 543
+            ],
+            'teacherFullTitle' => $this->getTeacherFullTitle($course),
+            'hasRegularProject' => $attendanceData['hasRegularProject'],
+            'hasSpecialProject' => $attendanceData['hasSpecialProject'],
+            'regularLectureHoursSum' => $attendanceData['regularLectureHoursSum'],
+            'regularLabHoursSum' => $attendanceData['regularLabHoursSum'],
+            'specialLectureHoursSum' => $attendanceData['specialLectureHoursSum'],
+            'specialLabHoursSum' => $attendanceData['specialLabHoursSum'],
+            'isFixedPayment' => $attendanceData['isFixedPayment'],
+            'fixedAmount' => $attendanceData['fixedAmount'],
+            'specialPay' => $attendanceData['specialPay'],
+            'regularPay' => $attendanceData['regularPay'],
+            'actualRegularPay' => $actualRegularPay,
+            'actualSpecialPay' => $actualSpecialPay,
+            'actual_total_pay' => $actual_total_pay,
+            'transaction' => $transaction,
+            'is_adjusted' => $attendanceData['is_adjusted'] ?? false,
+            'adjustment_reason' => $attendanceData['adjustment_reason'] ?? null,
+        ];
+
+        // Get course budget
+        $courseBudget = CourseBudget::where('course_id', $ta->course_id)->first();
+        if ($courseBudget) {
+            $data['remainingBudget'] = $courseBudget->remaining_budget;
+        } else {
+            $totalStudents = $course->classes->sum('enrolled_num');
+            $totalBudget = $totalStudents * 300;
+            $data['remainingBudget'] = $totalBudget;
+        }
+
+        if (!$attendanceData['hasRegularProject'] && !$attendanceData['hasSpecialProject']) {
+            $data['noAttendanceData'] = true;
+        }
+        
+        $pdf = PDF::loadView('exports.detailPDF', $data);
+        $pdf->setPaper('A4');
+
+        return $pdf->download('TA-Compensation-Detail-' . $student->student_id . '-' . $selectedYearMonth . '.pdf');
+    } catch (\Exception $e) {
+        Log::error('PDF Export Error: ' . $e->getMessage());
+        Log::error($e->getTraceAsString());
+        return back()->with('error', 'เกิดข้อผิดพลาดในการสร้าง PDF: ' . $e->getMessage());
     }
+}
 
     private function convertNumberToThaiBaht($number)
     {
@@ -1857,6 +1887,8 @@ class AdminController extends Controller
             $actualRegularPay = $regularPay;
             $actualSpecialPay = $specialPay;
 
+
+
             if ($transaction) {
                 // ถ้ามีการบันทึกรายการเบิกจ่ายแล้ว ใช้ยอดตามที่บันทึก และคำนวณตามสัดส่วน
                 $actualTotalPay = $transaction->actual_amount;
@@ -1868,7 +1900,6 @@ class AdminController extends Controller
                 $actualRegularPay = $actualTotalPay * $regularProportion;
                 $actualSpecialPay = $actualTotalPay * $specialProportion;
             }
-
 
 
             $regularAttendances = $allAttendances->filter(function ($attendance) {
@@ -1945,7 +1976,7 @@ class AdminController extends Controller
                         \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                         : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                         \Carbon\Carbon::parse($attendance['data']->start_work)
-                        ->addMinutes($attendance['data']->duration)->format('H:i');
+                            ->addMinutes($attendance['data']->duration)->format('H:i');
 
                     $lectureHours = 0;
                     $labHours = 0;
@@ -2000,21 +2031,33 @@ class AdminController extends Controller
             $regularSheet->setCellValue('G' . $rateRow, number_format($regularLectureRate, 2));
             $regularSheet->setCellValue('H' . $rateRow, number_format($regularLabRate, 2));
 
-            if ($transaction && $transaction->is_adjusted) {
-                // กรณีมีการปรับยอด ใช้ยอดที่ปรับแล้ว
-                // $regularSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
-                $regularSheet->setCellValue('C21', number_format($transaction->actual_amount, 2));
-                // $regularSheet->setCellValue('D21', 'บาท');
-            } elseif ($isExceeded) {
-                // กรณีเกินงบประมาณที่เหลือ แต่ยังไม่มีการเบิกจ่าย
-                // $regularSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
-                $regularSheet->setCellValue('C21', number_format($remainingBudget, 2));
-                // $regularSheet->setCellValue('D21', 'บาท');
+            // ตรวจสอบว่ามีข้อมูลการเบิกจ่ายแล้วหรือไม่
+            $transaction = CompensationTransaction::where('student_id', $student->id)
+                ->where('course_id', $ta->course_id)
+                ->where('month_year', $selectedYearMonth)
+                ->first();
+
+            // ถ้ามีการเบิกจ่ายแล้ว ให้ใช้ค่าที่บันทึกไว้
+            if ($transaction) {
+                // คำนวณสัดส่วนเงินระหว่างโครงการปกติและโครงการพิเศษ
+                $totalComputedPay = $regularPay + $specialPay;
+                $regularProportion = ($totalComputedPay > 0) ? $regularPay / $totalComputedPay : 0;
+                $specialProportion = ($totalComputedPay > 0) ? $specialPay / $totalComputedPay : 0;
+
+                // แทนที่ค่าจากการคำนวณด้วยค่าที่เบิกจริง
+                $actualRegularPay = $transaction->actual_amount * $regularProportion;
+                $actualSpecialPay = $transaction->actual_amount * $specialProportion;
+
+                // แสดงค่าในแผ่นงาน
+                $regularSheet->setCellValue('C21', number_format($actualRegularPay, 2));
+
+                // กรณีมีการปรับยอด ให้แสดงหมายเหตุ
+                if ($transaction->is_adjusted) {
+                    $regularSheet->setCellValue('A25', 'หมายเหตุ: ' . $transaction->adjustment_reason);
+                }
             } else {
-                // กรณีปกติ ไม่มีการปรับยอด
-                // $regularSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
+                // กรณียังไม่มีการเบิกจ่าย
                 $regularSheet->setCellValue('C21', number_format($regularPay, 2));
-                // $regularSheet->setCellValue('D21', 'บาท');
             }
 
             $payRow = 17;
@@ -2070,7 +2113,7 @@ class AdminController extends Controller
                             \Carbon\Carbon::parse($attendance['data']->end_time)->format('H:i')
                             : \Carbon\Carbon::parse($attendance['data']->start_work)->format('H:i') . '-' .
                             \Carbon\Carbon::parse($attendance['data']->start_work)
-                            ->addMinutes($attendance['data']->duration)->format('H:i');
+                                ->addMinutes($attendance['data']->duration)->format('H:i');
 
                         $lectureHours = 0;
                         $labHours = 0;
@@ -2129,22 +2172,26 @@ class AdminController extends Controller
                     $specialSheet->setCellValue('G' . $rateRow, number_format($specialLectureRate, 2));
                     $specialSheet->setCellValue('H' . $rateRow, number_format($specialLabRate, 2));
                 }
-                if ($transaction && $transaction->is_adjusted) {
-                    // กรณีมีการปรับยอด ใช้ยอดที่ปรับแล้ว
-                    // $specialSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
-                    $specialSheet->setCellValue('C21', number_format($transaction->actual_amount, 2));
-                    // $specialSheet->setCellValue('D21', 'บาท');
-                } elseif ($isExceeded) {
-                    // กรณีเกินงบประมาณที่เหลือ แต่ยังไม่มีการเบิกจ่าย
-                    // $specialSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
-                    $specialSheet->setCellValue('C21', number_format($remainingBudget, 2));
-                    // $specialSheet->setCellValue('D21', 'บาท');
+                if ($transaction) {
+                    // คำนวณสัดส่วนเงินระหว่างโครงการปกติและโครงการพิเศษ
+                    $totalComputedPay = $regularPay + $specialPay;
+                    $regularProportion = ($totalComputedPay > 0) ? $regularPay / $totalComputedPay : 0;
+                    $specialProportion = ($totalComputedPay > 0) ? $specialPay / $totalComputedPay : 0;
+
+                    // แทนที่ค่าจากการคำนวณด้วยค่าที่เบิกจริง
+                    $actualSpecialPay = $transaction->actual_amount * $specialProportion;
+
+                    // แสดงค่าในแผ่นงาน
+                    $specialSheet->setCellValue('C21', number_format($actualSpecialPay, 2));
+
+                    // กรณีมีการปรับยอด ให้แสดงหมายเหตุ
+                    if ($transaction->is_adjusted) {
+                        $specialSheet->setCellValue('A25', 'หมายเหตุ: ' . $transaction->adjustment_reason);
+                    }
                 } else {
-                    // กรณีปกติ ไม่มีการปรับยอด
+                    // กรณียังไม่มีการเบิกจ่าย
                     $amountToDisplay = $isFixedPayment ? $fixedAmount : $specialPay;
-                    // $specialSheet->setCellValue('B21', 'ขอเบิกจ่ายเพียง');
                     $specialSheet->setCellValue('C21', number_format($amountToDisplay, 2));
-                    // $specialSheet->setCellValue('D21', 'บาท');
                 }
 
                 $payRow = 17;
@@ -2196,24 +2243,32 @@ class AdminController extends Controller
 
                     // แสดงจำนวนเงินที่ได้รับจริง
                     // $specialEvidenceSheet->setCellValue('F10', number_format($actualSpecialPay, 2));
-                    if ($transaction && $transaction->is_adjusted) {
-                        // กรณีมีการปรับยอด ใช้ยอดที่ปรับแล้ว
-                        $specialEvidenceSheet->setCellValue('F10', number_format($transaction->actual_amount, 2));
-                    } elseif ($isExceeded) {
-                        // กรณีเกินงบประมาณที่เหลือ แต่ยังไม่มีการเบิกจ่าย
-                        $specialEvidenceSheet->setCellValue('F10', number_format($remainingBudget, 2));
+                    if ($transaction) {
+                        // กรณีมีการเบิกจ่ายแล้ว ใช้ค่าตามจริง
+                        $totalComputedPay = $regularPay + $specialPay;
+                        $specialProportion = ($totalComputedPay > 0) ? $specialPay / $totalComputedPay : 0;
+                        $actualSpecialPay = $transaction->actual_amount * $specialProportion;
+
+                        $specialEvidenceSheet->setCellValue('F10', number_format($actualSpecialPay, 2));
+                        $specialEvidenceSheet->setCellValue('G16', number_format($actualSpecialPay, 2));
+                        $specialEvidenceSheet->setCellValue('C17', '(' . $this->convertNumberToThaiBaht($actualSpecialPay) . ')');
+
+                        // กรณีมีการปรับยอด ให้แสดงหมายเหตุ
+                        if ($transaction->is_adjusted) {
+                            $specialEvidenceSheet->setCellValue('I10', 'ปรับยอด: ' . $transaction->adjustment_reason);
+                        }
                     } else {
-                        // กรณีปกติ ไม่มีการปรับยอด
+                        // กรณียังไม่มีการเบิกจ่าย
                         if ($isFixedPayment) {
-                            // กรณีเหมาจ่าย ใช้ค่า fixedAmount
+                            // กรณีเหมาจ่าย
                             $specialEvidenceSheet->setCellValue('F10', number_format($fixedAmount, 2));
+                            $specialEvidenceSheet->setCellValue('G16', number_format($fixedAmount, 2));
+                            $specialEvidenceSheet->setCellValue('C17', '(' . $this->convertNumberToThaiBaht($fixedAmount) . ')');
                         } else {
-                            // กรณีคิดตามชั่วโมง ใช้สูตรคำนวณ
-                            $specialEvidenceSheet->setCellValueExplicit(
-                                'F10',
-                                '=' . number_format($specialLectureHours, 2) . '*' . number_format($specialLectureRate, 2) . '+' . number_format($specialLabHours, 2) . '*' . number_format($specialLabRate, 2),
-                                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_FORMULA
-                            );
+                            // กรณีคิดตามชั่วโมง
+                            $specialEvidenceSheet->setCellValue('F10', number_format($specialPay, 2));
+                            $specialEvidenceSheet->setCellValue('G16', number_format($specialPay, 2));
+                            $specialEvidenceSheet->setCellValue('C17', '(' . $this->convertNumberToThaiBaht($specialPay) . ')');
                         }
                     }
 
