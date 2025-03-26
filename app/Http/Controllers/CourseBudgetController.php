@@ -225,20 +225,26 @@ class CourseBudgetController extends Controller
             }
 
             // Check if there's enough remaining budget and adjust if needed
-            if ($validated['actual_amount'] > $courseBudget->remaining_budget) {
-                // ถ้าในกรณีของการบันทึกแบบเต็มจำนวน (ไม่มีการปรับยอด) แต่ยอดเกินงบประมาณ
-                if (!$request->has('is_adjusted') || !$request->is_adjusted) {
-                    // กลับไปยังหน้าเดิมพร้อมข้อความเตือน
-                    DB::rollBack();
-                    return back()->with('error', 'งบประมาณคงเหลือไม่เพียงพอ (' . number_format($courseBudget->remaining_budget, 2) . ' บาท) กรุณาปรับลดยอดเงิน');
-                }
+            // if ($validated['actual_amount'] > $courseBudget->remaining_budget) {
+            //     // ถ้าในกรณีของการบันทึกแบบเต็มจำนวน (ไม่มีการปรับยอด) แต่ยอดเกินงบประมาณ
+            //     if (!$request->has('is_adjusted') || !$request->is_adjusted) {
+            //         // กลับไปยังหน้าเดิมพร้อมข้อความเตือน
+            //         DB::rollBack();
+            //         return back()->with('error', 'งบประมาณคงเหลือไม่เพียงพอ (' . number_format($courseBudget->remaining_budget, 2) . ' บาท) กรุณาปรับลดยอดเงิน');
+            //     }
 
-                // ถ้ามีการระบุว่ามีการปรับยอดแล้ว แต่ยอดเงินที่ระบุยังเกินงบประมาณคงเหลือ
-                // ให้ปรับลดให้เท่ากับงบประมาณคงเหลือโดยอัตโนมัติ
-                if ($validated['actual_amount'] > $courseBudget->remaining_budget) {
-                    $validated['actual_amount'] = $courseBudget->remaining_budget;
-                    Log::info("Auto-adjusted amount to match remaining budget. Original: {$request->actual_amount}, Adjusted to: {$validated['actual_amount']}");
-                }
+            //     // ถ้ามีการระบุว่ามีการปรับยอดแล้ว แต่ยอดเงินที่ระบุยังเกินงบประมาณคงเหลือ
+            //     // ให้ปรับลดให้เท่ากับงบประมาณคงเหลือโดยอัตโนมัติ
+            //     if ($validated['actual_amount'] > $courseBudget->remaining_budget) {
+            //         $validated['actual_amount'] = $courseBudget->remaining_budget;
+            //         Log::info("Auto-adjusted amount to match remaining budget. Original: {$request->actual_amount}, Adjusted to: {$validated['actual_amount']}");
+            //     }
+            // }
+            // Check if there's enough remaining budget
+            if ($validated['actual_amount'] > $courseBudget->remaining_budget) {
+                // กลับไปยังหน้าเดิมพร้อมข้อความเตือน
+                DB::rollBack();
+                return back()->with('error', 'งบประมาณคงเหลือไม่เพียงพอ (' . number_format($courseBudget->remaining_budget, 2) . ' บาท) กรุณาปรับลดยอดเงิน');
             }
 
             // Create transaction
@@ -629,34 +635,34 @@ class CourseBudgetController extends Controller
 
 
     private function getFixedCompensationRate($teachingType, $degreeLevel)
-{
-    // แปลงค่า degree_level ให้ตรงกับที่เก็บในฐานข้อมูล
-    $mappedDegreeLevel = $degreeLevel;
-    if (in_array($degreeLevel, ['master', 'doctoral'])) {
-        $mappedDegreeLevel = 'graduate';
-    } else if (in_array($degreeLevel, ['bachelor', 'bachelor_degree'])) {
-        $mappedDegreeLevel = 'undergraduate';
-    }
-    
-    // ค้นหาข้อมูลในฐานข้อมูล
-    $rate = CompensationRate::where('teaching_type', $teachingType)
-        ->where('degree_level', $mappedDegreeLevel)  // ใช้ค่าที่แปลงแล้ว
-        ->where('status', 'active')
-        ->where('is_fixed_payment', true)
-        ->first();
-
-    // ถ้าพบข้อมูลในฐานข้อมูล ให้ใช้ค่าจากฐานข้อมูล
-    if ($rate) {
-        return $rate->fixed_amount;
-    }
-
-    // ใช้ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
-    if ($mappedDegreeLevel === 'graduate') {
-        if ($teachingType === 'special') {
-            return 4000; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ เหมาจ่ายรายเดือน
+    {
+        // แปลงค่า degree_level ให้ตรงกับที่เก็บในฐานข้อมูล
+        $mappedDegreeLevel = $degreeLevel;
+        if (in_array($degreeLevel, ['master', 'doctoral'])) {
+            $mappedDegreeLevel = 'graduate';
+        } else if (in_array($degreeLevel, ['bachelor', 'bachelor_degree'])) {
+            $mappedDegreeLevel = 'undergraduate';
         }
-    }
 
-    return null; // กรณีไม่ใช่ประเภทที่เหมาจ่าย
-}
+        // ค้นหาข้อมูลในฐานข้อมูล
+        $rate = CompensationRate::where('teaching_type', $teachingType)
+            ->where('degree_level', $mappedDegreeLevel)  // ใช้ค่าที่แปลงแล้ว
+            ->where('status', 'active')
+            ->where('is_fixed_payment', true)
+            ->first();
+
+        // ถ้าพบข้อมูลในฐานข้อมูล ให้ใช้ค่าจากฐานข้อมูล
+        if ($rate) {
+            return $rate->fixed_amount;
+        }
+
+        // ใช้ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
+        if ($mappedDegreeLevel === 'graduate') {
+            if ($teachingType === 'special') {
+                return 4000; // ผู้ช่วยสอน บัณฑิต ที่สอน ภาคพิเศษ เหมาจ่ายรายเดือน
+            }
+        }
+
+        return null; // กรณีไม่ใช่ประเภทที่เหมาจ่าย
+    }
 }
