@@ -15,9 +15,12 @@
                                 <!-- Prefix -->
                                 <div class="col-md-4 mb-3">
                                     <label class="small mb-1">{{ __('คำนำหน้า') }}</label>
-                                    <input type="text"
-                                        class="form-control form-control-sm @error('prefix') is-invalid @enderror"
-                                        name="prefix" value="{{ old('prefix') }}" placeholder="นาย/นาง/นางสาว" required>
+                                    <select class="form-select form-select-sm @error('prefix') is-invalid @enderror" name="prefix" required>
+                                        <option value="" disabled {{ old('prefix') ? '' : 'selected' }}>เลือกคำนำหน้า</option>
+                                        <option value="นาย" {{ old('prefix') == 'นาย' ? 'selected' : '' }}>นาย</option>
+                                        <option value="นาง" {{ old('prefix') == 'นาง' ? 'selected' : '' }}>นาง</option>
+                                        <option value="นางสาว" {{ old('prefix') == 'นางสาว' ? 'selected' : '' }}>นางสาว</option>
+                                    </select>
                                     @error('prefix')
                                         <span class="invalid-feedback">{{ $message }}</span>
                                     @enderror

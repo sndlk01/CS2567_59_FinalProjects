@@ -22,12 +22,10 @@
                             <!-- Student ID -->
                             <div class="mb-3">
                                 <label class="small mb-1">{{ __('รหัสนักศึกษา') }}</label>
-                                <input type="text" 
+                                <input type="text"
                                     class="form-control form-control-sm @error('student_id') is-invalid @enderror"
-                                    name="student_id" 
-                                    value="{{ old('student_id', $user->student_id) }}" 
-                                    placeholder="กรอกเลขรหัสนักศึกษา" 
-                                    required>
+                                    name="student_id" value="{{ old('student_id', $user->student_id) }}"
+                                    placeholder="กรอกเลขรหัสนักศึกษา" required>
                                 @error('student_id')
                                     <span class="invalid-feedback">{{ $message }}</span>
                                 @enderror
@@ -37,12 +35,15 @@
                                 <!-- Prefix -->
                                 <div class="col-md-4 mb-3">
                                     <label class="small mb-1">{{ __('คำนำหน้า') }}</label>
-                                    <input type="text" 
-                                        class="form-control form-control-sm @error('prefix') is-invalid @enderror"
-                                        name="prefix" 
-                                        value="{{ old('prefix', $user->prefix) }}" 
-                                        placeholder="นาย/นาง/นางสาว"
-                                        required>
+                                    <select class="form-select form-select-sm @error('prefix') is-invalid @enderror"
+                                        name="prefix" required>
+                                        <option value="" disabled {{ old('prefix') ? '' : 'selected' }}>เลือกคำนำหน้า
+                                        </option>
+                                        <option value="นาย" {{ old('prefix') == 'นาย' ? 'selected' : '' }}>นาย</option>
+                                        <option value="นาง" {{ old('prefix') == 'นาง' ? 'selected' : '' }}>นาง</option>
+                                        <option value="นางสาว" {{ old('prefix') == 'นางสาว' ? 'selected' : '' }}>นางสาว
+                                        </option>
+                                    </select>
                                     @error('prefix')
                                         <span class="invalid-feedback">{{ $message }}</span>
                                     @enderror
@@ -51,12 +52,10 @@
                                 <!-- Name -->
                                 <div class="col-md-8 mb-3">
                                     <label class="small mb-1">{{ __('ชื่อ-นามสกุล') }}</label>
-                                    <input type="text" 
+                                    <input type="text"
                                         class="form-control form-control-sm @error('name') is-invalid @enderror"
-                                        name="name" 
-                                        value="{{ old('name', $user->name) }}" 
-                                        placeholder="กรอกชื่อ-นามสกุล" 
-                                        required>
+                                        name="name" value="{{ old('name', $user->name) }}"
+                                        placeholder="กรอกชื่อ-นามสกุล" required>
                                     @error('name')
                                         <span class="invalid-feedback">{{ $message }}</span>
                                     @enderror
@@ -67,12 +66,10 @@
                                 <!-- ID Card -->
                                 <div class="col-md-6 mb-3">
                                     <label class="small mb-1">{{ __('รหัสบัตรประชาชน') }}</label>
-                                    <input type="text" 
+                                    <input type="text"
                                         class="form-control form-control-sm @error('card_id') is-invalid @enderror"
-                                        name="card_id" 
-                                        value="{{ old('card_id', $user->card_id) }}" 
-                                        placeholder="กรอก 13 หลัก" 
-                                        required>
+                                        name="card_id" value="{{ old('card_id', $user->card_id) }}"
+                                        placeholder="กรอก 13 หลัก" required>
                                     @error('card_id')
                                         <span class="invalid-feedback">{{ $message }}</span>
                                     @enderror
@@ -81,12 +78,10 @@
                                 <!-- Phone -->
                                 <div class="col-md-6 mb-3">
                                     <label class="small mb-1">{{ __('หมายเลขโทรศัพท์') }}</label>
-                                    <input type="tel" 
+                                    <input type="tel"
                                         class="form-control form-control-sm @error('phone') is-invalid @enderror"
-                                        name="phone" 
-                                        value="{{ old('phone', $user->phone) }}" 
-                                        placeholder="เช่น 0812345678" 
-                                        required>
+                                        name="phone" value="{{ old('phone', $user->phone) }}"
+                                        placeholder="เช่น 0812345678" required>
                                     @error('phone')
                                         <span class="invalid-feedback">{{ $message }}</span>
                                     @enderror
@@ -97,11 +92,9 @@
                                 <!-- Password -->
                                 <div class="col-md-6 mb-3">
                                     <label class="small mb-1">{{ __('รหัสผ่าน') }}</label>
-                                    <input type="password" 
+                                    <input type="password"
                                         class="form-control form-control-sm @error('password') is-invalid @enderror"
-                                        name="password" 
-                                        placeholder="ตั้งรหัสผ่าน" 
-                                        required>
+                                        name="password" placeholder="ตั้งรหัสผ่าน" required>
                                     @error('password')
                                         <span class="invalid-feedback">{{ $message }}</span>
                                     @enderror
@@ -110,11 +103,8 @@
                                 <!-- Confirm Password -->
                                 <div class="col-md-6 mb-3">
                                     <label class="small mb-1">{{ __('ยืนยันรหัสผ่าน') }}</label>
-                                    <input type="password" 
-                                        class="form-control form-control-sm"
-                                        name="password_confirmation" 
-                                        placeholder="กรอกรหัสผ่านอีกครั้ง" 
-                                        required>
+                                    <input type="password" class="form-control form-control-sm" name="password_confirmation"
+                                        placeholder="กรอกรหัสผ่านอีกครั้ง" required>
                                 </div>
                             </div>
 
@@ -144,19 +134,22 @@
             background: #ffffff;
         }
 
-        .form-control-sm, .form-select-sm {
+        .form-control-sm,
+        .form-select-sm {
             padding: 0.4rem 0.8rem;
             font-size: 0.9rem;
             border-radius: 0.4rem;
             border: 1px solid #e2e8f0;
         }
 
-        .form-control-sm:focus, .form-select-sm:focus {
+        .form-control-sm:focus,
+        .form-select-sm:focus {
             border-color: #0061ff;
             box-shadow: 0 0 0 2px rgba(0, 97, 255, 0.1);
         }
 
-        .form-control-sm::placeholder, .form-select-sm {
+        .form-control-sm::placeholder,
+        .form-select-sm {
             color: #a0aec0;
             font-size: 0.85rem;
         }
