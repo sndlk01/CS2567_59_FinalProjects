@@ -848,7 +848,7 @@ class AdminController extends Controller
             $courseTa = $ta;
 
             // ส่งข้อมูลทั้งหมดไปยัง view
-            return view('layouts.admin.detailsById', compact(
+            return view('layouts.admin.detailsByid', compact(
                 'student',
                 'course',
                 // 'courseTa',
