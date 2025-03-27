@@ -66,11 +66,11 @@
                             <i class="ni ni-circle-08 text-primary text-sm opacity-10"></i>
                         </div>
                         <span class="nav-link-text ms-1">จัดการข้อมูลผู้ช่วยสอน</span>
-                        @if(($pendingRequestsCount ?? 0) > 0)
-      <span class="ms-2 badge rounded-pill bg-danger">
-        {{ $pendingRequestsCount }}
-      </span>
-    @endif
+                        @if (($pendingRequestsCount ?? 0) > 0)
+                            <span class="ms-2 badge rounded-pill bg-danger">
+                                {{ $pendingRequestsCount }}
+                            </span>
+                        @endif
                     </a>
                 </li>
             </ul>
@@ -170,19 +170,17 @@
     <script src="/assets/js/core/bootstrap.min.js"></script>
     <script src="/assets/js/plugins/perfect-scrollbar.min.js"></script>
     <script src="/assets/js/plugins/smooth-scrollbar.min.js"></script>
-    <script>
-        var win = navigator.platform.indexOf('Win') > -1;
-        if (win && document.querySelector('#sidenav-scrollbar')) {
-            var options = {
-                damping: '0.5'
-            }
-            Scrollbar.init(document.querySelector('#sidenav-scrollbar'), options);
-        }
-    </script>
+
     <!-- Fonts Awesome Icon -->
     <script src="https://kit.fontawesome.com/2db00bb8e9.js" crossorigin="anonymous"></script>
     <!-- Control Center for Soft Dashboard: parallax effects, scripts for the example pages etc -->
     <script src="/assets/js/argon-dashboard.min.js?v=2.0.4"></script>
+    <script>
+        window.addEventListener('load', function() {
+            window.removeEventListener('resize', navbarColorOnResize);
+            window.removeEventListener('resize', sidenavTypeOnResize);
+        });
+    </script>
     @stack('scripts')
 </body>
 
