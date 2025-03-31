@@ -52,8 +52,10 @@ class LoginController extends Controller
         // ตรวจสอบว่า input ที่กรอกเข้ามาเป็น email หรือ student_id
         $fieldType = filter_var($input['email_or_student_id'], FILTER_VALIDATE_EMAIL) ? 'email' : 'student_id';
 
-        // Attempt login โดยใช้ฟิลด์ตามประเภทที่ตรวจพบ (email หรือ student_id)
-        if (auth()->attempt([$fieldType => $input['email_or_student_id'], 'password' => $input['password']])) {
+        $remember = $request->has('remember') ? true : false;
+
+        // Attempt login โดยใช้ฟิลด์ตามประเภทที่ตรวจพบ (email หรือ student_id) และส่งค่า remember
+        if (auth()->attempt([$fieldType => $input['email_or_student_id'], 'password' => $input['password']], $remember)) {
             // ตรวจสอบประเภทผู้ใช้งาน และเปลี่ยนเส้นทางตาม role
             if (auth()->user()->type == 'admin') {
                 return redirect()->route('admin.home');
@@ -63,7 +65,15 @@ class LoginController extends Controller
                 return redirect()->route('home');
             }
         } else {
-            return redirect()->route('login')->with('error', 'Email/Student ID and Password are incorrect.');
+            return redirect()->route('login')->with('error', 'อีเมล/รหัสนักศึกษา หรือรหัสผ่านไม่ถูกต้อง');
         }
+    }
+    
+    public function logout(Request $request)
+    {
+        auth()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect('/');
     }
 }
