@@ -1,66 +1,91 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
-https://cs592567.cpkkuhost.com/login
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+# Teaching Assistant Management System Installation Guide
 
-## About Laravel
+## System Requirements
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### Operating Systems
+- Windows 11 or
+- MacOS
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Development Tools
+- PHP Version 8 or higher
+- Laravel Framework Version 10.44.0
+- Visual Studio Code
+- Xampp or Laragon
+- Composer
+- Node.js and NPM
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Installation Process for Developers
 
-## Learning Laravel
+### Installing Xampp
+1. Download Xampp from https://www.apachefriends.org/download.html (PHP Version 8+)
+2. Complete the installation, selecting your preferred location
+3. Verify installation:
+   - Open Xampp
+   - Start Apache and MySQL
+   - Run `php -v` in Command Prompt to check PHP version
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Installing Composer
+1. Visit https://getcomposer.org/download/
+2. Download and install Composer following the instructions
+3. Verify installation
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### Installing the Teaching Assistant Management System
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+#### Download Source Code
+```
+git clone git@github.com:sndlk01/CS2567_59_FinalProjects.git
+```
 
-## Laravel Sponsors
+#### System Setup
+1. Navigate to the project folder:
+   ```
+   cd CS2567_59_FinalProjects
+   ```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+2. Install PHP Dependencies:
+   ```
+   composer install
+   ```
 
-### Premium Partners
+3. Install Node.js Dependencies:
+   ```
+   npm install
+   ```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+4. Copy .env.example to .env:
+   ```
+   cp .env.example .env
+   ```
 
-## Contributing
+5. Generate Application Key:
+   ```
+   php artisan key:generate
+   ```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+6. Configure database settings in the .env file
 
-## Code of Conduct
+7. Migrate the database:
+   ```
+   php artisan migrate
+   ```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+8. Start the development server:
+   ```
+   php artisan serve
+   ```
 
-## Security Vulnerabilities
+## About the System
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+This Teaching Assistant Management System was developed to address challenges faced by the College of Computing in managing numerous teaching assistants. It replaces the previous workflow that relied on Microsoft Excel, Google Forms, and manual verification, which caused delays and data entry errors.
 
-## License
+The system improves efficiency for staff, saves time for teaching assistants, and enables effective monitoring of teaching assistant work.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Test Users
+
+The system has three user roles:
+* Admin (Email: admin@admin.com) Password: 1234
+* Teacher (Email: pusadee@kku.ac.th) Password: 1234
+* Student/TA (Email: supattra.pa@kkumail.com) Password: 12345678
+
+## Deployed Website
+https://cs592567.cpkkuhost.com/
