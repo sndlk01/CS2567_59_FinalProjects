@@ -83,9 +83,9 @@ The system improves efficiency for staff, saves time for teaching assistants, an
 ## Test Users
 
 The system has three user roles:
-* Admin (Email: admin@admin.com) Password: 1234
+* Admin (Email: admin@admin.com) Password: 12345678
 * Teacher (Email: pusadee@kku.ac.th) Password: 1234
-* Student/TA (Email: supattra.pa@kkumail.com) Password: 12345678
+* Student/TA (Email: chakit.p@kkumail.com) Password: 12345678
 
 ## Deployed Website
 https://cs592567.cpkkuhost.com/
