@@ -80,12 +80,6 @@ This Teaching Assistant Management System was developed to address challenges fa
 
 The system improves efficiency for staff, saves time for teaching assistants, and enables effective monitoring of teaching assistant work.
 
-## Test Users
-
-The system has three user roles:
-* Admin (Email: admin@admin.com) Password: 12345678
-* Teacher (Email: pusadee@kku.ac.th) Password: 1234
-* Student/TA (Email: chakit.p@kkumail.com) Password: 12345678
 
 ## Deployed Website
 https://cs592567.cpkkuhost.com/
